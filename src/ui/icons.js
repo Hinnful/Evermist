@@ -26,6 +26,9 @@ const UI_ICON_PATHS = {
   cloudSolid: '<path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z" fill="currentColor" fill-opacity=".65"/>',
   // Two overlapping squares: Merge, Cut out and Split live behind it.
   repair: '<rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5"/>',
+  // Bring to front and Send to back: the repair's two squares with the front or the back one filled.
+  layerFront: '<path d="M9 15H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V9"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".65"/>',
+  layerBack: '<path d="M5.5 4h8A1.5 1.5 0 0 1 15 5.5V9H9v6H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4z" fill="currentColor" fill-opacity=".65"/><rect x="9" y="9" width="11" height="11" rx="1.5"/>',
   chev: '<path d="M7 10l5 5 5-5"/>',
   scrub: '<path d="M7 8l-4 4 4 4M17 8l4 4-4 4M3 12h18"/>',
   line: '<path d="M5 12h16"/><circle cx="3.6" cy="12" r="1.6" fill="currentColor" stroke="none"/>',

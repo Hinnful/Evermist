@@ -3,8 +3,8 @@
 // cutting line checked, a room found by name and index, and an outline replaced with its doors carried. No DOM. Tested.
 
 const MR = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'))
-  : { restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode };
+  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'))
+  : { restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex };
 
 // read_scene rounds a point to 0.1%, so a wall read back and sent again sits within half of that.
 const MCP_ROOM_MATCH_PCT = 0.06;
@@ -97,6 +97,14 @@ function mcpRoomNew(id, verts, name, notes, mode, fallback) {
   return room;
 }
 
+// A new room put in the map's rooms where a drawn one would go (layerInsertIndex), edited in place. Answers its
+// index from 1, read_scene's numbering, which an insert shifts for every room after it.
+function mcpRoomInsert(polys, room, cellSize) {
+  const at = MR.layerInsertIndex(polys, room, cellSize);
+  polys.splice(at, 0, room);
+  return at + 1;
+}
+
 // A room's outer ring replaced: { piece, lost }, the piece in the shape applyPieceToShape takes. The same number of
 // corners is a DM's drag, every door and curve kept on its wall; any other is matched wall by wall the way a
 // repair is, and `lost` counts the doors whose wall went.
@@ -129,5 +137,5 @@ function mcpRoomDoorMiss(distPx, mapW, cell) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { MCP_ROOM_MATCH_PCT, mcpRoomPoint, mcpRoomOutline, mcpRoomLine, mcpRoomFog, mcpRoomFind,
-    mcpRoomNew, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss };
+    mcpRoomNew, mcpRoomInsert, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss };
 }

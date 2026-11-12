@@ -14,8 +14,12 @@ function activeShapeList() { return worldMapOpen ? worldPlaceRecords().concat(wo
 function setShapeListNamed(name, list) {
   if (name === 'effects') { effects = list.filter(s => !s.light); lightShapes = list.filter(s => s.light); } else polygons = list;
 }
-function pushShapeTo(name, shape) {
+// A room is placed by what it contains (layerInsertIndex); an Alt-drag copy appends, and is placed on its drop.
+function appendShapeTo(name, shape) {
   if (name === 'effects') (shape.light ? lightShapes : effects).push(shape); else polygons.push(shape);
+}
+function pushShapeTo(name, shape) {
+  if (name === 'effects') appendShapeTo(name, shape); else polygons.splice(layerInsertIndex(polygons, shape, gridSize), 0, shape);
 }
 function takeShapeId(name) { return name === 'effects' ? nextEffectId++ : nextPolygonId++; }
 function shapeListChanged(name) { if (name === 'effects') { effectsChanged(); lightsChanged(); } }
@@ -36,8 +40,14 @@ function shapeGeometryChanged() {
 
 // THE ONE RELEASE PATH for a room or effect drag. It does NOT stop a running crossfade:
 // startFogTransition() leaves the live fade going and rebuildFogEffect() re-targets it.
-function commitShapeDrag() {
+function commitShapeDrag(copyId) {
   if (worldMapOpen) { worldPlaceCommit(); return; }
+  const copy = placeMode === 'rooms' && copyId != null && polygons.find(p => p.id === copyId);
+  if (copy) {
+    polygons = polygons.filter(p => p !== copy);
+    polygons.splice(layerInsertIndex(polygons, copy, gridSize), 0, copy);
+    rebuildFogFromPolygons();
+  }
   if (placeMode !== 'rooms') {
     shapeListChanged(placeMode);
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
@@ -77,7 +87,7 @@ function commitDrawnShape(verts) {
     const touches = polygons.some(s => s.vertices && s.vertices.length >= 3 && shapesOverlap(s, verts));
     const pid = nextPolygonId++;
     shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: t('Room {n}', { n: pid }) };
-    polygons.push(shape);
+    polygons.splice(layerInsertIndex(polygons, verts, gridSize), 0, shape);
     hintsRoomsDone();
     hintsRoomDrawn(shape, touches);
   }
@@ -117,13 +127,14 @@ function setShapeHoles(shape, holes) {
 
 // One plan entry: a group of shapes and the pieces replacing them.
 // ⚠ ARRAY ORDER IS FOG COMPOSITING PRECEDENCE, so a group's first piece takes the slot its
-// earliest member already holds; only a second piece is appended. `mode` is handed in because a
+// earliest member already holds and every other piece goes right after it, at its parent's layer:
+// appended, half a split room would sit under whatever it was above. `mode` is handed in because a
 // join takes the most hidden of its contributors, not the earliest one's.
 // `list` is left as it was apart from the plan's own shapes, which change in place; `newId` numbers
 // each extra piece. Claude's room tools (mcpRooms.js) run it on a map that is not open.
 function shapePlanApplied(list, plan, mode, newId) {
   const drop = new Set();
-  const extras = [];
+  const extras = new Map();
   let lostDoors = 0;
   for (const g of plan) {
     const base = g.shapes[0];
@@ -141,9 +152,13 @@ function shapePlanApplied(list, plan, mode, newId) {
       const notes = g.shapes.map(s => typeof s.desc === 'string' ? s.desc.trim() : '').filter(Boolean).join('\n\n');
       if (notes) base.desc = notes;
     }
-    for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i], newId()));
+    const mine = [];
+    for (let i = 1; i < parts.length; i++) mine.push(newShapeFromPiece(base, parts[i], newId()));
+    extras.set(base, mine);
   }
-  return { list: list.filter(s => !drop.has(s.id)).concat(extras), drop, lostDoors };
+  const out = [];
+  for (const s of list) if (!drop.has(s.id)) out.push(s, ...(extras.get(s) || []));
+  return { list: out, drop, lostDoors };
 }
 
 function applyShapePlan(plan, mode) {
@@ -239,4 +254,8 @@ function commitClosedShape(verts, op) {
   clearShapeSelection();
   commitShapeOp(verts, as);
   return null;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { shapePlanApplied };
 }

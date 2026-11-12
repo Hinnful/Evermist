@@ -39,6 +39,7 @@ const _NP_SAVE_WORDS = {
   entries: () => [t('The factions and lore are not being saved'), t('Evermist could not write the factions and lore to disk, so your last change will be gone after a restart.')],
   groupUids: () => [t('The links to groups are not being saved'), t('Evermist could not write the links to groups to disk, so a note that names a group may lose it after a restart.')],
   maps: () => [t('Your maps are not being saved'), t('Evermist could not write a map to disk, so changes to it since the last save will be gone after a restart. Freeing disk space usually clears it.')],
+  notesOrder: () => [t('The order in Notes is not being saved'), t('Evermist could not write the order of the Notes tree to disk, so your last change will be gone after a restart.')],
   groups: () => [t('The order of the groups is not being saved'), t('Evermist could not write the order of the groups to disk, so it will be gone after a restart.')],
 };
 

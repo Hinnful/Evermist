@@ -5,8 +5,9 @@
 // Rooms and effects are matched by `uid`, places by `uid` then name, roads by key. Tested.
 
 const _TP_ES = typeof esCanon === 'function'
-  ? { esCanon, esRoomParts, esEffectPart, esSceneParts, esWithUids, ES_SCENE_PARTS, ES_ROOM_OWN }
+  ? { esCanon, esRoomParts, esEffectPart, esSceneParts, esWithUids, esOrderMoved, ES_SCENE_PARTS, ES_ROOM_OWN }
   : require('./editStamps.js');
+const _TP_LAYER = typeof layerInsertIndex === 'function' ? layerInsertIndex : require('../shapes/roomOps.js').layerInsertIndex;
 const _TP_GONE = typeof esGoneWins === 'function' ? { esGoneClean, esGoneWins, esGoneMerge, esGoneLift } : require('./editStamps.js');
 const _TP_FG = typeof decodeShapeFromSave === 'function'
   ? { decodeShapeFromSave, encodeShapeForSave }
@@ -14,7 +15,7 @@ const _TP_FG = typeof decodeShapeFromSave === 'function'
 
 const TP_ROOM_PARTS = ['shape', 'notes', 'mode'];
 const TP_PART_LABEL = {
-  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', weather: 'weather', timeOfDay: 'time of day', lights: 'lights', tvFit: 'TV fit',
+  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', weather: 'weather', timeOfDay: 'time of day', lights: 'lights', tvFit: 'TV fit', order: 'room layers',
   place: 'Group', shape: 'shape', mode: 'revealed state', text: 'name and notes', effect: 'effect', deleted: 'room deleted',
 };
 
@@ -64,7 +65,17 @@ function _tpApplyRoomPart(into, from, part) {
   } else into.mode = from.mode;
 }
 
-function _tpMergeRooms(localList, incList, le, ie, moment, rep) {
+// The rooms both copies hold take the incoming copy's order between them, each into a slot one of them held.
+function _tpTakeOrder(out, ii, I) {
+  const at = new Map(I.map((r, k) => [r.uid, k]));
+  const slots = [];
+  out.forEach((r, k) => { if (ii[r.uid]) slots.push(k); });
+  const common = slots.map(k => out[k]).sort((a, b) => at.get(a.uid) - at.get(b.uid));
+  slots.forEach((k, n) => { out[k] = common[n]; });
+}
+
+// `takeOrder` says the incoming layer order is newer; a room only the file holds is placed as a drawn one is.
+function _tpMergeRooms(localList, incList, le, ie, moment, rep, takeOrder, cellSize) {
   const L = _tpDecoded(localList), I = _tpDecoded(incList), li = _tpIndex(L), ii = _tpIndex(I);
   const lt = le.rooms || {}, it = ie.rooms || {};
   const lg = le.goneRooms || {}, ig = ie.goneRooms || {};
@@ -97,6 +108,7 @@ function _tpMergeRooms(localList, incList, le, ie, moment, rep) {
     out.push(m);
     times[r.uid] = t;
   }
+  if (takeOrder) _tpTakeOrder(out, ii, I);
   const used = new Set(out.map(r => r.id));
   let next = Math.max(1, ...out.map(r => (r.id || 0) + 1));
   const added = [];
@@ -114,7 +126,7 @@ function _tpMergeRooms(localList, incList, le, ie, moment, rep) {
     if (used.has(room.id)) room.id = next;
     used.add(room.id);
     next = Math.max(next, (room.id || 0) + 1);
-    out.push(room);
+    out.splice(_TP_LAYER(out, room, cellSize), 0, room);
   }
   return { list: out.map(r => { const c = { ...r }; delete c.modeWithHoles; return _TP_FG.encodeShapeForSave(c); }), times, gone, next };
 }
@@ -178,18 +190,20 @@ function tpMergeScene(local, incoming, moment, opts) {
     scene[part] = Math.max(tl, ti);
     // ⚠ A map's place moves only on a newer time: every map saved before the part existed has none, and a tie
     // would hand every card the file's group.
-    take[part] = part === 'map' ? ti > tl || !!o.localMapMissing : part === 'place' ? ti > tl : ti >= tl;
+    // The layer order too: rooms merged before it was timed would otherwise swap places on every import.
+    take[part] = part === 'map' ? ti > tl || !!o.localMapMissing : part === 'place' || part === 'order' ? ti > tl : ti >= tl;
     const blob = part === 'map' || part === 'fog';
     // A name's " (n)" is the library's own collision suffix, not an edit: the same map at one name time keeps its name.
     if (part === 'name' && tl === ti && _tpBaseName(local.name) === _tpBaseName(incoming.name)) { take.name = false; continue; }
-    const differs = blob ? ti !== tl : lp[part] !== ip[part];
+    const differs = blob ? ti !== tl : part === 'order' ? _TP_ES.esOrderMoved(JSON.parse(lp.order), JSON.parse(ip.order)) : lp[part] !== ip[part];
     if (!differs) continue;
     if (take[part]) {
       rep.changed.push({ room: '', part });
       if (tl > 0) rep.overwritten.push({ room: '', part });
     } else rep.kept.push({ room: '', part });
   }
-  const rooms = _tpMergeRooms(local.polygons, incoming.polygons, le, ie, moment, rep);
+  const grid = (take.grid ? incoming.gridConfig : local.gridConfig) || {};
+  const rooms = _tpMergeRooms(local.polygons, incoming.polygons, le, ie, moment, rep, take.order, grid.cellSize);
   const effects = _tpMergeEffects(local.effects, incoming.effects, le, ie, moment, rep);
   const record = {
     polygons: rooms.list,

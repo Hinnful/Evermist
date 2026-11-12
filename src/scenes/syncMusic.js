@@ -99,6 +99,9 @@ function _syncFolder(o) {
       st.gone = syMuPurge(st.gone, syMuTrashDue(st.gone, now));
       const local = syMuLocal(folder.tracks);
       if (o.groups) o.groups(st, local, folder.tracks, rems, ctx.machine);
+      const byHash = {};
+      for (const h of Object.keys(local)) byHash[h] = local[h].name;
+      o.layout(byHash);
       const busy = Object.keys(local).filter(h => o.busy(local[h].name));
       const plan = syMuPlan({ st, list: folder.tracks, remotes: rems, files: snap[o.key], first: ctx.first, busy, stashed: folder.stashed });
       // This computer's Recently deleted: a purge from any computer empties it, and a track it holds comes back from it
@@ -124,6 +127,7 @@ function _syncFolder(o) {
       if (removed) o.refresh();
       for (const fileId of plan.purge) await _drive('remove', { fileId });
       await _save(st);
+      syncNoteLocal(o.layoutKey);
       await _send(st, now);
       return { plan, rems, st };
     });
@@ -183,11 +187,11 @@ function _syncFolder(o) {
 }
 
 const syncMusic = _syncFolder({
-  key: 'music', groups: _syMusicGroups, busy: name => musicTrackBusy(name), refresh: () => _muRefreshTracks(),
+  key: 'music', groups: _syMusicGroups, layoutKey: 'evermist.musicOrder', layout: byHash => musicOrderResolve(byHash), busy: name => musicTrackBusy(name), refresh: () => _muRefreshTracks(),
   trash: { held: () => sceneTrash.trackHashes(), put: sceneTrash.putTrack, restore: sceneTrash.restoreTrack, purge: sceneTrash.purgeTrack },
 });
 const syncSounds = _syncFolder({
-  key: 'sounds', groups: null, busy: () => false, refresh: () => soundboardRefreshOwn(),
+  key: 'sounds', groups: null, busy: () => false, layoutKey: 'evermist.soundsLayout', layout: byHash => soundsLayoutResolve(byHash), refresh: () => soundboardRefreshOwn(),
   trash: {
     held: () => sceneTrash.trackHashes('sounds'),
     put: (name, at, hash, move) => sceneTrash.putTrack(name, at, hash, move, 'sounds'),
@@ -198,3 +202,42 @@ const syncSounds = _syncFolder({
 // The music pane calls this after the folder or the groups changed; it does nothing unless sync is on here.
 function syncNoteMusic() { if (syncIndex.isOn()) syncMusic.landed(); }
 function syncNoteSounds() { if (syncIndex.isOn()) syncSounds.landed(); }
+
+// ─── The panes' order, names and groups ──────────────────────────────────────
+// Each is its own `local:` record. Music and the DM's own sounds key by file name here and by hash on the Drive
+// (syncMusicPlan.js); Pictures key by id and travel as stored.
+
+const SY_LAYOUT_KEYS = ['evermist.musicOrder', 'evermist.soundsLayout', 'evermist.picturesLayout'];
+const _SY_LAYOUT_FOLDER = { 'evermist.musicOrder': '$music', 'evermist.soundsLayout': '$sounds' };
+
+async function _syLayoutNames(lsKey) {
+  const x = await syncIndex.raw.get('synced', _SY_LAYOUT_FOLDER[lsKey]);
+  return syLayoutNames(x && x.st && x.st.tracks);
+}
+
+// A stored record's text as it goes up. Every other key goes as it is stored.
+async function syncLayoutText(lsKey) {
+  const text = localStorage.getItem(lsKey);
+  if (text === null || !_SY_LAYOUT_FOLDER[lsKey]) return text;
+  let layout;
+  try { layout = JSON.parse(text); } catch (_) { return null; }
+  return esCanon(syLayoutOut(layout, (await _syLayoutNames(lsKey)).byName));
+}
+
+// Another computer's record: the whole of it when its edit came later. Answers as syncMerge.apply does.
+async function syncLayoutAdopt(r, ctx) {
+  const lsKey = r.key.slice(6);
+  const clean = { 'evermist.musicOrder': cleanMusicOrder, 'evermist.soundsLayout': cleanSoundsLayout, 'evermist.picturesLayout': cleanPicturesLayout }[lsKey];
+  let theirs;
+  try { theirs = JSON.parse(r.text); } catch (_) { return { skipped: 'bad' }; }
+  if (_SY_LAYOUT_FOLDER[lsKey] && theirs && typeof theirs === 'object') theirs = syLayoutIn(theirs, (await _syLayoutNames(lsKey)).byHash);
+  theirs = clean(theirs);
+  if (!theirs) return { skipped: 'bad' };
+  const mine = libParse(localStorage.getItem(lsKey), clean);
+  if (!syLayoutTakes(mine, theirs)) return { applied: false };
+  if (ctx.keep) await ctx.keep(r.key, localStorage.getItem(lsKey));
+  if (lsKey === 'evermist.musicOrder') musicOrderAdopt(theirs);
+  else if (lsKey === 'evermist.soundsLayout') await soundsLayoutAdopt(theirs, mine);
+  else picturesLayoutAdopt(theirs);
+  return { applied: true };
+}

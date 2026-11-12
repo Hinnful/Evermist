@@ -215,7 +215,7 @@ by `start + j` is dynamic array indexing, which WebGL1 does not guarantee. A `uB
 vertex is read by the loop index alone, and is derived AFTER decimation so a ring that lost points
 still closes in the right place.
 
-### The room LIST · `REJECTED`
+### The room LIST · `REJECTED` (reopened 2026-11-12 for the Notes tree, see "The Notes tree uses the library pattern")
 A full Rooms tab with a vertical room list (rows, `listOrder`, drag-reorder, 3-state pill,
 click-to-jump, hover-to-outline) was built and then rejected on UX grounds: **the map is
 the better interface**, because it is the biggest target on screen and it shows an actual
@@ -1403,13 +1403,20 @@ Chromium's media pipeline. So the main process reads each file's bytes over IPC 
 decodes them into an `AudioBuffer` once. That leaves no `file://` source for Web Audio to taint,
 which was the reason music rejected it, and any number of copies can play at once.
 
+### Rooms are layered by what they contain · `SETTLED` (2026-11-12)
+A new room goes below the rooms it contains and above those that contain it or that it only partly overlaps, so a room drawn
+inside a hidden hall can be revealed. Bring to front / Send to back on the room's popup fix old maps; no automatic re-layering.
+Layer order travels through sync and import as a stamped scene part. A click picks the smallest room under the pointer and a
+second still click cycles outward; this reverses "rooms keep top-most" (Campaign menus entry) for rooms. Effects keep their
+own order. CLAUDE.md's "never reorder `polygons`" became "only placement, Bring to front and Send to back".
+
 ### Thirty built-in CC0 sounds, and the DM adds none · `REOPENED` (2026-11-11, superseded by "The DM adds their own sounds")
 A curated set in six groups of five ships inside the app, as Freesound HQ previews of sounds
 each page licenses CC0; `assets/sounds/SOURCES.md` lists them. Uploading the DM's own files
 waits for a later version. The groups and their place in the panel are how a sound is found,
 so there are no pins and no search.
 
-### The DM adds their own sounds · `SHIPPED` (5.12.0, 2026-11-11)
+### The DM adds their own sounds · `SHIPPED` (5.12.0, 2026-11-11; built-ins fixed, no sound groups and rename-by-file REVERSED 2026-11-12)
 Asked for crystal, jingle-bell and gear sounds, the answer was an Add sound button rather than more built-ins, too small
 for a backlog item. Files copy into `userData/sounds`, sit in one "My sounds" group (no DM-made groups), are named by file
 name, and rename by renaming the file, so no new persisted field. × on hover trashes with Undo (an exception to the trash
@@ -1417,7 +1424,7 @@ icon). Sync follows music; sounds stay out of the backup zip; over 10 MB is refu
 renamed or deleted. Rolling back to 5.11.0 leaves a trashed sound as a track that will not restore and its purge leaves the
 file behind, accepted.
 
-### A left click adds a copy, a right click stops the newest · `SETTLED` (2026-10-01)
+### A left click adds a copy, a right click stops the newest · `SETTLED` (2026-10-01; "no stop-all" reversed 2026-11-12: the Sounds card has a round stop-all button)
 A second press of a playing sound starts another copy over it, for a second thunderclap or a
 longer laugh. There is no stop-all control: the sounds last seconds. A prototype where a second
 press stopped the sound was rejected on product grounds.

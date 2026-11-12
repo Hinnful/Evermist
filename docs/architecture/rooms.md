@@ -65,8 +65,27 @@ the tool in hand wears. Neither setting
 is saved, both are off when the app starts, and both keep their state across a mode switch.
 
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
-reordering the list silently changes what the fog looks like wherever shapes overlap. There
-is no separate display order, and no room list UI to need one.
+index 0 wins wherever rooms overlap. Three things choose a position, and nothing else moves a
+room in the list:
+
+- **A new room is placed by what contains what** (`layerInsertIndex`, `roomOps.js`): below every
+  room it contains, above every room that contains it or that it only partly overlaps. "Inside"
+  is by area: what is left of the new room outside the other is under the sliver floor
+  (`roomOpMinArea`), so a shared wall or a hand-drawn overshoot still counts. On an old map whose
+  order conflicts with that, going below what it contains wins. A clipping failure appends.
+  Drawing, paste, duplicate, an Alt-drag copy (on its drop), Claude's `create_room` and a room
+  arriving through sync or Import all go through it. A repair's extra pieces sit right after
+  their parent instead, at its layer.
+- **Bring to front and Send to back** on the selected room's popup move it to index 0 or the end.
+  The move is undoable, saved, and sent to the TV with no crossfade.
+- **Sync and Import carry the order** as a scene part, `order`, timed only when rooms both saves
+  hold change places. The newer time's relative order wins for rooms both copies hold; on a tie
+  the local order stays.
+
+Moving or reshaping a room never changes its place. A click picks the other way round: the
+smallest room under the pointer (`roomsAt`, `shapeHit.js`), and a second still click on the same
+spot picks the next larger one, back to the smallest after the largest. There is no room list
+UI.
 
 ## Repairing a room
 

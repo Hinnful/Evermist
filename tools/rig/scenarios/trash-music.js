@@ -74,15 +74,18 @@ module.exports = async function trashMusic(rig) {
   // A
   await dm.evaluate(`(() => { _muPlay(_muTracks.find(t => t.name === 'Битва.wav')); return 0; })()`);
   rig.check(await dm.evaluate(`_muPlaying === 'Битва.wav'`), 'A setup: "Битва" is not playing');
-  // The row's own delete button, so a question in front of the delete would show.
+  // The row's own ⋯ and its Delete, so a question in front of the delete would show.
   const clicked = await dm.evaluate(`(() => {
     const n = Array.from(document.querySelectorAll('.mu-row-name')).find(x => x.textContent === 'Битва');
-    const b = n && n.parentElement.querySelector('.mu-row-del');
+    const b = n && n.parentElement.querySelector('.lib-more');
     if (!b) return false;
     b.click();
+    const d = Array.from(document.querySelectorAll('.lib-menu .sm-mi')).find(x => x.querySelector('.nm').textContent === 'Delete');
+    if (!d) return false;
+    d.click();
     return true;
   })()`);
-  rig.check(clicked, 'A setup: the music pane has no delete button on the "Битва" row');
+  rig.check(clicked, 'A setup: the "Битва" row\'s ⋯ has no Delete');
   const toasted = await lib.poll(async () => { const m = await toast(); return m && !files(dir).includes('Битва.wav') ? { m } : null; }, 20000, 200);
   rig.check(!(await dm.evaluate(`!!document.getElementById('cd-ok') && document.getElementById('cd-ok').offsetParent !== null`)), 'A: deleting a track asked a question');
   rig.check(!!toasted && toasted.m === '"Битва" moved to Trash', 'A: the toast does not read \'"Битва" moved to Trash\': ' + q(toasted));

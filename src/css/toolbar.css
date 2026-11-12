@@ -270,16 +270,16 @@
   /* Reveal all and Hide all: bare eyes after a divider, tools like any other. */
   #tb-whole { gap: 2px; }
 
-  /* The selected room's own fog and door, on the map just above it. Zoomed like every floating
+  /* The selected room's own fog, door and layer buttons, on the map just above it. Zoomed like every floating
      surface here, so only _rpScreenToStyle places it. */
   #room-fog {
     position: fixed; left: 0; top: 0; z-index: 60; zoom: var(--ui-zoom, 1.2); display: none; padding: 6px; gap: 0; align-items: center;
     border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
   }
   #room-fog .tb-mdiv { display: block; margin: -6px 8px; }
-  #room-fog .rf-door { width: 30px; height: 30px; border-radius: 6px; color: #a3a8b0; }
-  #room-fog .rf-door:hover { background: var(--g-field); color: var(--g-text); }
-  #room-fog .rf-door svg { width: 17px; height: 17px; }
+  #room-fog .rf-door, #room-fog .rf-layer { width: 30px; height: 30px; border-radius: 6px; color: #a3a8b0; }
+  #room-fog .rf-door:hover, #room-fog .rf-layer:hover { background: var(--g-field); color: var(--g-text); }
+  #room-fog .rf-door svg, #room-fog .rf-layer svg { width: 17px; height: 17px; }
   #room-fog .rf-door.active, #room-fog .rf-door.active:hover { background: var(--b-tint); color: var(--b-icon); }
   body.player-mode #room-fog, body.world #room-fog, body.players-view #room-fog { display: none !important; }
 

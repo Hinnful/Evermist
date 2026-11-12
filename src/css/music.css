@@ -70,71 +70,73 @@
   .mu-row-pick { background: var(--b-tint); }
   .mu-row-on .mu-row-name { color: var(--g-text); font-weight: 600; }
 
-  /* Destructive, belongs to one row, wears no red, and asks through confirmDialog. Hidden
-     until the row is hovered so a list of a hundred is not a wall of bins. */
-  .mu-row-del { width: 24px; height: 24px; flex: none; padding: 0; border: 0; border-radius: 5px; display: none;
-                align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
-  .mu-row-del:hover { background: var(--g-hover); color: var(--g-text); }
-  .mu-row:hover .mu-row-del { display: inline-flex; }
   .mu-empty { padding: 14px; }
 
-  /* Groups, the scene library's way: the heading folds, its name is the rename field, and a row
-     dragged onto a group files it there. */
-  .mu-grp-h { display: flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 8px 0 12px;
-              color: var(--g-dim); font: 600 11px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); }
-  .mu-grp-h:hover { color: var(--g-text); }
-  .mu-grp-h .car { flex: none; transition: transform .12s; }
-  .mu-grp.shut .car { transform: rotate(-90deg); }
-  .mu-grp-name { min-width: 0; max-width: 60%; padding: 3px 4px; border: 0; border-radius: 4px; background: none;
-                 color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  input.mu-grp-name { cursor: var(--cur-text); field-sizing: content; }
-  input.mu-grp-name:hover { background: rgba(255, 255, 255, 0.05); }
-  input.mu-grp-name:focus { outline: none; background: var(--g-field); color: var(--g-text); }
-  .mu-grp-h .c { font-weight: 400; }
-  .mu-grp-h .sp { flex: 1; }
-  .mu-grp-btn { width: 22px; height: 22px; flex: none; padding: 0; border: 0; border-radius: 5px; display: inline-flex;
-                align-items: center; justify-content: center; background: transparent; color: var(--g-dim);
-                cursor: var(--cur-pointer); opacity: 0; }
-  .mu-grp-h:hover .mu-grp-btn { opacity: 1; }
-  .mu-grp-btn:hover { background: var(--g-hover); color: var(--g-text); }
-  .mu-grp.drop .mu-grp-h { background: var(--b-tint); color: var(--b-icon); border-radius: 5px; }
-  .mu-grp-empty { padding: 6px 14px 8px; color: var(--g-dim); font: 400 11px/1.3 system-ui, -apple-system, sans-serif; }
-  .mu-grp.shut .mu-grp-b { display: none; }
+  /* ===== THE LIBRARY: Music, Sounds and Pictures (libraryList.js) ===== */
+  /* "+ Add" is a grey word button, icon and word, as every other labelled control in the dock. */
+  .dk-addb { height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px 0 8px; border: 0; border-radius: 6px;
+             background: var(--g-field); color: var(--g-text); cursor: var(--cur-pointer);
+             font: 600 12px/1 system-ui, -apple-system, sans-serif; }
+  .dk-addb:hover { background: var(--g-hover); }
+  .dk-addb.lit { background: var(--g-pick); }
+  .mu-list { position: relative; user-select: none; }
+  .lib-ico { flex: none; color: var(--g-dim); }
+  /* ⋯ shows on the item under the pointer only, so a list of a hundred is not a wall of buttons. */
+  .lib-more { width: 22px; height: 22px; flex: none; padding: 0; border: 0; border-radius: 5px; display: none;
+              align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
+  .lib-more:hover { background: var(--g-hover); color: var(--g-text); }
+  .lib-more.lit { display: inline-flex; background: var(--g-pick); color: var(--g-text); }
+  [data-lib-key]:hover > .lib-more, .lib-gh:hover > .lib-more { display: inline-flex; }
+  .lib-dragging [data-lib-key]:hover > .lib-more { display: none; }
+  .lib-edit { flex: 1; min-width: 0; height: 22px; margin-left: -4px; padding: 0 4px; border: 0; border-radius: 4px;
+              background: var(--g-field); color: var(--g-text); font: inherit; box-shadow: inset 0 0 0 1px var(--b-icon); outline: none; }
+  .lib-gh .lib-edit { flex: none; min-width: 84px; field-sizing: content; font-weight: 600; }
 
-  /* ===== SOUNDS: groups of tiles, two to a row ===== */
-  .dk-sbgroups { display: flex; flex-direction: column; gap: 16px; padding: 14px 12px 16px 14px; }
-  .dk-sbg { display: flex; flex-direction: column; gap: 8px; }
-  .dk-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .dk-tile {
-    position: relative; overflow: hidden;
-    display: flex; align-items: center; gap: 6px; min-width: 0;
-    height: 34px; padding: 0 10px; border: 0; border-radius: 6px;
-    background: var(--g-field); color: #d5d8dd; cursor: var(--cur-pointer); text-align: left; user-select: none;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; transition: background .12s;
-  }
-  .dk-tile svg { flex: none; color: var(--g-dim); }
-  .dk-tile:hover { background: var(--g-hover); color: var(--g-text); }
-  .dk-tile:active { transform: scale(0.98); }
-  /* Two lines when a name needs them: a tile is two to a row, and Russian names run long. */
-  .sb-name { flex: 1; min-width: 0; overflow: hidden; line-height: 1.15;
-             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
-              color: var(--g-text); opacity: .7; }
+  /* Group headings, the scene library's way: a click folds, ⋯ holds Rename and Ungroup. */
+  .lib-gh { display: flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 8px 0 12px;
+            color: var(--g-text); font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); }
+  .lib-gh:hover { background: rgba(255, 255, 255, 0.04); }
+  .lib-gh .car { color: var(--g-dim); }
+  .lib-gh .car { flex: none; transition: transform .12s; }
+  .lib-sec.shut .car { transform: rotate(-90deg); }
+  .lib-sec.shut .lib-body { display: none; }
+  .lib-gh .lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib-gh .c { font-weight: 400; color: var(--g-dim); }
+  .lib-gh .sp { flex: 1; }
+  .lib-sec.lib-empty { display: none; }
+  .lib-dragging .lib-sec.lib-empty { display: block; }
+
+  /* Drag: the row follows the pointer, the drop place is a thin blue line, a held target lights blue. */
+  .lib-ghost { position: fixed; z-index: 600; pointer-events: none; opacity: .85; border-radius: 6px;
+               background: var(--g-hover); box-shadow: 0 8px 20px rgba(0, 0, 0, .6); }
+  .lib-faded { opacity: .3; }
+  .lib-line { position: absolute; left: 14px; right: 10px; height: 2px; border-radius: 1px; background: var(--b-icon); z-index: 2; pointer-events: none; }
+  .lib-line.up { right: auto; width: 3px; height: auto; box-shadow: 0 0 6px var(--b-icon); }
+  .lib-merge { background: var(--b-tint) !important; color: var(--b-icon); box-shadow: inset 0 0 0 1px var(--b-icon); border-radius: 5px; }
+  .lib-gh.lib-join { background: var(--b-tint); color: var(--b-icon); border-radius: 5px; }
+  .lib-filedrop { box-shadow: inset 0 0 0 2px var(--b-icon); }
+  .lib-menu { position: fixed; z-index: 610; min-width: 178px; }
+  .lib-menu .sm-mi::before { display: none; }
+  .lib-menu .sm-mi svg { flex: none; }
+  .lib-menu .sm-mi .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  .lib-menu .sm-mi .ky { margin-left: 24px; color: var(--g-dim); font-weight: 400; }
+  .lib-menu .sm-mi:hover .ky { color: var(--b-icon); }
+  .lib-menu .sm-mi:disabled { opacity: .45; pointer-events: none; }
+  .lib-menu .sm-mi.danger:hover { background: var(--r-tint); color: var(--r-text); }
+
+  /* ===== SOUNDS: rows, as Music's ===== */
+  .sb-row .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+                      color: var(--g-text); opacity: .7; }
+  .sb-row { position: relative; }
   .sb-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--g-text); }
-  .sb-row-on { background: var(--g-pick); color: var(--g-text); }
-  .sb-row-on svg { color: var(--g-text); }
-  /* An own sound's name is its rename field, only as wide as its text, so the rest of the tile still plays. */
-  .sb-rename { display: block; flex: 0 1 auto; max-width: 100%; margin-left: -4px; padding: 3px 4px; border: 0; border-radius: 4px;
-               background: none; color: inherit; font: inherit; field-sizing: content; cursor: var(--cur-text);
-               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-rename:hover { background: rgba(255, 255, 255, 0.05); }
-  .sb-rename:focus { outline: none; background: var(--g-field); color: var(--g-text); }
-  .sb-own .sb-count { margin-left: auto; }
-  .sb-del { width: 18px; height: 18px; flex: none; padding: 0; border: 0; border-radius: 4px; display: none;
-            align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
-  .sb-del svg { width: 12px; height: 12px; }
-  .sb-del:hover { background: var(--g-pick); color: var(--g-text); }
-  .sb-own:hover .sb-del { display: inline-flex; }
+  .sb-row-on { background: var(--g-field); }
+  .sb-row-on .lib-name { color: var(--g-text); font-weight: 600; }
+  /* Stop every sound: the play button's shape on the field grey, greyed out while nothing plays. */
+  .sb-stop { background: var(--g-field); color: var(--g-text); }
+  .sb-stop:hover { background: var(--g-hover); }
+  .sb-stop:disabled { opacity: .35; cursor: var(--cur-arrow); transform: none; background: var(--g-field); }
+  .sb-resting .pl-title { color: var(--g-dim); font-weight: 500; }
+  .sb-resting .pl-sub .pl-bars { display: none; }
 
   /* ===== ADD FROM YOUTUBE (musicDownload.js): the .sm-win shell at the list width ===== */
   #mu-backdrop { position: fixed; inset: 0; background: var(--veil); z-index: 502; }

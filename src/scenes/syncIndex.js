@@ -10,7 +10,7 @@ const syncIndex = (() => {
   const DB_NAME = 'evermist-sync';
   const STORES = { index: 'key', synced: 'key', pulled: 'key', gone: 'id', copies: 'key' };
   const LOCAL_KEYS = ['evermist.combat', 'evermist.combatFights', 'evermist.notesEntries', 'evermist.campaignNotes',
-    'evermist.campaignNotesAt', 'evermist.moduleText'];
+    'evermist.campaignNotesAt', 'evermist.moduleText', 'evermist.musicOrder', 'evermist.soundsLayout', 'evermist.picturesLayout', 'evermist.notesOrder'];
   // What the one `campaign` record carries: the Campaign's places, roads and party marker, and the deletion records.
   const CAMPAIGN_KEYS = ['evermist.placeNotes', 'evermist.roadNotes', 'evermist.placeShapes', 'evermist.worldRoads',
     'evermist.worldParty', 'evermist.groupUids', 'evermist.gonePlaces', 'evermist.goneRoads', 'evermist.gonePictures'];
@@ -148,7 +148,7 @@ const syncIndex = (() => {
     if (!_on) return null;
     if (CAMPAIGN_KEYS.includes(lsKey)) return campaignChanged();
     return _later(async () => {
-      const text = localStorage.getItem(lsKey);
+      const text = await syncLayoutText(lsKey);
       if (text === null) { await del('index', 'local:' + lsKey); return; }
       const hash = await _sha(text), prev = await get('index', 'local:' + lsKey);
       // `at` is when the text last changed here, so a start that finds it the same leaves it alone.

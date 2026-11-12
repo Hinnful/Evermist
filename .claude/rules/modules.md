@@ -43,7 +43,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
 | `rooms/vttHoles.js` | Pure kernel: the free-standing buildings a floor-plan room encloses, as its holes. Tested |
 | `fog/lightGeometry.js` | Pure light kernel: a plan's lights and the polygon each starts as. Tested |
-| `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel. Tested |
+| `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel, and where a new room goes in the list. Tested |
 | `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
 | `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
@@ -57,7 +57,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/toolCut.js` | The Cut tool and the two pieces it leaves |
 | `shapes/shapeMarkers.js` | The corner and hole-hatch markers a picked shape's chrome draws |
 | `shapes/toolPreview.js` | What a tool draws before it is committed |
-| `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Tested |
+| `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, the smallest room under a point, distance to a wall, where along it. Tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/openLine.js` | A picked road's chrome (an open line, no closing wall) and the curve-handle markers shared with the closed shapes |
 | `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
@@ -87,11 +87,11 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/scenes.js` | Fog persistence + scene fade helpers |
 | `scenes/sceneList.js` | The list of scenes the app holds: loaded at startup, its thumbnails, the open scene's name in the dock |
 | `scenes/trashPlan.js` | Pure Recently deleted kernel: days left, which entries are due, the road ends a map held and which come back on Restore. Tested |
-| `scenes/sceneTrash.js` | `evermist-trash`: a deleted map's whole record kept 30 days, its file moved to `userData/trash`, Restore with its road ends, the purge and the start-up reconcile; a deleted music track's entry, its file in `userData/trash/music` |
+| `scenes/sceneTrash.js` | `evermist-trash`: a deleted map's whole record kept 30 days, its file moved to `userData/trash`, Restore with its road ends, the purge and the start-up reconcile; a deleted music track's entry, its file in `userData/trash/music`; `evermist-trash-more`: a deleted picture whole and a hidden built-in sound |
 | `scenes/sceneDelete.js` | The DM's delete and its undo toast, then the map into `sceneTrash.js` |
 | `scenes/mapImport.js` | Import: accepted kinds, the batch loop, video maps to disk |
 | `scenes/sceneSwitch.js` | `switchScene` and each of its steps |
-| `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
+| `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse; the order/group kernel Music, Sounds and Pictures share (move, hold-to-group, merge, ungroup, new arrivals, built-in ids). Tested |
 | `scenes/editStamps.js` | Pure edit-time kernel: the time each part of a scene, room, effect last changed, from a save's diff, and the uids that match rooms across machines. Tested |
 | `scenes/transferPlan.js` | Pure import kernel: per part, which copy of a scene, room, effect, place, road and the backdrop wins. Tested |
 | `scenes/sceneStore.js` | IndexedDB read/write, stamping each save |
@@ -126,7 +126,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/syncMusic.js` | The music folder through sync: the tick's music part after every map, record and note, the `music` record, tracks in Recently deleted, a track's hash as it lands; the DM's own sounds the same way as `syncSounds` |
 | `scenes/sync.js` | Sync's outbox and inbox on the page: the triggers, records and map files up, other computers' changes down, the first-sync rules and its hold until the DM answers, the status line's state |
 | `scenes/syncSettings.js` | Settings' Google Drive line: the status line and Connect or Disconnect. The question before a first sync. Shown only with a Google client |
-| `scenes/trashPanel.js` | Campaign's Recently deleted line and its pop-out: this computer's maps and tracks plus the Drive's while signed in, days left, Restore and Empty now |
+| `scenes/trashPanel.js` | Campaign's Recently deleted line and its pop-out: this computer's maps, tracks, sounds and pictures plus the Drive's while signed in, days left, Restore and Empty now |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
 | `ui/colorPicker.js` | The grid colour picker: square, hue strip, hex field, HSV maths |
@@ -139,14 +139,18 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/hintsCues.js` | The first-use cues: the Campaign's Open and Group, Show on TV, Effects, Music, Sounds and the fight table |
 | `notes/notesPlan.js` | Pure notes kernel: a notes string cleaned, a restored campaign note merged in, the campaign.json writer and readers. Tested |
 | `notes/notesEntriesPlan.js` | Pure rules for factions and lore: a list cleaned, an entry added, renamed, moved, ordered, deleted with its children and merged on restore. Tested |
-| `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, monsters with a note, factions and lore, a node's path, which crumbs fold. Tested |
+| `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, monsters with a note, factions and lore, the stored order applied, a node's path, which crumbs fold. Tested |
+| `notes/notesOrderPlan.js` | Pure rules for the Notes tree's own order and groups (`evermist.notesOrder`): the cleaner, a list applied with missing items skipped, the moves a drop makes, the per-list merge, an import's remap. Tested |
 | `notes/notesPanel.js` | What the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room, a monster, a faction or lore, routed to whoever holds the map |
 | `notes/notesEntries.js` | Factions and lore in their own key: read, written and reported when a save fails |
+| `notes/notesOrder.js` | The Notes tree's order and groups in `evermist.notesOrder`: read, written list by list, merged from sync or an import |
 | `notes/mentionPlan.js` | Pure rules for mentions between notes: the stored form parsed and written, shown names refreshed under the cap, a note's mentions of an id, ids remapped for a transfer import, plain words for search, the group uids. Tested |
 | `notes/mentionIndex.js` | What a mention points at: whether its entry exists and its name and note, the @ picker's entries and the ids minted on a pick, the notes that mention an entry, the group uids |
 | `notes/notesEditor.js` | The notes editor: a plain-text contenteditable with mention labels, its own undo, paste, the @ picker, create-from-name, the red label's menu, the hover preview |
 | `notes/notesAppears.js` | The "Appears in" list at the end of every note in the Notes window |
-| `notes/notesTree.js` | The Notes window's tree: rows, clicks, keys, right-click menu, drag, and New, Rename, Delete and Show on map per kind |
+| `notes/notesTree.js` | The Notes window's tree: rows, clicks, keys, menus, the undo of its drops, and New, Rename, Delete and Show on map per kind |
+| `notes/notesTreeDrag.js` | The Notes tree on the shared list parts: ⋯ and Move to group, which row may go where, what a drop writes, Notes groups' Rename and Ungroup |
+| `notes/notesMapDrop.js` | A map dropped in the Notes tree: its order, its card moved into or out of a Campaign group, two loose maps made a group |
 | `notes/notesWindow.js` | The Notes window's shell: open and shut, place, size, tree width, back and forward, breadcrumbs |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
 | `world/worldMapStore.js` | Where a scene sits on the world map, its place and its name: the one writer, and a column's inbox for it |
@@ -175,13 +179,13 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldMapMenu.js` | The right-click menu on the world map: a scene (with Restore previous picture while sync keeps one), a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
 | `rooms/roomCard.js` | The selected room's fields, in the Notes window |
-| `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
+| `rooms/roomSwitcher.js` | The selected room's clouds, door, Bring to front and Send to back, on the map above it |
 | `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Notes window |
 | `gallery/galleryPlan.js` | Pure gallery kernel: picture size, names, the migration list, the backup list, what a scene's rooms still hold. Tested |
 | `gallery/pictureDecode.js` | A file turned into a gallery picture: shrunk, or kept whole if animated or SVG |
 | `gallery/galleryStore.js` | The gallery's own IndexedDB: pictures under their id |
 | `gallery/galleryMigrate.js` | The pictures rooms used to hold, copied into the gallery once |
-| `gallery/gallery.js` | The Gallery pane: the grid, adding, renaming, removing, the backup payload, and the picture on the TV |
+| `gallery/gallery.js` | The Gallery pane: the tiles in groups and the DM's order, adding, renaming, removing to the Trash, the backup payload, and the picture on the TV |
 | `player/tvPicture.js` | A gallery picture drawn on the TV, Player and two-map shell |
 | `player/initiativePanel.js` | The turn order on the TV: twin sheets in the map's fog theme, on a canvas of its own |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
@@ -196,10 +200,12 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/updater.js` | Update toast, About's update line, restart button |
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Tested |
 | `ui/music.js` | The Music pane: the player, track library and playback |
-| `ui/musicGroups.js` | The Music pane's groups: names, order, folding, and a track dragged into one |
+| `ui/libraryPlan.js` | Pure: what Music, Sounds and Pictures store of their order, names and groups, each key's cleaner, the layouts an upgrade starts from, music's order beside its groups. Tested |
+| `ui/libraryList.js` | The parts Music, Sounds and Pictures share: ⋯ menus, drag with the blue line, hold-to-group, edge scroll, rename in place, Ctrl+R, files dropped on a pane |
+| `ui/musicGroups.js` | The Music pane's library: the DM's order, track names, groups, folding, and the list's calls back |
 | `ui/musicDownload.js` | Add music panel |
 | `ui/soundList.js` | The built-in sounds: groups, files, names. Data only |
-| `ui/soundboard.js` | The Sounds pane: one-shot sounds over the music, as tiles; My sounds: Add sound, rename, × to the Trash |
+| `ui/soundboard.js` | The Sounds pane: one-shot sounds over the music as rows in groups, built-in and own alike; the card with stop-all; names, order, hidden built-ins |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
 | `combat/initiativePlan.js` | Pure turn-order kernel: the open fight's rows as the TV's slots, and the last living monster going down. Tested |
 | `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
@@ -240,12 +246,14 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpWorldPlan.js` | Pure rules for the Campaign tools: a group outline, a card spot, a road found by name, the backdrop numbers. Tested |
 | `mcp/mcpFights.js` | Claude's fight tools and the bestiary search |
 | `mcp/mcpCombatPlan.js` | Pure rules for Claude's fight-row details, the open-fight refusal for them, and a bestiary monster found, replaced, copied and restored. Tested |
-| `mcp/mcpGallery.js` | Claude's gallery tools: list, add, rename, delete a picture |
+| `mcp/mcpGallery.js` | Claude's gallery tools: list, add, rename, delete a picture, its order and groups |
 | `mcp/mcpBestiary.js` | Claude's stat block, add, edit, copy, delete and import monster tools |
 | `mcp/mcpSeePlan.js` | Pure map-sight kernel: an area in percent to pixels, the picture's size, the grid's step and labels, a scene's contents read as percent. Tested |
 | `mcp/mcpSee.js` | Claude's eyes: view_scene draws a map or an area offscreen with a percent grid and the room outlines, read_scene lists what a map holds |
 | `mcp/mcpMusicPlan.js` | Pure rules for Claude's music tools: tracks and groups found by name, the 20-track limit, the delete question. Tested |
-| `mcp/mcpMusic.js` | Claude's music library tools: list, add, download, delete tracks, and the groups. Never plays |
+| `mcp/mcpMusic.js` | Claude's music library tools: list, add, download, rename, delete tracks, the order and the groups. Never plays |
+| `mcp/mcpSoundsPlan.js` | Pure rules for Claude's sound tools and the picture tools' lookups: an item by its shown name, two of one name refused with both named, a group, a position, the delete question. Tested |
+| `mcp/mcpSounds.js` | Claude's sound tools: list, add, rename, move, group and delete sounds, built-in and own. Never plays |
 | `mcp/mcpRoomsPlan.js` | Pure rules for Claude's room tools: percent points to map pixels, an outline or a cutting line checked, a room found by name and index, an outline replaced with its doors carried. Tested |
 | `mcp/mcpRooms.js` | Claude's room tools: draw, edit, delete, Merge, Cut out, Split, and a door added or taken away |
 | `mcp/mcpGridPlan.js` | Pure rules for Claude's grid, effect and light tools: a grid crossing in percent to the stored phase, the grid's look checked, an effect's shape from percent or a preset size, one found by index or material. Tested |
@@ -265,8 +273,8 @@ the windows, the display push and the app lifecycle, and hands every module its 
 |---|---|
 | `electron/videoFiles.js` | An animated map's file on disk, and its move to `userData/trash` and back |
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
-| `electron/sounds.js` | The built-in sound files, read for the soundboard, and the IPC for the DM's own in `userData/sounds` |
-| `electron/soundFiles.js` | Pure: the DM's own sounds folder, files copied in under the 10 MB limit, a typed name made a file name, the read only a bare name passes. Tested |
+| `electron/sounds.js` | The built-in sound files, read for the soundboard, and the IPC for the DM's own in `userData/sounds`: list, read, copy, Trash |
+| `electron/soundFiles.js` | Pure: the DM's own sounds folder, files copied in under the 10 MB limit, the read only a bare name passes. Tested |
 | `electron/displays.js` | The display list, placing the Player on a screen, switching the TV to a second screen |
 | `electron/tvSize.js` | The size a screen reports in its EDID (registry, `/sys/class/drm`, `ioreg`), matched to a display by name and resolution. Tested |
 | `electron/screenLog.js` | `screens.log`: the screen lists read in the first ten seconds, one line per change. Tested |
@@ -311,8 +319,8 @@ render/effects.js → render/weatherShader.js → render/timeOfDay.js → render
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/mentionPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
-gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/mentionIndex.js → notes/notesEditor.js → notes/notesAppears.js → notes/notesTree.js → notes/notesWindow.js →
+content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/mentionPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → notes/notesOrderPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
+ui/libraryPlan.js → ui/libraryList.js → gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/notesOrder.js → notes/mentionIndex.js → notes/notesEditor.js → notes/notesAppears.js → notes/notesTree.js → notes/notesTreeDrag.js → notes/notesMapDrop.js → notes/notesWindow.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js → player/initiativePanel.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/initiativePlan.js → combat/fightPlan.js →
@@ -320,5 +328,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js → combat/initiativeTv.js →
-mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpSoundsPlan.js → mcp/mcpSounds.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

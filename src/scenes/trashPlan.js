@@ -26,6 +26,12 @@ function trashRows(local, drive) {
     .sort((a, b) => b.at - a.at);
 }
 
+// What a Trash entry holds, by its id: a map, a music track or one of the DM's own sounds, a picture, a built-in sound.
+function trashKindOf(id) {
+  const s = String(id || '');
+  return s.startsWith('track:') ? 'track' : s.startsWith('pic:') ? 'picture' : s.startsWith('builtin:') ? 'builtin' : 'map';
+}
+
 // What the map `id` held on the roads, read before its ends open: [{ uid, ends: [index], scene }], `scene` its entry
 // on the road's list or null.
 function trashRoadEnds(roads, id) {
@@ -48,5 +54,5 @@ function trashReattach(road, id, held) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { TRASH_DAYS, TRASH_DAY_MS, trashDaysLeft, trashIsDue, trashDue, trashRows, trashRoadEnds, trashReattach };
+  module.exports = { trashKindOf, TRASH_DAYS, TRASH_DAY_MS, trashDaysLeft, trashIsDue, trashDue, trashRows, trashRoadEnds, trashReattach };
 }

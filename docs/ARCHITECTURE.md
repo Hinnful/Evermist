@@ -40,12 +40,25 @@ dock sits over the map rather than beside it, so opening a pane never moves the 
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
 clear. The toolbar stays centred on the window whatever either side does.
 
-**Sounds** hold the thirty built-ins plus the DM's own: Add sound in the pane header uses Music's native picker and copies the file into `userData/sounds` (`soundFiles.js`); over 10 MB is refused with a message pointing to the Music pane. Own sounds sit in one group, "My sounds", at the top, shown only while it holds one. The name is the file name without extension; clicking it renames the file (no persisted field). × on hover sends a sound to the Trash with Undo; right-click still stops the newest copy. Built-ins cannot be hidden, renamed or deleted, and sounds stay out of the backup zip. The undo toast's × closes it whatever it undoes.
+**Music, Sounds and Pictures share one list pattern.** `libraryList.js` is the DOM (the ⋯ on the item under the pointer, drag
+with a blue line, hold over a middle to group, edge autoscroll, inline rename, Ctrl+R); `libraryPlan.js` is the pure part
+(the stored shapes and their cleaners); the order and group kernel is `sceneGroups.js`. Three local keys hold the result,
+each a `local:` sync record (`syncIndex.js` LOCAL_KEYS, `syncMerge.js` KINDS; the whole record with the newer `at` wins):
+`evermist.musicOrder` (order and labels; the groups stay in `evermist.musicGroups`), `evermist.soundsLayout` (order, groups,
+labels, hidden built-ins) and `evermist.picturesLayout`. Locally they key by file name or picture id, and the synced form
+keys music and own sounds by content hash. A rename is a label, never the file. A group exists only while it holds items.
+The previous release never reads these keys, so it shows file names and every built-in sound.
+
+**Sounds** hold the thirty built-ins plus the DM's own (`soundFiles.js`, files in `userData/sounds`, over 10 MB refused),
+all as 30px rows that rename, move, group and delete the same way; the six built-in groups and "My sounds" are the starting
+layout and follow the interface language until renamed. A left click plays one more copy, a right click stops the newest, and the
+card's round button stops every sound. A deleted sound goes to the Trash with Undo (a built-in is a `builtins` entry holding its
+file name). Sounds stay out of the backup zip.
 
 **Pictures** (`gallery.js`) is the only place pictures live: portraits, monsters, letters, kept
 under a name with no scene or room attached, in a database of their own (`galleryStore.js`). A
-find field narrows the grid by name, `+` or a drop adds, a double-click renames, the trash asks
-before it removes. A click puts the picture on the TV over the dimmed map (`tvPicture.js`), a second
+find field narrows the grid by name, "+ Add" or a drop adds, the shared ⋯ renames, moves to a group and deletes; the tiles
+keep their size and gain groups and a hand-made order. Delete sends the picture to the Trash. A click puts the picture on the TV over the dimmed map (`tvPicture.js`), a second
 click or Escape takes it down, and a Player that opens or reconnects gets the picture that is up.
 With Two maps on, the DM window has no Player of its own, so the picture goes to the shared Player
 window and covers both halves; Escape typed inside a column asks the DM window to take it down.
@@ -101,7 +114,7 @@ in, and shifts a free point with the layout.
 
 **The Notes window** (`notesWindow.js`, `notesTree.js`, `notesPanel.js`) is a free window the DM opens from the rail
 (Notes, after Campaign), moves by its header and resizes by its corner; its place, size, tree width and
-hidden tree are a viewing setting (`evermist.notesWin`). Left is the tree of the whole campaign (groups nested
+hidden tree are a viewing setting (`evermist.notesWin`). Every row but a section title has a ⋯, and every list reorders by drag (`notesTreeDrag.js`); rooms, roads and monsters take Notes-only groups, and a map dropped on a Campaign group moves its card inside the outline (`notesMapDrop.js`). The order is `evermist.notesOrder` (`notesOrder.js`, pure rules in `notesOrderPlan.js`), one record per list keyed by uids so a restore or undo finds its place; it never touches the fog, syncs as a `local:` record, merges per list and rides in a backup's `campaign.json`; a missing target is skipped, never pruned. Left is the tree of the whole campaign (groups nested
 by the outline that holds them, maps and rooms, roads, the monsters with a DM note, factions and lore); right is
 the note of one thing, with its path as breadcrumbs in the header. What it shows is a target: what the DM picked, else
 what the selection follows (the Campaign's pick, the selected room, the open map, the campaign). A room pick with the
@@ -860,7 +873,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
 - **What syncs:** every map with its rooms, fog, effects, notes and map file; the gallery; the
   monsters, fights and bestiary; factions and lore; the campaign note; the module text; and the
   Campaign's places, roads, party marker and backdrop. Each part merges by Import's rules (see
-  above): the part edited later wins. Module text takes the newer copy and asks nothing. Music syncs too: every track, the music groups and their order (the later edit wins). A map's floor plan travels with its file name.
+  above): the part edited later wins. Module text takes the newer copy and asks nothing. Music, sounds and pictures sync too: every track, the music groups, and the three layout records (order, names, groups; the later edit wins), and a built-in sound or picture deleted elsewhere lands in this Trash. A map's floor plan travels with its file name.
 - **When:** about four seconds after a change is saved, every 30 seconds while the app is open,
   at start, when the network comes back, and on **Sync now**. A tick compares content hashes kept
   in the `evermist-sync` database and moves only what changed. A map's picture or video goes up
@@ -882,7 +895,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   `evermist-trash`, an animated map's file in `userData/trash/`, for 30 days. A map deleted on another computer moves this
   computer's copy into its Trash (`syncMerge.drop`). Settings' "Trash" (one line in Campaign opening a pop-out, `trashPanel.js`)
   shows each name with "N days left", **Restore** and **Empty now**. Restore uses this computer's copy first, offline too, and
-  marks the deletion record restored before the copy returns; a computer with no copy restores from the Drive. After 30
+  marks the deletion record restored before the copy returns; a computer with no copy restores from the Drive. Pictures and hidden built-in sounds are kept in a second database, `evermist-trash-more` (stores `pictures`, `builtins`), so `evermist-trash` is never version-bumped; a picture deleted on another computer lands here too, and a restore stamps its name time so it syncs back. After 30
   days the Drive's copy is purged. Its deletion is remembered for good, so a computer that was
   offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
   and Import keep their own rules.

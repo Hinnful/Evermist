@@ -309,6 +309,13 @@ function wmSlotInPoly(verts, taken) {
   return null;
 }
 
+// A card dropped on a loose card: where it lands, beside it, and the rectangle that fits both, their new group.
+function wmPairPlace(matePos) {
+  const pos = { x: matePos.x + WM_STEP_X, y: matePos.y };
+  const r = wmHullRect([matePos, pos]);
+  return { pos, shape: wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h) };
+}
+
 // A spot for a card that must join the polygon: the next clear slot, else the centre nudged down-right step by step
 // until no card in `taken` sits on it, so a full outline still holds every card and each stays visible.
 function wmSpotInOutline(verts, taken) {
@@ -503,7 +510,7 @@ if (typeof module !== 'undefined' && module.exports) {
     WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_FRAME_FILL, WM_FRAME_MAX, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmGroupRectAt, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
-    wmCleanShape, wmCleanEdits, wmUnknownFields, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmLabelSpot,
+    wmCleanShape, wmCleanEdits, wmUnknownFields, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmPairPlace, wmLabelSpot,
     wmPlateSpot, WM_PILL, wmPillWidth, WM_FAN, WM_FAN_SCALES, wmFanCards, wmFanSize, wmFanSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };

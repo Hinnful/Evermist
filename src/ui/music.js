@@ -46,10 +46,12 @@ function initMusic() {
   bind('btn-mu-pause', 'click', _muTogglePause);
   bind('mu-filter', 'input', () => { _muSearchPick = null; _muRenderList(); });
   bind('mu-filter', 'keydown', e => e.stopPropagation());
-  bind('btn-mu-files', 'click', _muPickFiles);
-  bind('btn-mu-add', 'click', () => openMusicDownload());
-  bind('btn-mu-group', 'click', newMusicGroup);
+  bind('btn-mu-add', 'click', e => libMenuAt(e.currentTarget, [
+    { label: 'From files…', icon: 'export', run: _muPickFiles },
+    { label: 'From YouTube…', icon: 'play', run: () => openMusicDownload() }]));
   loadMusicGroups();
+  musicListInit();
+  libDropFiles(_muEl('dock-pane-music'), paths => _muAddFiles(paths));
   // The folder is read again each time the pane opens, so a file dropped in meanwhile shows.
   document.addEventListener('dockpane', e => { if (e.detail === 'music') _muRefreshTracks(); });
 
@@ -80,6 +82,7 @@ async function _muRefreshTracks() {
   if (!window.electronAPI || !window.electronAPI.listMusicFiles) return;
   try {
     _muTracks = (await window.electronAPI.listMusicFiles()) || [];
+    musicOrderSeen(_muTracks.map(x => x.name));
   } catch (err) {
     _muTracks = [];
     messageDialog({ title: 'Music folder unreadable', message: (err && err.message) || String(err) });
@@ -151,7 +154,7 @@ function _muRenderPill() {
     bubble.classList.toggle('mu-paused', !!_muPaused);
   }
   const name = _muEl('mu-pill-name');
-  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : t('Nothing playing');
+  if (name) name.textContent = _muPlaying ? musicLabel(_muPlaying) : t('Nothing playing');
   const state = _muEl('mu-state');
   if (state) state.textContent = !_muPlaying ? t('Pick a track below') : t(_muPaused ? 'Paused' : 'Playing');
   const pause = _muEl('btn-mu-pause');
@@ -165,10 +168,10 @@ function _muRenderPill() {
 
 function _muRenderList() {
   const list = _muEl('mu-list');
-  if (!list) return;
+  if (!list || libHold(list)) return;
   const filter = _muEl('mu-filter');
-  const rows = filterTracks(
-    _muTracks.map(t => ({ name: t.name, group: musicGroupOf(t.name), display: displayName(t.name), url: t.url, size: t.size })),
+  const shown = filterTracks(
+    _muTracks.map(x => ({ name: x.name, group: musicGroupOf(x.name), display: musicLabel(x.name), url: x.url, size: x.size })),
     filter ? filter.value : ''
   );
 
@@ -176,17 +179,12 @@ function _muRenderList() {
   if (!_muTracks.length) {
     const empty = document.createElement('div');
     empty.className = 'mt-status mu-empty';
-    empty.textContent = t('No music yet. Add files, or add from YouTube.');
+    empty.textContent = t('No music yet. Use + Add.');
     list.appendChild(empty);
     _muRenderCount();
     return;
   }
-
-  // A filter opens every group and leaves out the ones with no match.
-  const filtering = !!(filter && filter.value.trim());
-  const sections = musicSections(rows);
-  if (sections.length === 1) rows.forEach(track => _muRenderRow(list, track));
-  else for (const sec of sections) if (!filtering || sec.scenes.length) list.appendChild(buildMusicGroup(sec, filtering));
+  musicRenderSections(list, shown, !!(filter && filter.value.trim()));
   _muRenderCount();
 }
 
@@ -194,16 +192,17 @@ function _muRenderRow(list, track) {
   const row = document.createElement('div');
   row.className = 'mu-row' + (track.name === _muPlaying ? ' mu-row-on' : '') + (track.name === _muSearchPick ? ' mu-row-pick' : '');
   row.dataset.track = track.name;
-  musicRowDrag(row, track.name);
+  row.dataset.libKey = track.name;
   if (track.name === _muPlaying) {
     const bars = document.createElement('span');
     bars.className = 'pl-bars sm';
     bars.innerHTML = '<i></i><i></i><i></i>';
     row.appendChild(bars);
-  }
+  } else row.insertAdjacentHTML('beforeend', '<svg class="lib-ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>');
 
   const label = document.createElement('span');
-  label.className = 'mu-row-name';
+  label.className = 'mu-row-name lib-name';
   label.textContent = track.display;
   label.title = track.display;
   row.appendChild(label);
@@ -212,21 +211,17 @@ function _muRenderRow(list, track) {
   meta.className = 'mu-row-meta';
   const secs = _muDurations[track.name];
   meta.textContent = secs ? formatDuration(secs) : formatBytes(track.size);
-  row.appendChild(meta);
-
-  const del = document.createElement('button');
-  del.className = 'mu-row-del';
-  del.title = t('Delete this track');
-  del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-    'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
-    '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
-  del.addEventListener('click', (e) => { e.stopPropagation(); _muDelete(track); });
-  row.appendChild(del);
+  row.append(meta, libMoreBtn());
 
   // ⚠ The row IS the play control, and a click on the row already playing does NOTHING.
   // Opening a second element on one file starves Chromium's media pipeline - the same
   // landmine that makes the Player buffer its own copy of a video map.
   row.addEventListener('click', () => { if (track.name !== _muPlaying) _muPlay(track); });
+  // A right-click pauses the track playing; on any other track it does nothing.
+  row.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (track.name === _muPlaying && !_muPaused) _muTogglePause();
+  });
   list.appendChild(row);
 }
 
@@ -299,7 +294,7 @@ function _muPlay(track) {
     incoming.target = 0;
     messageDialog({
       title: 'That track will not play',
-      message: displayName(track.name) + '\n\n' + t('The file may be incomplete, or in a format this ' +
+      message: musicLabel(track.name) + '\n\n' + t('The file may be incomplete, or in a format this ' +
                'app cannot decode. Delete it and download it again.'),
     });
     _muPlaying = null;
@@ -348,7 +343,7 @@ function _muSetVolume(v) {
   if (_muDecks) for (const d of _muDecks) d.el.volume = fadeLevel(d.phase) * _muVolume;
 }
 
-// No question: the track goes to the Trash, and the toast's Undo brings it back with its group.
+// No question: the track goes to the Trash, and the toast's Undo brings it back where it was.
 async function _muDelete(track) {
   if (track.name === _muPlaying) {
     _muPlaying = null;
@@ -364,9 +359,9 @@ async function _muDelete(track) {
     messageDialog({ title: 'Could not delete that track', message: (err && err.message) || String(err) });
   }
   delete _muDurations[track.name];
-  forgetMusicTrack(track.name);
   _muRefreshTracks();
-  if (id) await showTrackUndo(id, 'music', displayName(track.name), back => { if (group) setMusicGroup([back], group); });
+  // The track keeps its place, group and name, so an Undo or a Restore puts it back there.
+  if (id) await showTrackUndo(id, 'music', musicLabel(track.name), back => { if (group && back !== track.name) setMusicGroup([back], group); });
 }
 
 // A track a deck still holds, playing, paused or fading out: sync neither removes nor replaces it.

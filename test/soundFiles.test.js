@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createSoundFiles, soundFileName, SOUND_MAX_BYTES } = require('../electron/soundFiles.js');
+const { createSoundFiles, SOUND_MAX_BYTES } = require('../electron/soundFiles.js');
 const { createMusicHashes } = require('../electron/musicHashes.js');
 
 const setup = () => {
@@ -44,13 +44,6 @@ test('only a bare audio file name in the folder is read', async () => {
     assert.equal(own.soundPath(bad), null, String(bad));
   }
   assert.equal(own.soundPath('Ok.wav'), path.join(dir, 'Ok.wav'));
-});
-
-test('a typed name keeps the old extension and loses separators', () => {
-  assert.equal(soundFileName('  Crystal  chime ', 'a.mp3'), 'Crystal chime.mp3');
-  assert.equal(soundFileName('../up/there', 'a.wav'), 'up there.wav');
-  assert.equal(soundFileName('   ', 'a.wav'), null);
-  assert.equal(soundFileName('...', 'a.wav'), null);
 });
 
 test('a renamed sound keeps its hash and takes a free name', async () => {

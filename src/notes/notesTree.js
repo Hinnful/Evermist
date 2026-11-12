@@ -1,6 +1,6 @@
 'use strict';
-// notesTree.js — the Notes window's tree: its rows, clicks, keys, right-click menu, drag for factions and lore, and
-// what New, Rename, Delete and Show on map do for each kind. The tree's shape is notesTreePlan.js.
+// notesTree.js — the Notes window's tree: its rows, clicks, keys, menus, the undo of its drops, and what New, Rename,
+// Delete and Show on map do for each kind. The tree's shape is notesTreePlan.js; its drag is notesTreeDrag.js.
 //
 // ⚠ EVERY NAME REACHES THE DOM THROUGH textContent: map, room and monster names come from imported files.
 
@@ -13,6 +13,7 @@ const NT_ICONS = {
   monster: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
   faction: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   lore: '<path d="M6 3h10l4 4v14H6z"/><path d="M9 11h8M9 15h8"/>',
+  ngroup: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
 };
 // The words are whole strings so each one has its Russian entry.
 const NT_NEW_BTN = { monster: '+ New monster or NPC', faction: '+ New faction', lore: '+ New lore' };
@@ -25,8 +26,8 @@ let _ntSel = null;            // the shown node's key
 let _ntCur = null;            // the key the keyboard is on
 let _ntRows = [];
 let _ntRenaming = null;
-let _ntDrag = null;
 let _ntMenu = null;
+let _ntUndoSteps = [];       // the tree's drops, newest last: { lists: [{ key, was }], world, entry }
 let _ntReadStarted = false;
 
 const _ntList = () => document.getElementById('nw-tl');
@@ -39,12 +40,15 @@ function _ntInput() {
   for (const s of allScenes) { const r = searchRoomsOf(s.id); if (r) rooms[s.id] = r; }
   return {
     scenes: allScenes.map(s => ({ id: s.id, name: s.name, group: sanitizeGroupName(s.group) })),
-    groups: names.map(name => { const rec = worldPlaceByName(name); return { name, outline: rec ? wmOutline(rec) : [] }; }),
+    groups: names.map(name => { const rec = worldPlaceByName(name); return { name, uid: mxGroupUidPeek(name), outline: rec ? wmOutline(rec) : [] }; }),
     roads: worldRoadRecords().map(r => ({ uid: r.uid, name: r.name })),
-    blocks: Object.values(cbState.blocks).map(b => ({ id: b.id, name: b.name, notes: (b.notes || '').trim() ? 'x' : '', listed: !!b.listed, mentioned: !!b.uid && mentioned.has(b.uid) })),
-    entries: notesEntriesAll(), rooms,
+    blocks: Object.values(cbState.blocks).map(b => ({ id: b.id, uid: b.uid || null, name: b.name, notes: (b.notes || '').trim() ? 'x' : '', listed: !!b.listed, mentioned: !!b.uid && mentioned.has(b.uid) })),
+    entries: notesEntriesAll(), rooms, order: notesOrderAll(),
   };
 }
+
+// The tree as the window would show it now, built fresh: what Claude reads and orders.
+function ntBuild() { return notesTreeBuild({ ..._ntInput(), roomLabel: n => t('Room {n}', { n }) }); }
 
 function _ntNode(key) { return _ntRoot ? notesTreeFind(_ntRoot, key) : null; }
 
@@ -71,7 +75,8 @@ function ntSync(selKey) {
     for (const n of notesTreePath(root, selKey)) if (n.kind !== 'section') _ntOpen.add(n.key);
   }
   const sig = JSON.stringify(input) + '|' + [..._ntOpen].join('\u0001') + '|' + _ntSel + '|' + _ntCur + '|' + t('Room {n}', { n: 0 });
-  if (sig === _ntSig || _ntRenaming) return;
+  // ⚠ NEVER REDRAWN UNDER A DRAG: the dragged row would go; the redraw it skipped runs at the drop.
+  if (sig === _ntSig || _ntRenaming || libHold(_ntList())) return;
   _ntSig = sig;
   _ntRoot = notesTreeBuild({ ...input, roomLabel: n => t('Room {n}', { n }) });
   _ntDraw();
@@ -95,7 +100,8 @@ function _ntRow(r) {
   const row = document.createElement('div');
   row.className = 'nw-row' + (sec ? ' sec' : '') + (n.key === _ntSel ? ' sel' : '') + (n.key === _ntCur && n.key !== _ntSel ? ' cur' : '');
   row.dataset.key = n.key;
-  row.style.paddingLeft = (r.depth * 11) + 'px';
+  row.dataset.libKey = n.key;
+  row.style.paddingLeft = (sec ? 0 : r.depth * 11) + 'px';
   const tw = document.createElement('span');
   tw.className = 'nw-tw';
   if (!sec && r.hasKids && n.key !== 'campaign') {
@@ -119,7 +125,7 @@ function _ntRow(r) {
     a.title = t(addable);
     row.appendChild(a);
   }
-  if ((n.kind === 'faction' || n.kind === 'lore') && n.id) row.draggable = true;
+  if (!sec) row.appendChild(libMoreBtn());
   return row;
 }
 
@@ -174,6 +180,7 @@ function _ntGoRoom(n) {
 
 function ntGo(n) {
   if (n.kind === 'section') return;
+  if (n.kind === 'ngroup') { if (_ntOpen.has(n.key)) _ntOpen.delete(n.key); else _ntOpen.add(n.key); ntRefresh(); return; }
   notesPanelFlush();
   if (n.kind === 'room') _ntGoRoom(n);
   else { notesLevelPick = _ntTarget(n); refreshRoomPanel(); }
@@ -201,6 +208,7 @@ function _ntRenamePlace(from, to) {
 function ntRenameKey(key, name) {
   const n = _ntNode(key), v = String(name).trim();
   if (!n || !v || n.kind === 'campaign' || n.kind === 'section') return;
+  if (n.kind === 'ngroup') { ntGroupRename(n, v); return; }
   if (n.kind === 'place') _ntRenamePlace(n.id, v);
   else if (n.kind === 'map') renameScene(n.id, v);
   else if (n.kind === 'road') worldRoadRename(n.id, v);
@@ -293,7 +301,7 @@ function _ntDeleteWords(n) {
 }
 
 function ntDelete(n) {
-  if (n.kind === 'campaign' || n.kind === 'section' || (n.kind === 'room' && (!_ntHeld(n.scene) || worldMapOpen))) return;
+  if (n.kind === 'campaign' || n.kind === 'section' || n.kind === 'ngroup' || (n.kind === 'room' && (!_ntHeld(n.scene) || worldMapOpen))) return;
   // A map goes to the Trash with the delete's undo toast, so it asks nothing.
   if (n.kind === 'map') { _ntDoDelete(n); return; }
   const w = _ntDeleteWords(n);
@@ -371,7 +379,7 @@ function ntMenuAt(at, rows) {
   _ntMenu = menu;
 }
 
-function _ntRowsFor(n) {
+function ntRowsFor(n) {
   if (n.kind === 'campaign') {
     return [{ label: 'Expand all', run: () => { for (const k of notesTreeFoldable(_ntRoot)) _ntOpen.add(k); _ntSig = ''; ntSync(_ntSel); } },
       { label: 'Collapse all', run: () => { _ntOpen.clear(); _ntSig = ''; ntSync(_ntSel); } }];
@@ -406,35 +414,33 @@ function _ntKey(e) {
     ntSync(_ntSel);
   } else if (e.key === 'Enter' && n) ntGo(n);
   else if (e.ctrlKey && e.code === 'KeyR' && n) ntRenameStart(n);
+  else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey) _ntUndo();
   else return;
   e.preventDefault();
 }
 
-// Over a row: its top quarter puts the dragged entry before it, its bottom quarter after, the middle inside it.
-function _ntZone(e, row) {
-  const r = row.getBoundingClientRect(), f = (e.clientY - r.top) / r.height;
-  return row.classList.contains('sec') ? 'in' : f < 0.25 ? 'before' : f > 0.75 ? 'after' : 'in';
+// ─── The undo of the tree's drops ────────────────────────────────────────────
+// Ctrl+Z with the tree focused takes back the last drop: the lists it wrote, a faction's or lore's old place, and for a
+// map whose group changed, the Campaign as it was (cards, outlines, a group it made). No toast: those are the Trash's.
+
+function ntUndoPush(step) {
+  _ntUndoSteps.push(step);
+  if (_ntUndoSteps.length > 30) _ntUndoSteps.shift();
 }
 
-function _ntDrop(e) {
-  const row = e.target.closest('.nw-row'), from = _ntDrag;
-  _ntDrag = null;
-  _ntList().querySelectorAll('.over-in, .over-before, .over-after').forEach(r => r.classList.remove('over-in', 'over-before', 'over-after'));
-  const to = row && _ntNode(row.dataset.key);
-  if (!from || !to || !from.id) return;
-  e.preventDefault();
-  const z = _ntZone(e, row);
-  if (to.kind === 'section') { notesEntryMove(from.id, to.sec); }
-  else if (z === 'in') { notesEntryMove(from.id, to.id); _ntOpen.add(to.key); }
-  else {
-    const t0 = notesEntryGet(to.id);
-    const sibs = neChildren(notesEntriesAll(), t0.parent).filter(s => s.id !== from.id);
-    const at = sibs.findIndex(s => s.id === to.id);
-    notesEntryMove(from.id, t0.parent, z === 'before' ? to.id : (sibs[at + 1] || {}).id);
-  }
-  _ntSig = '';
-  refreshRoomPanel();
+function _ntUndo() {
+  const s = _ntUndoSteps.pop();
+  if (!s) return;
+  notesPanelFlush();
+  for (const l of (s.lists || []).slice().reverse()) notesOrderPut(l.key, l.was);
+  if (s.entry && notesEntryGet(s.entry.id)) notesEntryMove(s.entry.id, s.entry.parent, s.entry.before);
+  if (s.world) { worldSnapshotPut(s.world); if (worldMapOpen) worldMapRefresh(); }
+  ntRefresh();
 }
+
+function ntRefresh() { _ntSig = ''; refreshRoomPanel(); }
+function ntOpenKey(key) { _ntOpen.add(key); }
+function ntRenameStartKey(key) { const n = _ntNode(key); if (n) ntRenameStart(n); }
 
 function ntInit() {
   const list = _ntList();
@@ -450,23 +456,14 @@ function ntInit() {
   list.addEventListener('contextmenu', e => {
     e.preventDefault();
     const row = e.target.closest('.nw-row'), n = row && _ntNode(row.dataset.key);
-    if (n) ntMenuAt({ x: e.clientX, y: e.clientY }, _ntRowsFor(n));
+    if (n) libMenuAtPoint(e.clientX, e.clientY, ntMenuRows(n));
   });
   list.addEventListener('keydown', _ntKey);
-  list.addEventListener('dragstart', e => {
-    const row = e.target.closest('.nw-row');
-    _ntDrag = row ? _ntNode(row.dataset.key) : null;
-    if (_ntDrag && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', _ntDrag.key); }
+  libraryList(list, {
+    scroller: list, filtering: () => false, redraw: () => { _ntSig = ''; ntSync(_ntSel); },
+    menu: key => { const n = _ntNode(key); return n ? ntMenuRows(n) : []; },
+    rename: key => ntRenameStartKey(key), canDrag: ntCanDrag, aim: ntDragAim, drop: ntDragDrop,
   });
-  list.addEventListener('dragover', e => {
-    const row = e.target.closest('.nw-row'), to = row && _ntNode(row.dataset.key), from = _ntDrag;
-    list.querySelectorAll('.over-in, .over-before, .over-after').forEach(r => r.classList.remove('over-in', 'over-before', 'over-after'));
-    if (!from || !to || (to.kind !== from.kind && !(to.kind === 'section' && to.sec === from.kind))) return;
-    e.preventDefault();
-    row.classList.add('over-' + _ntZone(e, row));
-  });
-  list.addEventListener('drop', _ntDrop);
-  list.addEventListener('dragend', () => { _ntDrag = null; });
   document.getElementById('nw-new').addEventListener('click', ntNewHere);
   window.addEventListener('mousedown', e => { if (_ntMenu && !_ntMenu.contains(e.target)) ntCloseMenu(); }, true);
   window.addEventListener('keydown', e => { if (e.key === 'Escape' && _ntMenu) { ntCloseMenu(); e.stopImmediatePropagation(); } }, true);

@@ -8,7 +8,8 @@ let _mcpMusicListening = false;
 // The library as the app lists it, read fresh off the folder.
 async function _mcpMusicTracks() {
   await _muRefreshTracks();
-  return _muTracks.map(t => ({ name: t.name, display: displayName(t.name), group: musicGroupOf(t.name), secs: _muDurations[t.name] || 0 }));
+  const by = new Map(_muTracks.map(t => [t.name, t]));
+  return musicOrdered().filter(n => by.has(n)).map(n => ({ name: n, display: musicLabel(n), group: musicGroupOf(n), secs: _muDurations[n] || 0 }));
 }
 
 function _mcpMusicGroups() {
@@ -29,7 +30,7 @@ async function _mcpMusicDrop(names) {
 async function _mcpListMusic(args) {
   const all = await _mcpMusicTracks();
   const rows = filterTracks(all, args.query);
-  return _mcpOk({ total: rows.length, groups: _mcpMusicGroups(), tracks: rows.slice(0, 200).map(t => ({ name: t.display, group: t.group || null, length: t.secs ? formatDuration(t.secs) : null })) });
+  return _mcpOk({ total: rows.length, groups: _mcpMusicGroups(), tracks: rows.slice(0, 200).map(t => ({ name: t.display, file: t.name, group: t.group || null, length: t.secs ? formatDuration(t.secs) : null })) });
 }
 
 async function _mcpAddMusic(args) {
@@ -39,7 +40,7 @@ async function _mcpAddMusic(args) {
   const added = ((res && res.added) || []).filter(n => !before.has(n));
   const left = ((res && res.failed) || []).map(f => '"' + f.name + '" ' + f.message);
   if (!added.length) return _mcpNo('No track was added.' + (left.length ? ' ' + left.join(' ') : ' Give the path of an audio file or a folder of them.'));
-  const shown = added.map(n => '"' + displayName(n) + '"');
+  const shown = added.map(n => '"' + musicLabel(n) + '"');
   return mcpDone('added ' + shown.join(', ') + ' to the music library', () => _mcpMusicDrop(added),
     'Added ' + shown.join(', ') + ' to the music library. Nothing was played.' + (left.length ? ' Not added: ' + left.join(' ') : ''));
 }
@@ -110,25 +111,32 @@ async function _mcpDeleteMusic(args) {
   const id = await sceneTrash.trashTrack(name);
   if (!id) return _mcpNo('Not deleted: "' + display + '" could not be moved out of the music folder.');
   const { hash } = (await sceneTrash.trackHashes()).find(x => x.id === id) || {};
-  forgetMusicTrack(name);
   await _muRefreshTracks();
   return mcpDone('deleted the track "' + display + '"', async () => {
     // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
     const back = syncIndex.isOn() ? await syncMusic.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
     if (!back) throw new Error('"' + display + '" is no longer in the Trash.');
-    if (group) setMusicGroup([back], group);
+    if (group && back !== name) setMusicGroup([back], group);
   }, 'Moved the track "' + display + '" to the Trash in Settings, where the DM can restore it for 30 days.');
 }
 
+// A group is made with its tracks: empty groups do not exist.
 async function _mcpCreateMusicGroup(args) {
   const name = sanitizeGroupName(args.name);
   if (!name) return _mcpNo('A group needs a name.');
-  await _mcpMusicTracks();
+  const tracks = await _mcpMusicTracks();
   if (mcpMusicGroupName(_mcpMusicGroups(), name)) return _mcpNo('There is already a music group called "' + name + '".');
-  putMusicGroup(name, Infinity, []);
+  const asked = Array.isArray(args.tracks) ? args.tracks : [];
+  if (!asked.length) return _mcpNo('Name at least one track in tracks: a group is made with its tracks.');
+  const hits = asked.map(n => mcpMusicOne(tracks, n));
+  const bad = hits.filter(h => h.error).map(h => h.error);
+  if (bad.length) return _mcpNo('Nothing was changed. ' + bad.join(' '));
+  const picked = [...new Map(hits.map(h => [h.track.name, h.track])).values()];
+  const was = picked.map(t => [t.name, t.group]);
+  putMusicGroup(name, 0, picked.map(t => t.name));
   return mcpDone('created the music group "' + name + '"', async () => {
-    if (!_muTracks.some(t => musicGroupOf(t.name) === name)) deleteMusicGroup(name);
-  }, 'Created the music group "' + name + '". It is empty; set_music_group puts tracks in it.');
+    for (const g of new Set(was.map(([, p]) => p))) setMusicGroup(was.filter(([n, p]) => p === g && _muTracks.some(t => t.name === n)).map(([n]) => n), g);
+  }, 'Created the music group "' + name + '" with ' + picked.length + ' track' + (picked.length === 1 ? '' : 's') + ', first after the ungrouped tracks.');
 }
 
 async function _mcpRenameMusicGroup(args) {
@@ -167,14 +175,26 @@ async function _mcpSetMusicGroup(args) {
   const bad = hits.filter(h => h.error).map(h => h.error);
   if (bad.length) return _mcpNo('Nothing was changed. ' + bad.join(' '));
   const picked = [...new Map(hits.map(h => [h.track.name, h.track])).values()];
-  setMusicGroup(picked.map(t => t.name), group);
-  const was = picked.map(t => [t.name, t.group]);
+  const before = musicOrdered(), was = picked.map(t => [t.name, t.group]);
+  moveMusicTracks(picked.map(t => t.name), group, mcpLibIndex(args.position));
   const shown = picked.map(t => '"' + t.display + '"').join(', ');
   return mcpDone('moved ' + shown + (group ? ' into the music group "' + group + '"' : ' out of their music group'), async () => {
     const here = was.filter(([n]) => _muTracks.some(t => t.name === n));
     for (const g of new Set(here.map(([, p]) => p))) setMusicGroup(here.filter(([, p]) => p === g).map(([n]) => n), g);
-  }, 'Moved ' + shown + (group ? ' into the music group "' + group + '".' : ' out of their group.'));
+    musicRestoreOrder(before);
+  }, 'Moved ' + shown + (group ? ' into the music group "' + group + '"' : ' into no group') + (args.position ? ' at position ' + args.position : '') + '.');
+}
+
+async function _mcpRenameMusic(args) {
+  const found = mcpMusicOne(await _mcpMusicTracks(), args.name);
+  if (found.error) return _mcpNo(found.error);
+  const to = libLabelClean(args.newName);
+  if (!to) return _mcpNo('A track needs a name.');
+  const { name, display } = found.track, was = musicOwnLabel(name);
+  setMusicLabel(name, to);
+  return mcpDone('renamed the track "' + display + '" to "' + to + '"', async () => setMusicLabel(name, was),
+    'Renamed the track "' + display + '" to "' + to + '". Its file keeps its name.');
 }
 
 const MCP_MUSIC_TOOLS = { list_music: _mcpListMusic, add_music: _mcpAddMusic, add_music_from_youtube: _mcpAddFromYoutube, delete_music: _mcpDeleteMusic,
-  create_music_group: _mcpCreateMusicGroup, rename_music_group: _mcpRenameMusicGroup, delete_music_group: _mcpDeleteMusicGroup, set_music_group: _mcpSetMusicGroup };
+  rename_music: _mcpRenameMusic, create_music_group: _mcpCreateMusicGroup, rename_music_group: _mcpRenameMusicGroup, delete_music_group: _mcpDeleteMusicGroup, set_music_group: _mcpSetMusicGroup };

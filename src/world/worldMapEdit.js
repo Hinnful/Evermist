@@ -238,15 +238,14 @@ function _wmClick(d) {
 // place of its own: the rectangle that fits both, named on the spot.
 function _wmDrop(d, e, target) {
   const w = _wmToWorld(e.clientX, e.clientY);
-  let pos = { x: w.x - d.ox, y: w.y - d.oy };
+  const pos = { x: w.x - d.ox, y: w.y - d.oy };
   const mate = target && allScenes.find(s => s.id === target.dataset.id);
   let fresh = null;
   if (mate) {
-    pos = { x: mate.worldPos.x + WM_STEP_X, y: mate.worldPos.y };
+    const pair = wmPairPlace(mate.worldPos);
     worldRoadsDetach(d.id);
-    worldSceneSet(d.id, { worldPos: pos });
-    const r = wmHullRect([mate.worldPos, pos]);
-    fresh = worldPlaceCreate(wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h));
+    worldSceneSet(d.id, { worldPos: pair.pos });
+    fresh = worldPlaceCreate(pair.shape);
     worldUndoDropLast();   // the drag's own step, taken before the move, undoes the move and the place as one
   } else {
     worldSceneSet(d.id, { worldPos: worldRoadsSettleScene(d.id, { x: Math.round(pos.x), y: Math.round(pos.y) }) });

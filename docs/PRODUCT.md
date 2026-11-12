@@ -253,7 +253,7 @@ A hundred hour-long tracks is about 5.5GB, and a backup is meant to be portable.
 folder sits outside the scene store, so a restore on a fresh machine brings scenes and no music.
 Adding it later would be one more folder to walk rather than a migration.
 
-### Music groups are made in the app, and tracks always loop · `REOPENED` (2026-10-02)
+### Music groups are made in the app, and tracks always loop · `REOPENED` (2026-10-02; "New group" button replaced 2026-11-12 by a drop of one track on another, empty groups no longer exist)
 Groups came back on the DM's call, the scene library's way: New group in the Music pane, a track
 dragged onto a heading, rename by the name, delete hands the tracks back. A group is a name a
 track carries, and the music folder stays flat. Nobody arranges an app's data folder by hand, so a
@@ -307,10 +307,10 @@ A picture shown on the TV is linked to nothing on the map, so one picture serves
 a creature that follows the party from map to map. Once the gallery exists, room pictures move into it and the
 room's picture strip goes. No place, scene or room gains a picture of its own.
 
-### The gallery finds a picture by name alone · `SETTLED` (2026-10-16)
+### The gallery finds a picture by name alone · `SETTLED` (2026-10-16; newest-first and "sorting refused" reversed 2026-11-12)
 A dock pane beside Music and Sounds: a grid with names under it, newest first, and one find field over the names.
 Tags, filters and sorting were drawn and refused, because a DM's library is expected to stay well under a hundred
-pictures. Tags come back on the table if libraries grow past that.
+pictures. Tags come back on the table if libraries grow past that. Pictures now have groups and a hand-made order, with no sort buttons.
 
 ### Effects share one toon look · `SETTLED` (2026-10-11)
 Every material is drawn in the same style: flat colour bands, crisp edges and clear motion, legible
@@ -337,6 +337,10 @@ is not the app's job.
 ---
 
 ## Versions and releases
+
+### Usage analytics and telemetry · `REJECTED` (2026-11-12)
+Considered and dropped: no general local log exists to build on, the install base is about a dozen copies, and PRIVACY.md
+promises nothing is collected. Feedback comes from the people who use the app.
 
 ### A major version marks a state worth celebrating · `SETTLED`
 2.0.0 was originally tied to finishing the core of prep automation, and was deliberately
@@ -405,7 +409,7 @@ case by case. Play is what changes the TV now or acts at the table: opening or s
 picture, playing music or sounds, TV setup, sync, ping, the open fight's HP, conditions and initiative. A doubtful
 case is settled from that logic. Building a fight is prep (placing monsters is prep, taking away is play). Deletes
 wait for a yes in the chat. Maps and music tracks go to the Trash (**amended 2026-11-09**: an animated map too);
-other deletes have no trash. A saved history of Claude's changes was rejected as overengineering for the MCP server.
+other deletes have no trash (**amended 2026-11-12**: pictures too). Claude gets sound tools (list, add, rename, move, delete to the Trash, groups) and Notes order tools, never a play tool. A saved history of Claude's changes was rejected as overengineering for the MCP server.
 
 ### Claude's ground rules · `SETTLED` (2026-10-25)
 A delete call deletes nothing until it carries `confirmed: true`; without it the call answers with what would go, so

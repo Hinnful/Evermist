@@ -31,6 +31,11 @@ describe('mcpMusicOne', () => {
     assert.equal(mcpMusicOne(tracks, 'Дракон').track.name, 'Дракон.mp3');
     assert.match(mcpMusicOne(tracks, 'tavern').error, /More than one.*Tavern Song.*Tavern Brawl/);
   });
+  it('refuses two tracks the DM gave the same name, naming both by file', () => {
+    const two = [{ name: 'a.mp3', display: 'Битва' }, { name: 'b.mp3', display: 'Битва' }];
+    assert.match(mcpMusicOne(two, 'Битва').error, /"Битва" \(file a\.mp3\), "Битва" \(file b\.mp3\)/);
+    assert.equal(mcpMusicOne(two, 'b.mp3').track.name, 'b.mp3');
+  });
 });
 
 describe('mcpMusicGroupName', () => {

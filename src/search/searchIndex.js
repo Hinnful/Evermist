@@ -115,7 +115,7 @@ function searchEntries() {
   }
   out.push(...spNoteRows(notesEntriesAll(), k => t(k === 'faction' ? 'Factions' : 'Lore')));
   for (const f of cbState.fights) out.push({ key: 'fight:' + f.id, kind: 'fight', id: f.id, name: _cfName(f), where: _cfCount(f), text: '' });
-  for (const m of _muTracks) out.push({ key: 'music:' + m.name, kind: 'music', id: m.name, name: displayName(m.name), where: musicGroupOf(m.name), text: '' });
+  for (const m of _muTracks) out.push({ key: 'music:' + m.name, kind: 'music', id: m.name, name: musicLabel(m.name), where: musicGroupOf(m.name), text: '' });
   for (const p of galleryList()) out.push({ key: 'picture:' + p.id, kind: 'picture', id: p.id, name: p.name, where: '', text: '' });
   return out;
 }

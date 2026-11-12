@@ -102,3 +102,7 @@ describe('trashReattach', () => {
     assert.deepEqual(P.trashReattach(now, 'm', held).ends, [{ kind: null }, { kind: 'scene', ref: 'm' }]);
   });
 });
+
+describe('trashKindOf', () => it('names what an entry holds by its id', () => {
+  assert.deepEqual(['track:abc.mp3', 'pic:a1', 'builtin:bell.mp3', 'k3x9'].map(P.trashKindOf), ['track', 'picture', 'builtin', 'map']);
+}));

@@ -15,7 +15,9 @@ Sync is off until you press **Connect to Google** in Settings and allow it in yo
 - Evermist asks Google for one permission only, `drive.appdata`: a hidden folder in your Drive that belongs to
   Evermist. It cannot see, open or change any other file in your Drive.
 - It stores your campaign there (maps, rooms, fog, notes, monsters, fights, pictures, the Campaign), so your
-  other computers can fetch it. Music is not synced.
+  other computers can fetch it. Your music and your own sounds are stored there too, with the names you gave
+  them, their order and their groups, and so are the order and groups of your pictures. Your volume settings
+  stay on each computer.
 - The sign-in token stays on your computer, encrypted where your system allows it. It is never sent to anyone
   but Google.
 - The files go straight from your computer to your own Drive. The Evermist developer never receives them and

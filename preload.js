@@ -152,7 +152,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listOwnSounds: () => ipcRenderer.invoke('sound-own-list'),
   readOwnSound: (name) => ipcRenderer.invoke('sound-own-read', name),
   copyOwnSounds: (paths) => ipcRenderer.invoke('sound-own-copy', paths),
-  renameOwnSound: (from, typed) => ipcRenderer.invoke('sound-own-rename', from, typed),
   trashSoundFile: (name, token) => ipcRenderer.invoke('sound-own-trash', name, token),
   untrashSoundFile: (token, name) => ipcRenderer.invoke('sound-own-untrash', token, name),
   purgeTrashedSound: (token) => ipcRenderer.invoke('sound-own-purge-trash', token),

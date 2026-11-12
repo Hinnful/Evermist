@@ -95,7 +95,7 @@ function hintsMusicSync(tracks) {
   if (!paneOpen || tracks > 0) hintClose('music');
   if (!_hcLive() || !hintMusicDue({ paneOpen, tracks })) return;
   _hintShow('music', 'Add your music', 'Add files from this computer, or paste a YouTube link. A track loops until you pick another.',
-    null, _hintPlaceBeside('btn-mu-files', false));
+    null, _hintPlaceBeside('btn-mu-add', false));
 }
 
 // A music track started playing (music.js).

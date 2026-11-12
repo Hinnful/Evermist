@@ -55,14 +55,15 @@ async function _mcpCreateRoom(args0) {
   const nt = await _mcpRoomNotes(args0);
   if (nt.no) return nt.no;
   const args = nt.args;
-  const r = await _mcpRoomsEdit(args, 'drawing a room on it', d => {
+  const r = await _mcpRoomsEdit(args, 'drawing a room on it', async (d, s) => {
     const out = mcpRoomOutline(args.outline, d.mapWidth, d.mapHeight);
     if (out.error) return 'Not done: ' + out.error;
     const id = d.nextPolygonId++;
     const room = mcpRoomNew(id, out.verts, args.room, args.notes, mode, t('Room {n}', { n: id }));
-    d.polygons.push(room);
+    const at = mcpRoomInsert(d.polygons, room, (await _mcpRoomsGrid(s)).cellSize);
+    const shifted = at < d.polygons.length ? ' Every room after it now has an index one higher.' : '';
     return { label: 'drew the room "' + room.name + '"',
-      text: 'Drew the room "' + room.name + '" (' + mcpSeeFog(mode) + ', index ' + d.polygons.length + ').' };
+      text: 'Drew the room "' + room.name + '" (' + mcpSeeFog(mode) + ', index ' + at + ').' + shifted };
   });
   if (nt.say && !r.isError) r.text += nt.say;
   return r;
@@ -163,9 +164,9 @@ async function _mcpSplitRoom(args) {
     if (!ringPathCrossings(cutRings(f.room)[0], line.path).length) return 'Not done: the line does not cross the room "' + (f.room.name || '') + '"\'s walls.';
     const out = cutRing(f.room, line.path, await _mcpRoomsMinArea(s));
     if (out.reason) return out.reason;
-    const first = d.polygons.length;
+    const had = new Set(d.polygons.map(p => p.id));
     const lost = _mcpRoomsPlan(d, [{ shapes: [f.room], pieces: out.pieces }], null);
-    const made = d.polygons.slice(first).map(p => '"' + p.name + '"');
+    const made = d.polygons.filter(p => !had.has(p.id)).map(p => '"' + p.name + '"');
     return { label: 'split the room "' + (f.room.name || '') + '"', text: 'Split the room "' + (f.room.name || '') + '"'
       + (made.length ? '; the other part is the new room ' + made.join(', ') + ', with the same fog.' : '; the other part was too small to keep.') + _mcpDoorsGone(lost) };
   });

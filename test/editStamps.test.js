@@ -177,3 +177,25 @@ describe('esStamp - a write to one field of a stored record', () => {
     assert.equal(st.scene.fog, 50);
   });
 });
+
+describe('esStamp: the rooms\' layer order', () => {
+  const ids = (...n) => n.map(i => room(i, { uid: 'u' + i }));
+  it('times a layer move, and only that', () => {
+    const prev = E.esSnapshot(scene(ids(1, 2, 3)));
+    assert.equal(E.esStamp(prev, scene(ids(2, 1, 3)), 900, false).scene.order, 900);
+    // an added or a deleted room moves nothing between the others
+    assert.equal('order' in E.esStamp(prev, scene(ids(1, 4, 2, 3)), 900, false).scene, false);
+    assert.equal('order' in E.esStamp(prev, scene(ids(1, 3)), 900, false).scene, false);
+  });
+
+  it('keeps an earlier move\'s time, and a new map has none', () => {
+    const rec = { ...scene(ids(2, 1)), edits: { scene: { order: 400 } } };
+    assert.equal(E.esStamp(E.esSnapshot(rec), scene(ids(2, 1, 5)), 900, false).scene.order, 400);
+    assert.equal('order' in E.esStamp(null, scene(ids(1, 2)), 900, false).scene, false);
+  });
+
+  it('tells a reorder from an add or a delete', () => {
+    assert.equal(E.esOrderMoved(['a', 'b', 'c'], ['b', 'a']), true);
+    assert.equal(E.esOrderMoved(['a', 'b', 'c'], ['a', 'x', 'c']), false);
+  });
+});

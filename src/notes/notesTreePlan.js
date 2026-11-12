@@ -3,11 +3,16 @@
 // maps and rooms, the roads, the monsters with a note, factions and lore; the rows an open set shows; a node's
 // path for the breadcrumbs; and which middle crumbs fold into "…". No DOM.
 //
-// A node is { key, kind, name, id, scene?, sec?, children }. Keys: campaign, place:<name>, map:<id>,
-// room:<scene>:<id>, road:<uid>, monster:<id>, entry:<id>, sec:<roads|monster|faction|lore>.
+// A node is { key, kind, name, id, scene?, sec?, okey?, list?, children }. Keys: campaign, place:<name>, map:<id>,
+// room:<scene>:<id>, road:<uid>, monster:<id>, entry:<id>, sec:<roads|monster|faction|lore>, and a Notes group
+// ng:<list>:<gid>. `okey` is the node's item in evermist.notesOrder, `list` the key of the list its children are.
 
 function _ntGeo(name) {
   return typeof globalThis[name] === 'function' ? globalThis[name] : require('../world/worldMapPlan.js')[name];
+}
+
+function _ntOrder() {
+  return typeof notesOrderApply === 'function' ? { notesOrderApply, notesOrderList } : require('./notesOrderPlan.js');
 }
 
 function _ntEntries() {
@@ -42,42 +47,58 @@ function _entryNodes(entries, kind, parent) {
   });
 }
 
-// `scenes` in library order, `groups` ({ name, outline }) in group order, `rooms` by scene id, and `roomLabel(n)`
-// the name of an unnamed room by its place in the list. Nothing is stored for that name.
+// `scenes` in library order, `groups` ({ name, uid, outline }) in group order, `rooms` by scene id, `roomLabel(n)` the
+// name of an unnamed room by its place in the list (nothing is stored for that name), and `order` the stored
+// evermist.notesOrder, applied to a copy after the unnamed rooms take their labels.
 function notesTreeBuild(src) {
   const roomLabel = src.roomLabel;
-  const root = _node('campaign', 'campaign', 'Campaign', null);
+  const root = _node('campaign', 'campaign', 'Campaign', null, { list: 'campaign' });
   const parents = notesGroupParents(src.groups || []);
   const placeNodes = {};
-  for (const g of src.groups || []) placeNodes[g.name] = _node('place:' + g.name, 'place', g.name, g.name);
+  for (const g of src.groups || []) placeNodes[g.name] = _node('place:' + g.name, 'place', g.name, g.name, { okey: g.uid || null, list: g.uid ? 'place:' + g.uid : null });
   const mapNode = s => {
-    const n = _node('map:' + s.id, 'map', s.name, s.id);
-    n.children = ((src.rooms || {})[s.id] || []).map((r, i) => _node('room:' + s.id + ':' + r.id, 'room', r.name || roomLabel(i + 1), r.id, { scene: s.id, unnamed: !r.name }));
+    const n = _node('map:' + s.id, 'map', s.name, s.id, { okey: s.id, list: 'map:' + s.id });
+    n.children = ((src.rooms || {})[s.id] || []).map((r, i) => _node('room:' + s.id + ':' + r.id, 'room', r.name || roomLabel(i + 1), r.id,
+      { scene: s.id, unnamed: !r.name, okey: r.uid ? s.id + ':' + r.uid : null }));
     return n;
   };
   for (const g of src.groups || []) {
     const n = placeNodes[g.name], up = parents[g.name] && placeNodes[parents[g.name]];
     (up || root).children.push(n);
   }
-  // Maps after the groups inside a group, and after every group at the top.
+  // Maps after the groups inside a group, and after every group at the top, until the DM orders them.
   for (const s of src.scenes || []) {
     const holder = s.group && placeNodes[s.group];
     (holder || root).children.push(mapNode(s));
   }
   if ((src.roads || []).length) {
-    const sec = _node('sec:roads', 'section', 'Roads', null, { sec: 'roads' });
-    sec.children = src.roads.map(r => _node('road:' + r.uid, 'road', r.name, r.uid));
+    const sec = _node('sec:roads', 'section', 'Roads', null, { sec: 'roads', list: 'roads' });
+    sec.children = src.roads.map(r => _node('road:' + r.uid, 'road', r.name, r.uid, { okey: r.uid }));
     root.children.push(sec);
   }
-  const mon = _node('sec:monster', 'section', 'Monsters and NPCs', null, { sec: 'monster' });
+  const mon = _node('sec:monster', 'section', 'Monsters and NPCs', null, { sec: 'monster', list: 'monster' });
   mon.children = (src.blocks || []).filter(b => (b.notes || '').trim() || b.listed || b.mentioned)
-    .sort((a, b) => String(a.name).localeCompare(String(b.name))).map(b => _node('monster:' + b.id, 'monster', b.name, b.id));
+    .sort((a, b) => String(a.name).localeCompare(String(b.name))).map(b => _node('monster:' + b.id, 'monster', b.name, b.id, { okey: b.uid || null }));
   const fac = _node('sec:faction', 'section', 'Factions', null, { sec: 'faction' });
   fac.children = _entryNodes(src.entries || [], 'faction', 'faction');
   const lore = _node('sec:lore', 'section', 'Lore', null, { sec: 'lore' });
   lore.children = _entryNodes(src.entries || [], 'lore', 'lore');
   root.children.push(mon, fac, lore);
+  if (src.order) _ntSorted(root, src.order);
   return root;
+}
+
+// Every list the key holds put in order: the Campaign's maps and groups, each map's rooms, the roads and the monsters.
+// Rooms, roads and monsters take Notes groups; the Campaign's lists do not, since their groups are the outlines.
+function _ntSorted(n, order) {
+  const O = _ntOrder(), flat = n.kind === 'campaign' || n.kind === 'place';
+  // The sections stay last, where the tree puts them.
+  const secs = n.children.filter(c => c.kind === 'section'), rest = n.children.filter(c => c.kind !== 'section');
+  if (n.list) {
+    n.children = O.notesOrderApply(O.notesOrderList(order, n.list), rest, flat)
+      .map(x => (x.gid ? _node('ng:' + n.list + ':' + x.gid, 'ngroup', x.name, x.gid, { list: n.list, children: x.kids }) : x)).concat(secs);
+  }
+  if (n.kind === 'campaign' || n.kind === 'place') for (const c of n.children) _ntSorted(c, order);
 }
 
 function notesTreeFind(root, key) {

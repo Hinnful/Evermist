@@ -3,7 +3,7 @@
 // is stored with what is about to be written and gives every changed part the save's time. Import
 // reads these times to decide which copy of a part wins. Tested.
 
-const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'weather', 'timeOfDay', 'lights', 'tvFit', 'place'];
+const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'weather', 'timeOfDay', 'lights', 'tvFit', 'place', 'order'];
 const ES_ROOM_OWN = ['id', 'uid', 'name', 'desc', 'mode', 'modeWithHoles'];
 const ES_GONE_MAX = 300;
 
@@ -44,7 +44,16 @@ function esSceneParts(s) {
     map: esCanon([s.mapType || 'image', s.mapPath || '', s.mapWidth || 0, s.mapHeight || 0, s.mapBlob && s.mapBlob.size ? s.mapBlob.size : 0]),
     // Its group and its spot on the Campaign.
     place: esCanon([s.group || '', s.worldPos ? { x: s.worldPos.x, y: s.worldPos.y } : null]),
+    // The rooms' layer order, by uid. esStamp times it only when rooms both saves hold change places.
+    order: esCanon(esWithUids(s.polygons).map(r => r.uid)),
   };
+}
+
+// True when the rooms both lists hold sit in a different order: a layer move, never an added or deleted room.
+function esOrderMoved(a, b) {
+  const inB = new Set(b), inA = new Set(a);
+  const x = a.filter(u => inB.has(u)), y = b.filter(u => inA.has(u));
+  return x.some((u, i) => u !== y[i]);
 }
 
 // A saved room or effect that carries no uid is one from before uids: `legacy-<id>` on every
@@ -121,6 +130,9 @@ function esStamp(prev, next, now, fogEdited) {
   const scene = esDiff(pe.scene, prev && prev.scene, ns.scene, now);
   if (!prev || fogEdited) scene.fog = now;
   else if (pe.scene && pe.scene.fog > 0) scene.fog = pe.scene.fog;
+  const old = pe.scene && pe.scene.order > 0 ? pe.scene.order : 0;
+  if (prev && esOrderMoved(JSON.parse(prev.scene.order || '[]'), JSON.parse(ns.scene.order))) scene.order = now;
+  else if (old) scene.order = old; else delete scene.order;
   const r = _esStampList(prev ? prev.rooms : {}, ns.rooms, pe.rooms, pe.goneRooms, now);
   const e = _esStampList(prev ? prev.effects : {}, ns.effects, pe.effects, pe.goneEffects, now, true);
   return { ...pe, scene, rooms: r.times, goneRooms: r.gone, effects: e.times, goneEffects: e.gone };
@@ -199,7 +211,7 @@ function esGoneLift(gone, alive) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ES_SCENE_PARTS, ES_ROOM_OWN, esCanon, esRoomParts, esEffectPart, esSceneParts, esLegacyUid, esWithUids,
+    ES_SCENE_PARTS, ES_ROOM_OWN, esCanon, esRoomParts, esOrderMoved, esEffectPart, esSceneParts, esLegacyUid, esWithUids,
     esRandomUid, esAssignUids, esSnapshot, esDiff, esStamp, esSeen, esStampRecords,
     ES_GONE_MAX, esGoneClean, esGoneNote, esGoneMerge, esGoneTime, esGoneWins, esGoneLift,
   };

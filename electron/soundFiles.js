@@ -1,5 +1,5 @@
 'use strict';
-// soundFiles.js — the DM's own sounds folder: files copied in under the 10 MB limit, a new name from the soundboard, and
+// soundFiles.js — the DM's own sounds folder: files copied in under the 10 MB limit, and
 // the read that only a bare file name in that folder passes. Pure Node, no Electron. Tested.
 
 const fs = require('fs');
@@ -60,12 +60,4 @@ function createSoundFiles(dir) {
   return { soundPath, list, read, copy };
 }
 
-// The file name a typed name asks for: the text trimmed, separators and control characters out, the old extension
-// kept. Null when nothing is left.
-function soundFileName(typed, oldName) {
-  const ext = path.extname(String(oldName || ''));
-  const stem = String(typed || '').replace(/[/\\:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+/, '').slice(0, 120).trim();
-  return stem ? stem + ext : null;
-}
-
-module.exports = { createSoundFiles, soundFileName, SOUND_MAX_BYTES };
+module.exports = { createSoundFiles, SOUND_MAX_BYTES };

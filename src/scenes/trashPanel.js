@@ -1,5 +1,5 @@
 'use strict';
-// trashPanel.js — Campaign's Trash line and its pop-out: this computer's maps and music tracks
+// trashPanel.js — Campaign's Trash line and its pop-out: this computer's maps, tracks, sounds and pictures
 // (sceneTrash.js), plus, while sync is signed in, the ones only the Drive holds (syncEngine.trash()). Each row: name,
 // days left, Restore; then Empty now, which asks first. Works with no Google client.
 
@@ -34,8 +34,14 @@ function _tpRow(item) {
 // tick after it tells the other computers. A row only the Drive holds comes back from it.
 async function _tpRestore(item) {
   if (!item.local) { await syncEngine.restore(item.id); return; }
-  const synced = syncIndex.isOn();
-  if (item.id.startsWith('track:')) {
+  const synced = syncIndex.isOn(), kind = trashKindOf(item.id);
+  // Each comes back as an edit made now, which the next tick carries to every computer.
+  if (kind === 'picture' || kind === 'builtin') {
+    await (kind === 'picture' ? sceneTrash.restorePicture(item.id) : sceneTrash.restoreBuiltin(item.id));
+    if (synced) syncEngine.now().catch(() => {});
+    return;
+  }
+  if (kind === 'track') {
     const back = () => sceneTrash.restoreTrack(item.id);
     const folder = item.kind === 'sounds' ? syncSounds : syncMusic;
     if (synced) { await folder.restoreHere(item.hash, back); syncEngine.now().catch(() => {}); } else await back();

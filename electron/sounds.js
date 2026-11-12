@@ -6,7 +6,7 @@ const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { createMusicHashes } = require('./musicHashes.js');
-const { createSoundFiles, soundFileName } = require('./soundFiles.js');
+const { createSoundFiles } = require('./soundFiles.js');
 
 const SOUNDS_DIR = path.join(__dirname, '..', 'assets', 'sounds');
 
@@ -28,13 +28,6 @@ ipcMain.handle('sound-read', async (_event, name) => {
 ipcMain.handle('sound-own-list', () => own.list());
 ipcMain.handle('sound-own-read', (_event, name) => own.read(name));
 ipcMain.handle('sound-own-copy', (_event, paths) => own.copy(paths));
-
-// Answers the name it landed under, which is the old one when the typed name leaves nothing.
-ipcMain.handle('sound-own-rename', async (_event, from, typed) => {
-  if (!own.soundPath(from)) throw new Error('Not a sound in the sounds folder.');
-  const to = soundFileName(typed, from);
-  return to ? hashes.rename(from, to) : from;
-});
 
 ipcMain.handle('sound-own-trash', async (_event, name, token) => {
   if (!own.soundPath(name)) throw new Error('Not a sound in the sounds folder.');

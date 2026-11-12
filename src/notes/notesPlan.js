@@ -95,8 +95,8 @@ function notesPlacesClean(raw) {
 // The campaign.json at a backup's root. Null when there is nothing to carry, so the zip looks as it
 // always did.
 // `gone` is { entries, pictures, places, roads }: { id: time } of what was deleted, so an import deletes it too. A note cleared
-// after it was written is carried by its time alone.
-function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids, textAt, gone) {
+// after it was written is carried by its time alone. `order` is the Notes tree's evermist.notesOrder, null for none.
+function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids, textAt, gone, order) {
   const hasText = typeof text === 'string' && !!text.trim();
   const named = notesPlacesNew();
   for (const k of Object.keys(places || {})) if (typeof places[k] === 'string' && places[k].trim()) named[k] = places[k];
@@ -110,7 +110,8 @@ function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, ent
   const deleted = {};
   for (const k of ['entries', 'pictures', 'places', 'roads']) if (gone && gone[k] && Object.keys(gone[k]).length) deleted[k] = gone[k];
   const hasGone = Object.keys(deleted).length > 0;
-  if (!hasText && !cleared && !hasPlaces && !drawn && !laid && !marked && !listed && !uided && !hasGone) return null;
+  const ordered = !!order && !!order.lists && Object.keys(order.lists).length > 0;
+  if (!hasText && !cleared && !hasPlaces && !drawn && !laid && !marked && !listed && !uided && !hasGone && !ordered) return null;
   const out = {};
   if (hasText) out.notes = text;
   if (textAt > 0 && (hasText || cleared)) out.notesAt = textAt;
@@ -120,6 +121,7 @@ function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, ent
   if (marked) out.party = party;
   if (listed) out.entries = entries;
   if (uided) out.groupUids = groupUids;
+  if (ordered) out.notesOrder = order;
   if (laid) {
     out.roads = roads;
     // Only a road that is in the file carries notes, so a deleted road's note does not ride along.

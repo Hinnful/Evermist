@@ -152,13 +152,18 @@ module.exports = async function timeOfDay(rig) {
     const t0 = Date.now();
     await pick('night');
     await since(t0 + 4000);
-    const mid = await pixel(rig, player, A), midAt = Date.now() - t0;
+    // ⚠ THE PICTURE IS TAKEN SOMEWHERE BETWEEN THESE TWO TIMES, and a screenshot takes seconds on a slow runner: judged
+    // against the time it returned, a TV exactly on the curve read as late.
+    const tA = Date.now() - t0;
+    const mid = await pixel(rig, player, A);
+    const tB = Date.now() - t0;
     await since(t0 + 9000);
     tv.A1 = await pixel(rig, player, A); tv.B1 = await pixel(rig, player, B);
     const fNow = (lum(tv.A0) - lum(mid)) / Math.max(1, lum(tv.A0) - lum(tv.A1));
-    const k = Math.min(1, midAt / 8000), want = k * k * (3 - 2 * k);
-    rig.note('4: at ' + midAt + ' ms the TV was ' + (fNow * 100).toFixed(0) + '% of the way (the curve says ' + (want * 100).toFixed(0) + '%)');
-    rig.check(midAt < 6500 && fNow > 0.1 && fNow < 0.9 && Math.abs(fNow - want) < 0.3, '4: the TV was not mid-way at about 4 s: ' + (fNow * 100).toFixed(0) + '% at ' + midAt + ' ms');
+    const curve = ms => { const k = Math.min(1, ms / 8000); return k * k * (3 - 2 * k); };
+    const lo = curve(tA), hi = curve(tB);
+    rig.note('4: between ' + tA + ' and ' + tB + ' ms the TV was ' + (fNow * 100).toFixed(0) + '% of the way (the curve says ' + (lo * 100).toFixed(0) + '-' + (hi * 100).toFixed(0) + '%)');
+    rig.check(tA < 6500 && fNow > 0.1 && fNow < 0.9 && fNow > lo - 0.3 && fNow < hi + 0.3, '4: the TV was not mid-way at about 4 s: ' + (fNow * 100).toFixed(0) + '% between ' + tA + ' and ' + tB + ' ms');
     const later = await pixel(rig, player, A);
     rig.check(Math.abs(lum(later) - lum(tv.A1)) < 2, '4: the TV was still moving after 9 s: ' + fmt(tv.A1) + ' then ' + fmt(later));
     rig.note('2: TV outside the room ' + fmt(tv.A0) + ' → ' + fmt(tv.A1) + '; inside the dark room ' + fmt(tv.B0) + ' → ' + fmt(tv.B1));

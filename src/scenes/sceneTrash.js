@@ -1,7 +1,8 @@
 'use strict';
 // sceneTrash.js — Recently deleted on this computer: a deleted map's whole record kept 30 days in its own database,
 // its animated file in userData/trash, and Restore putting both back with the road ends it held; a deleted music track
-// the same way, its file in userData/trash/music, and one of the DM's own sounds in userData/trash/sounds. The rules are trashPlan.js; the list in Settings is trashPanel.js.
+// the same way, its file in userData/trash/music, and one of the DM's own sounds in userData/trash/sounds; a deleted
+// picture whole and a hidden built-in sound in `evermist-trash-more`. The rules are trashPlan.js; the list in Settings is trashPanel.js.
 
 const sceneTrash = (() => {
   // ⚠ A DATABASE OF ITS OWN, never a store in `evermist`: a new store means a version bump, and the previous release's
@@ -37,6 +38,55 @@ const sceneTrash = (() => {
       if (req) req.onsuccess = e => { out = e.target.result; };
       tx.oncomplete = () => resolve(out);
       tx.onabort = tx.onerror = e => reject(e.target.error);
+    });
+  }
+
+  // ⚠ PICTURES AND BUILT-IN SOUNDS IN A SECOND DATABASE, never new stores in `evermist-trash`: bumping its version
+  // locks the previous release out of its Trash.
+  const MORE = 'evermist-trash-more', PICS = 'pictures', BUILTINS = 'builtins';
+  let _moreP = null;
+  function _more() {
+    if (!_moreP) {
+      _moreP = new Promise((resolve, reject) => {
+        const req = indexedDB.open(MORE, 1);
+        req.onupgradeneeded = e => {
+          e.target.result.createObjectStore(PICS, { keyPath: 'id' });
+          e.target.result.createObjectStore(BUILTINS, { keyPath: 'id' });
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+        req.onblocked = () => reject(new Error('IndexedDB blocked'));
+      });
+      _moreP.catch(() => { _moreP = null; });
+    }
+    return _moreP;
+  }
+
+  async function _moreTx(store, mode, fn) {
+    const db = await _more();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, mode);
+      let out;
+      const req = fn(tx.objectStore(store));
+      if (req) req.onsuccess = e => { out = e.target.result; };
+      tx.oncomplete = () => resolve(out);
+      tx.onabort = tx.onerror = e => reject(e.target.error);
+    });
+  }
+
+  // [{ id, at, name }] of a store, without the records.
+  async function _moreRows(store) {
+    const db = await _more();
+    return new Promise((resolve, reject) => {
+      const out = [];
+      const req = db.transaction(store, 'readonly').objectStore(store).openCursor();
+      req.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) { resolve(out); return; }
+        out.push({ id: c.value.id, at: c.value.at, name: c.value.name });
+        c.continue();
+      };
+      req.onerror = e => reject(e.target.error);
     });
   }
 
@@ -176,6 +226,56 @@ const sceneTrash = (() => {
     if (e && _api()) await _file.purge(e, e.token).catch(() => {});
   }
 
+  // ─── Pictures and built-in sounds ───────────────────────────────────────────
+
+  // The whole gallery record, blob included. The entry goes in before the caller takes the picture out of the gallery.
+  async function putPicture(rec, at) {
+    await _moreTx(PICS, 'readwrite', s => s.put({ id: 'pic:' + rec.id, at, name: rec.name, rec }));
+    trashPanelRefresh();
+    return 'pic:' + rec.id;
+  }
+
+  // A built-in sound hidden from the Sounds pane. `name` is the one it showed.
+  async function putBuiltin(file, at, name) {
+    await _moreTx(BUILTINS, 'readwrite', s => s.put({ id: 'builtin:' + file, at, name, file }));
+    trashPanelRefresh();
+    return 'builtin:' + file;
+  }
+
+  // ⚠ A RESTORED PICTURE IS STAMPED AN EDIT NOW (galleryRestore), so a deletion record anywhere lets it back in.
+  async function restorePicture(id) {
+    const e = await _moreTx(PICS, 'readonly', s => s.get(id));
+    if (!e) return false;
+    await galleryRestore(e.rec);
+    await _moreTx(PICS, 'readwrite', s => s.delete(id));
+    trashPanelRefresh();
+    return true;
+  }
+
+  async function restoreBuiltin(id) {
+    const e = await _moreTx(BUILTINS, 'readonly', s => s.get(id));
+    if (!e) return false;
+    await _moreTx(BUILTINS, 'readwrite', s => s.delete(id));
+    soundsUnhide(e.file);
+    trashPanelRefresh();
+    return true;
+  }
+
+  // An entry let go without restoring: the picture or the sound came back by another way (sync).
+  async function dropPicture(picId) {
+    if (!(await _moreTx(PICS, 'readonly', s => s.getKey('pic:' + picId)))) return;
+    await _moreTx(PICS, 'readwrite', s => s.delete('pic:' + picId));
+    trashPanelRefresh();
+  }
+  async function dropBuiltin(file) {
+    if (!(await _moreTx(BUILTINS, 'readonly', s => s.getKey('builtin:' + file)))) return;
+    await _moreTx(BUILTINS, 'readwrite', s => s.delete('builtin:' + file));
+    trashPanelRefresh();
+  }
+
+  const _moreDel = id => _moreTx(id.startsWith('pic:') ? PICS : BUILTINS, 'readwrite', s => s.delete(id));
+  const _moreAll = async () => (await _moreRows(PICS)).map(e => ({ ...e, kind: 'picture' })).concat((await _moreRows(BUILTINS)).map(e => ({ ...e, kind: 'builtin' })));
+
   // [{ id, hash }] of the music tracks held, or of the sounds with `kind` 'sounds', for sync.
   const trackHashes = async (kind = 'music') => (await _tracks()).filter(e => _kindOf(e) === kind).map(e => ({ id: e.id, hash: e.hash }));
 
@@ -186,7 +286,8 @@ const sceneTrash = (() => {
       if (allScenes.some(s => s.id === e.id)) await purge(e.id);
       else out.push(e);
     }
-    for (const e of await _tracks()) out.push({ id: e.id, at: e.at, name: displayName(e.name), hash: e.hash, kind: _kindOf(e) });
+    for (const e of await _tracks()) out.push({ id: e.id, at: e.at, name: _sounds(e) ? soundLabel(e.name) : musicLabel(e.name), hash: e.hash, kind: _kindOf(e) });
+    for (const e of await _moreAll()) out.push(e);
     return out.sort((a, b) => b.at - a.at);
   }
 
@@ -195,11 +296,13 @@ const sceneTrash = (() => {
   async function purgeDue(now) {
     for (const id of trashDue(await _all(), now)) await purge(id);
     for (const id of trashDue(await _tracks(), now)) await purgeTrack(id);
+    for (const id of trashDue(await _moreAll(), now)) await _moreDel(id);
   }
 
   async function emptyAll() {
     for (const e of await _all()) await purge(e.id);
     for (const e of await _tracks()) await purgeTrack(e.id);
+    for (const e of await _moreAll()) await _moreDel(e.id);
     trashPanelRefresh();
   }
 
@@ -209,5 +312,6 @@ const sceneTrash = (() => {
     await purgeDue(Date.now());
   }
 
-  return { roadsOf, put, restore, purge, putTrack, trashTrack, trashSound, restoreTrack, purgeTrack, trackHashes, list, ids, purgeDue, emptyAll, reconcile };
+  return { roadsOf, put, restore, purge, putTrack, trashTrack, trashSound, restoreTrack, purgeTrack, trackHashes, list, ids, purgeDue, emptyAll, reconcile,
+    putPicture, putBuiltin, restorePicture, restoreBuiltin, dropPicture, dropBuiltin };
 })();

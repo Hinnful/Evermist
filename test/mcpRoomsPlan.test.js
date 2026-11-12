@@ -91,6 +91,23 @@ describe('mcpRoomNew', () => {
   });
 });
 
+describe('mcpRoomInsert', () => {
+  const room = (id, verts) => ({ id, vertices: verts, mode: 'shroud', name: 'R' + id });
+  it('puts a room drawn in a hidden hall above it, and answers the index read_scene will show', () => {
+    const polys = [room(1, rect(500, 500, 600, 600)), room(2, rect(0, 0, 200, 200))];
+    assert.equal(P.mcpRoomInsert(polys, room(3, rect(50, 50, 80, 80)), 10), 2);
+    assert.deepEqual(polys.map(p => p.id), [1, 3, 2]);
+    // what Claude then finds by that index, and the hall one index later
+    assert.equal(P.mcpRoomFind(polys, undefined, 2, 'M').room.id, 3);
+    assert.equal(P.mcpRoomFind(polys, 'R2', 3, 'M').room.id, 2);
+  });
+
+  it('appends a room that overlaps nothing, as before', () => {
+    const polys = [room(1, rect(0, 0, 10, 10))];
+    assert.equal(P.mcpRoomInsert(polys, room(2, rect(50, 50, 80, 80)), 10), 2);
+  });
+});
+
 describe('mcpRoomReshape', () => {
   const room = { id: 1, vertices: rect(0, 0, 400, 200), doors: [{ edge: 0, t: 0.5 }, { edge: 2, t: 0.5 }], cornerRadii: [5, null, null, null], name: 'Hall' };
 

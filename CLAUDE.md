@@ -134,9 +134,9 @@ error goes through it; no `alert()` ships.
 
 ## Rooms are polygons
 
-1. **Never reorder the `polygons` array.** `rebuildFogFromPolygons` walks it in reverse, so
-   array order IS fog compositing precedence. A feature needing its own ordering sorts a
-   copy or carries a separate field.
+1. **Only a new room's placement, Bring to front and Send to back reorder `polygons`.**
+   `rebuildFogFromPolygons` walks it in reverse, so index 0 wins the fog. Anything else
+   sorts a copy or carries its own field.
 2. **Never normalize a polygon from a fixed key list.** Backfilling a field must be an
    additive spread; a whitelist drops `cornerRadii` from every saved scene on load.
 3. **The map is the interaction surface.** Selecting is the Select tool's job alone; a shape

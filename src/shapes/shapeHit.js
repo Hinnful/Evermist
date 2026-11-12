@@ -11,6 +11,34 @@ const _shSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE
   : require('../fog/fogGeometry').CURVE_SAMPLE_STEPS);
 
 var polyHoleRings, flattenRing, edgeIsCurved, edgeCubic, handleAt, sampleCubic;
+function _shRingArea(v) {
+  let s = 0;
+  for (let i = 0, n = v.length; i < n; i++) s += v[i].x * v[(i + 1) % n].y - v[(i + 1) % n].x * v[i].y;
+  return Math.abs(s) / 2;
+}
+
+// The floor a room covers, curves as drawn and holes taken out.
+function shapeArea(poly) {
+  const h = poly.handles, flat = (r, off) => (h ? flattenRing(r, h, off) : r);
+  let a = _shRingArea(flat(poly.vertices, 0)), off = poly.vertices.length;
+  for (const ring of polyHoleRings(poly)) { a -= _shRingArea(flat(ring, off)); off += ring.length; }
+  return a;
+}
+
+// Every room under a point, smallest first, so a closet in a hall takes the click. A tie goes to the
+// earlier one, which wins the fog. `holds(room)` replaces the point-in-room test.
+function roomsAt(list, x, y, holds) {
+  const test = holds || (p => pointInShape(x, y, p));
+  return list.map((p, i) => ({ p, i })).filter(e => test(e.p)).map(e => ({ ...e, a: shapeArea(e.p) }))
+    .sort((m, n) => m.a - n.a || m.i - n.i).map(e => e.p);
+}
+
+// A second click on the same spot: the next larger room under it, and the smallest again after the largest.
+function roomAfter(list, x, y, fromId) {
+  const under = roomsAt(list, x, y);
+  return under.length ? under[(under.findIndex(p => p.id === fromId) + 1) % under.length] : null;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   ({ polyHoleRings, flattenRing, edgeIsCurved, edgeCubic, handleAt,
      sampleCubic } = require('../fog/fogGeometry'));
@@ -131,12 +159,40 @@ function holeStaysOnRoom(poly, movedRing) {
     poly.handles ? flattenRing(poly.vertices, poly.handles, 0) : poly.vertices);
 }
 
+function _shRingArea(v) {
+  let s = 0;
+  for (let i = 0, n = v.length; i < n; i++) s += v[i].x * v[(i + 1) % n].y - v[(i + 1) % n].x * v[i].y;
+  return Math.abs(s) / 2;
+}
+
+// The floor a room covers, curves as drawn and holes taken out.
+function shapeArea(poly) {
+  const h = poly.handles, flat = (r, off) => (h ? flattenRing(r, h, off) : r);
+  let a = _shRingArea(flat(poly.vertices, 0)), off = poly.vertices.length;
+  for (const ring of polyHoleRings(poly)) { a -= _shRingArea(flat(ring, off)); off += ring.length; }
+  return a;
+}
+
+// Every room under a point, smallest first, so a closet in a hall takes the click. A tie goes to the
+// earlier one, which wins the fog. `holds(room)` replaces the point-in-room test.
+function roomsAt(list, x, y, holds) {
+  const test = holds || (p => pointInShape(x, y, p));
+  return list.map((p, i) => ({ p, i })).filter(e => test(e.p)).map(e => ({ ...e, a: shapeArea(e.p) }))
+    .sort((m, n) => m.a - n.a || m.i - n.i).map(e => e.p);
+}
+
+// A second click on the same spot: the next larger room under it, and the smallest again after the largest.
+function roomAfter(list, x, y, fromId) {
+  const under = roomsAt(list, x, y);
+  return under.length ? under[(under.findIndex(p => p.id === fromId) + 1) % under.length] : null;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     pointInPolygon, pointInShape, findHoleAt,
     distPointToSegment, closestPointOnSegment,
     edgeEndFlat, edgePolyline, distToEdge, closestOnEdge,
-    ringCentre, holeStaysOnRoom,
+    ringCentre, holeStaysOnRoom, shapeArea, roomsAt, roomAfter,
   };
 }
 

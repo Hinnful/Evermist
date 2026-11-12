@@ -106,17 +106,18 @@ error. Its cells need one recalibration, and a rollback does not bring flat-top 
 ### Music and Sounds are players in the dock · `SETTLED` (2026-10-02)
 A round play/pause, the track, level bars, the state line, the volume slider and the download bar;
 the sounds are tiles two to a row. The top play group and its pills are gone. Music groups came
-later the same day, below.
+later the same day, below. **Amended 2026-11-12:** sounds are 30px rows, not tiles ("Music, Sounds and Pictures share one
+list pattern").
 
 ### A music group is a name a track carries, never a subfolder · `REJECTED` (2026-10-02)
 Subfolders of the music folder were built as groups and dropped the same day: nothing in the app
 can make one, and a DM will not arrange an app's data folder by hand. Where a group is kept and why
 is in `musicGroups.js`.
 
-### A group is renamed by its name alone · `SETTLED` (2026-10-02)
+### A group is renamed by its name alone · `REVERTED` (2026-11-12, a group renames through its ⋯)
 The pencil beside a group's name is gone, in the scene library and in Music: two ways to the same
 action is one too many. It had been added because a bare name read as a label; the name now
-lightens on hover instead.
+lightens on hover instead. A group's ⋯ now holds Rename and Ungroup, in every library list.
 
 ### A Sources row is the button · `SETTLED` (2026-10-02)
 The grey row was already button-shaped, so it is the button: the floor plan row picks a
@@ -1055,7 +1056,7 @@ the scene at every start. Part 3 of item 140 is dropped.
 The rail button, the window and its two modules are gone. Everything the library did has a place on the map: add, rename,
 delete with undo (any scene, and deleting the open one switches to the first, as before), file into a place by outline,
 find, export and restore, and the Live badge is the L or R chip. Dropped on purpose: collapsing groups, an empty named group,
-dragging to reorder (a scene's place is where it sits), and duplicating a scene, which the library never had. The group
+dragging to reorder (a scene's place is where it sits; **reversed 2026-11-12**: the Notes tree reorders maps, see "The Notes tree uses the library pattern"), and duplicating a scene, which the library never had. The group
 names stay a scene field and `sceneGroups.js` keeps their order and the pure kernel the music groups share. The code is in
 git if any of it is wanted back.
 
@@ -1303,7 +1304,7 @@ configuring at launch is found without a plug event; the macOS cause is unconfir
 (one virtual screen). Q pings at the pointer like Ctrl+middle-click, for touchpads with no middle button, only over
 an open map and not in a field. G was rejected: it toggles the grid. The shortcut legend lists Q.
 
-### The Music pane has an Add files button · `SETTLED` (2026-10-22)
+### The Music pane has an Add files button · `REVERTED` (2026-11-12, now the "+ Add" word button; the picker and the file rules stay)
 An icon button between New group and Add from YouTube opens a native multi-file picker filtered to the music
 list's audio extensions and copies the files flat into the music folder, never overwriting: a taken name becomes
 "Name (2).ext", compared case-insensitively (`uniqueMusicName`). Non-audio files are refused and reported through
@@ -1377,7 +1378,7 @@ scene's bar keeps it. Menus: every row starts with a verb, one action has one wo
 window opens next, fixed blocks (open or add, rename and notes, organise, view, export, delete last), a key shown on the
 right. "Delete group" is "Ungroup" (Ctrl+Shift+G): it removes the outline, keeps the maps, and Undo restores it. New keys:
 Ctrl+G groups the picked maps, Shift+1 fits, Shift+2 zooms to the group; "Map" adds into the picked group. A road's menu
-gains Show notes. Where outlines overlap, a Campaign click picks the smallest group; rooms keep top-most.
+gains Show notes. Where outlines overlap, a Campaign click picks the smallest group; rooms kept top-most (**reversed 2026-11-12 for rooms**: a click picks the smallest room, see "Rooms are layered by what they contain").
 **Reverses, by title:** "The world map's bar has no words" (Road inside Place's list). **Reopens** the party marker
 button refusal in PRODUCT.md.
 
@@ -1385,7 +1386,8 @@ button refusal in PRODUCT.md.
 Stored membership (the Figma and tldraw way) with reshapes blocked when they would leave a map outside, sticky membership
 with tether cues, and re-sorting by dropping were designed in full and rejected on product grounds: a rule change for its
 own sake. Today's rule is flat and visible on screen, and no DM has found it wrong. Do not re-propose without a real
-complaint about it.
+complaint about it. **Narrowed 2026-11-12:** a map dropped in the Notes tree moves its card inside the outline, so
+membership stays geometric.
 
 ### The logo is a twenty-sided die with a mountain in its centre face · `SETTLED` (2026-10-31)
 A d20 seen face-on as a pointy-top hexagon, its faces cut apart by gaps one width wide along every edge. A mountain's summit is the apex of the centre face, so its slopes run along that face's sides at the die's own 60 degrees; snow only on the lit upper facet; brighter blue faces, the shaded slope darker than the die. A dark navy backing sits behind the gaps, because see-through gaps read white on a light taskbar. Windows and Linux get the bare hexagon (a square tile shrank the die on the taskbar); the Mac gets the same mark on a night-blue rounded square, because macOS 26 puts any non-square icon on a grey tile. `tools/render-icon.js` renders both PNGs. **Reverses "no dice in the logo"** (a die promised a dice roller): the die is a frame with no numbers, chosen knowingly. **Rejected:** a compass or plain four-point star (reads as Safari small), a star over the summit, a snow plume (read as blots), flat two-colour graphics, warm dawn or pink colours, a lit hex grid fading into the edge, a square tile on every platform. Rounds are in `.claude/private/design/item-152/README.md`.
@@ -1437,3 +1439,29 @@ The companion is a morphing glow-core crystal with an Orb eye that follows close
 
 ### Pointer and companion designs that were rejected · `REJECTED` (2026-11-10)
 Recoloured system arrows; pointers that read as too magical (a d20, a sigil, fireflies); trails or rings drawn on the map; bulky crystal pointers (a crystal-shard arrow cluster); off-centre Windows-style arrows; a custom window header bar. Faces with anime-style eyes or eyelashes and detailed faces in general were rejected: eyes are 3-5 px at real size, so mood shows through outline, colour and glow. Over-the-top animation and a laggy follow were rejected. Of five companion bodies only the Morphing glow-core shipped; Shape-shifter, Brilliant, One eye and the plain Glow core lost, as did the Lens, Slit and Visor eyes.
+
+### Music, Sounds and Pictures share one list pattern · `SETTLED` (2026-11-12)
+Header: title and a "+ Add" word button (a bare + icon was rejected on readability); Music's opens a list, Sounds and
+Pictures open the file picker. The item under the pointer shows a ⋯ with Rename, Move to group and Delete; Ctrl+R renames
+(F2 rejected: nobody knows it). Drag reorders with a blue line; held over another item's middle, a drop makes a group of
+the two. A group exists only while it holds items (empty music groups are dropped on upgrade); its ⋯ holds Rename and
+Ungroup. New items land at the top of Ungrouped. Built-in sounds rename, move, group and delete like own ones, and a sound
+group is the DM's to make. A rename changes the shown name only, never the file, so it works on a playing track, reaches
+other computers by content hash and Windows cannot refuse it. Pictures keep their tiles and gain groups and order. The
+kernel is `sceneGroups.js`, the DOM in `libraryList.js`, the stored shapes in `libraryPlan.js`. **Reverses** "The DM adds
+their own sounds" (built-ins fixed, no sound groups, rename by file name) and "A left click adds a copy, a right click stops
+the newest" (no stop-all). **Out:** dragging between panes, sort buttons.
+
+### In Music and Sounds the right-click stops, so the menu lives in ⋯ only · `SETTLED` (2026-11-12)
+Right-click on a sound stops its newest copy and on the playing track pauses it (any other track: nothing), so no context
+menu competes. Sounds keep a round stop-all button in their card as the visible alternative.
+
+### The undo toast belongs to Trash actions only · `SETTLED` (2026-11-12)
+A Fight table row delete keeps Ctrl+Z and shows no toast; the toast means "this went to the Trash".
+
+### The Notes tree uses the library pattern · `SETTLED` (2026-11-12)
+Every row but a section title has ⋯, every list reorders by drag, and rooms, roads and monsters get Notes-only groups. A map
+dropped on a Campaign group moves its card inside the outline (clear of nested outlines), and on a loose map makes a Campaign
+group. Order lives in `evermist.notesOrder`, one record per list, never in scene `sortOrder` (a column's whole-record save
+loses it) and never touching the fog. **Reverses** "The room LIST" (`listOrder`, drag-reorder of rooms) and "The Scene
+library is removed" (no map reorder). **Out:** moving a room to another map, a layer control in Notes.

@@ -33,8 +33,9 @@ let bendStartMapX = 0, bendStartMapY = 0;
 let bendMoved = false;
 let isDraggingHandle = false;
 let handleDragFlat = -1, handleDragPart = 'out';
-// Alt+drag moves a copy. It is made on the first movement, so an Alt+click leaves nothing behind.
-let copyOnDrag = false;
+// Alt+drag moves a copy. It is made on the first movement, so an Alt+click leaves nothing behind; a room copy is placed on the drop.
+// A still click, then another on its spot, picks the next larger room there (roomAfter).
+let copyOnDrag = false, dragCopyId = null, lastClickAt = null, cycleOnUp = false;
 
 let _dragUndoPushed = false;
 function armDragUndo()  { _dragUndoPushed = false; }
@@ -63,7 +64,8 @@ function clearShapeSelection() {
 
 function findPolygonAt(mapX, mapY) {
   const list = activeShapeList();
-  if (worldMapOpen) return worldShapeAt(list, mapX, mapY);   // the Campaign picks the smallest group; rooms keep top-most
+  if (worldMapOpen) return worldShapeAt(list, mapX, mapY);   // the Campaign picks the smallest group
+  if (placeMode === 'rooms') return roomsAt(list, mapX, mapY)[0] || null;
   for (let i = list.length - 1; i >= 0; i--) {
     if (pointInShape(mapX, mapY, list[i])) return list[i];
   }
@@ -308,7 +310,9 @@ function selectMouseDown(raw, e) {
     }
   }
 
-  const hit = findPolygonAt(raw.x, raw.y);
+  const sel = !shapeEditMode && lastClickAt && Math.hypot(raw.x - lastClickAt.x, raw.y - lastClickAt.y) * zoom < 4 ? findActiveShape() : null;
+  cycleOnUp = placeMode === 'rooms' && !worldMapOpen && !!sel && pointInShape(raw.x, raw.y, sel);
+  const hit = cycleOnUp ? sel : findPolygonAt(raw.x, raw.y);
   // Ctrl+click opens a shape's corners in one press, as Figma's Cmd+click reaches past a group.
   // Inside the open shape Ctrl keeps its own job, bending and straightening a wall.
   if (hit && e && (e.ctrlKey || e.metaKey) && !(shapeEditMode && hit.id === selectedPolygonId)) {
@@ -501,7 +505,7 @@ function selectMouseMove(pos, screenX, screenY, e) {
     let poly = findActiveShape();
     if (poly && dragOrigVerts) {
       pushDragUndo();
-      if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(); poly = findActiveShape(); }
+      if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(); poly = findActiveShape(); dragCopyId = poly && poly.id; }
       const moved = dragOrigVerts.map(r => r.map(v => ({ x: v.x + dx, y: v.y + dy })));
       poly.vertices = moved[0];
       setShapeHoles(poly, moved.slice(1));
@@ -542,17 +546,21 @@ function selectMouseUp() {
     const poly = findActiveShape();
     if (poly) { pushDragUndo(); straightenBentEdge(poly); shapeGeometryChanged(); fogDirty = true; }
   }
-  const wrote = _dragUndoPushed;
+  const wrote = _dragUndoPushed, clicked = isDraggingPolygon && !wrote;
   const reshaped = isDraggingVertex || isDraggingEdge || isDraggingHole ||
                    isBendingEdge || isDraggingHandle;
   isBendingEdge = isDraggingHandle = false;
   bendOrigCubic = null;
   isDraggingVertex = isDraggingEdge = isDraggingHole = isDraggingPolygon = false;
   copyOnDrag = false;
+  const copyId = dragCopyId; dragCopyId = null;
   edgeDragOrigVerts = null;
   holeDragOrigRing = null;
   dragOrigVerts = null;
-  if (wrote) commitShapeDrag();
+  if (wrote) commitShapeDrag(copyId);
+  const next = clicked && cycleOnUp ? roomAfter(polygons, dragStartMapX, dragStartMapY, selectedPolygonId) : null;
+  if (next && next.id !== selectedPolygonId) { selectedPolygonId = next.id; leaveShapeEditMode(); drawCursor(lastScreenX, lastScreenY); }
+  lastClickAt = clicked ? { x: dragStartMapX, y: dragStartMapY } : null;
   if (reshaped) drawCursor(lastScreenX, lastScreenY);   // re-place the card against the new shape
   return true;
 }

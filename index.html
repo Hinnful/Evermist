@@ -524,15 +524,7 @@
     </section>
     <section class="dk-sec" id="dock-pane-music" data-pane="music" hidden>
       <div class="dk-head"><span class="cp-adv-title">Music</span><div class="cp-row">
-        <button id="btn-mu-group" class="cp-adv-close" title="New group">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v7h11v-6h-5L6 4H1.5z"/><path d="M7 6.8v3M5.5 8.3h3"/></svg>
-        </button>
-        <button id="btn-mu-files" class="cp-adv-close" title="Add files">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5v-8M4 4.5l3-3 3 3"/><path d="M1.5 9v3h11V9"/></svg>
-        </button>
-        <button id="btn-mu-add" class="cp-adv-close" title="Add from YouTube">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        </button></div>
+        <button id="btn-mu-add" class="dk-addb" title="Add music from files or YouTube"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add</span></button></div>
       </div>
       <!-- The player: what is loaded, playing or paused, and how loud. music.js. -->
       <div class="dk-player mu-resting" id="music-bubble">
@@ -569,11 +561,19 @@
     </section>
     <section class="dk-sec" id="dock-pane-sounds" data-pane="sounds" hidden>
       <div class="dk-head"><span class="cp-adv-title">Sounds</span><div class="cp-row">
-        <button id="btn-sb-add" class="cp-adv-close" title="Add sound">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5v-8M4 4.5l3-3 3 3"/><path d="M1.5 9v3h11V9"/></svg>
-        </button></div>
+        <button id="btn-sb-add" class="dk-addb" title="Add sound files"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add</span></button></div>
       </div>
-      <div class="dk-player">
+      <!-- What plays now, and one button that stops every sound. soundboard.js. -->
+      <div class="dk-player sb-resting" id="sb-card">
+        <div class="pl-top">
+          <button id="btn-sb-stop" class="pl-play sb-stop" title="Stop every sound" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </button>
+          <div class="pl-meta">
+            <div class="pl-title" id="sb-now" data-no-i18n></div>
+            <div class="pl-sub"><span class="pl-bars"><i></i><i></i><i></i><i></i></span><span id="sb-state" data-no-i18n></span></div>
+          </div>
+        </div>
         <div class="pl-vol">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
           <div class="cp-slider">
@@ -583,14 +583,18 @@
           <span class="pl-pct" id="sb-vol-pct"></span>
         </div>
       </div>
+      <div class="mu-toprow">
+        <div class="cp-field mu-filterfield">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="sb-filter" type="text" spellcheck="false" placeholder="Filter sounds">
+        </div>
+      </div>
       <!-- Left click plays one more copy, right click stops the newest. soundboard.js. -->
-      <div class="dk-scroll"><div id="sb-cols" class="dk-sbgroups" data-no-i18n></div></div>
+      <div class="dk-scroll"><div id="sb-cols" class="mu-list" data-no-i18n></div></div>
     </section>
     <section class="dk-sec" id="dock-pane-gallery" data-pane="gallery" hidden>
       <div class="dk-head"><span class="cp-adv-title">Pictures</span><div class="cp-row">
-        <button id="btn-ga-add" class="cp-adv-close" title="Add pictures">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        </button></div>
+        <button id="btn-ga-add" class="dk-addb" title="Add pictures"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add</span></button></div>
         <input type="file" id="ga-input" accept="image/*" multiple hidden>
       </div>
       <div class="mu-toprow" id="ga-top">
@@ -1079,8 +1083,11 @@
 <script src="src/notes/mentionPlan.js"></script>
 <script src="src/notes/notesEntriesPlan.js"></script>
 <script src="src/notes/notesTreePlan.js"></script>
+<script src="src/notes/notesOrderPlan.js"></script>
 <script src="src/rooms/roomPanel.js"></script>
 <script src="src/rooms/roomCard.js"></script>
+<script src="src/ui/libraryPlan.js"></script>
+<script src="src/ui/libraryList.js"></script>
 <script src="src/gallery/galleryPlan.js"></script>
 <script src="src/gallery/pictureDecode.js"></script>
 <script src="src/gallery/galleryStore.js"></script>
@@ -1090,10 +1097,13 @@
 <script src="src/rooms/roomSwitcher.js"></script>
 <script src="src/notes/notesPanel.js"></script>
 <script src="src/notes/notesEntries.js"></script>
+<script src="src/notes/notesOrder.js"></script>
 <script src="src/notes/mentionIndex.js"></script>
 <script src="src/notes/notesEditor.js"></script>
 <script src="src/notes/notesAppears.js"></script>
 <script src="src/notes/notesTree.js"></script>
+<script src="src/notes/notesTreeDrag.js"></script>
+<script src="src/notes/notesMapDrop.js"></script>
 <script src="src/notes/notesWindow.js"></script>
 <script src="src/world/worldMapPlan.js"></script>
 <script src="src/world/worldRoadPlan.js"></script>
@@ -1173,6 +1183,8 @@
 <script src="src/mcp/mcpSee.js"></script>
 <script src="src/mcp/mcpMusicPlan.js"></script>
 <script src="src/mcp/mcpMusic.js"></script>
+<script src="src/mcp/mcpSoundsPlan.js"></script>
+<script src="src/mcp/mcpSounds.js"></script>
 <script src="src/mcp/mcpRoomsPlan.js"></script>
 <script src="src/mcp/mcpRooms.js"></script>
 <script src="src/mcp/mcpGridPlan.js"></script>

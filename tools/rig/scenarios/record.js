@@ -252,9 +252,10 @@ module.exports = async function record(rig) {
     await dm.evaluate('__curDip(); setShapeOp("new"); setShape("rect"); document.getElementById("btn-reveal").click(); 0');
     await lib.hold(300, 'the tool is picked');
     await goMap(A.x, A.y, 500);
+    // A new room is placed by what it contains, not appended, so its id is the one the draw takes.
+    const id = await dm.evaluate('nextPolygonId');
     await dm.evaluate('__mapDrag(' + A.x + ', ' + A.y + ', ' + B.x + ', ' + B.y + ', 900)');
     await dm.evaluate('setShape("select"); 0');
-    const id = await dm.evaluate('polygons[polygons.length - 1].id');
     await lib.hold(450, 'the room is drawn');
     await goMap(1350, 1350, 450);
     await dm.evaluate('__curDip(); __rigClick(1350, 1350); enterShapeEditMode(' + id + '); 0');

@@ -20,7 +20,10 @@ function mcpMusicOne(tracks, name) {
   const hits = mcpMusicFind(tracks, name);
   if (hits.length === 1) return { track: hits[0] };
   if (!hits.length) return { error: 'No track is called "' + (name || '') + '". list_music shows the library.' };
-  return { error: 'More than one track matches "' + name + '": ' + hits.slice(0, 8).map(t => '"' + t.display + '"').join(', ') + '. Use more of the name.' };
+  // Two tracks the DM gave one name are told apart by their file names.
+  const twice = d => hits.filter(h => h.display === d).length > 1;
+  const named = hits.slice(0, 8).map(t => '"' + t.display + '"' + (twice(t.display) ? ' (file ' + t.name + ')' : ''));
+  return { error: 'More than one track matches "' + name + '": ' + named.join(', ') + '. Use more of the name, or the file name, or rename one first.' };
 }
 
 // The group a name points at, ignoring case, or null.

@@ -105,7 +105,7 @@ const syncEngine = (() => {
       if (!p || !p.blob || !e.blobHash) return null;
       const blob = { name: syBlobName(p.id, e.blobHash) };
       const text = JSON.stringify({ format: SY_FORMAT, key: e.key, pic: { id: p.id, name: p.name, added: p.added, named: p.named || false, type: p.blob.type }, blob });
-      return { text, props: { hash: e.hash, format: SY_FORMAT, at: now, edited: p.added || 0, b1: blob.name } };
+      return { text, props: { hash: e.hash, format: SY_FORMAT, at: now, edited: galleryTime(p, now), b1: blob.name } };
     }
     if (e.key === 'backdrop') {
       const bg = await worldBackgroundTake();
@@ -121,7 +121,7 @@ const syncEngine = (() => {
       return { text: JSON.stringify({ format: SY_FORMAT, key: e.key, text }), props: { hash: e.hash, format: SY_FORMAT, at: e.at || now, edited: e.at || 0 } };
     }
     const lsKey = e.key.slice(6);
-    let text = localStorage.getItem(lsKey);
+    let text = await syncLayoutText(lsKey);
     if (lsKey === 'evermist.combat' || lsKey === 'evermist.combatFights') text = cbBackupPayload();
     if (text === null) return { none: true };
     const at = lsKey === 'evermist.campaignNotes' ? notesCampaignAt() : e.at;

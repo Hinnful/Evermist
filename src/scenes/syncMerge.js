@@ -146,6 +146,8 @@ const syncMerge = (() => {
     const blob = await io.blob(b.name, p.type || 'image/png');
     if (ctx.keep && have) await ctx.keep(r.key, { id: have.id, name: have.name, added: have.added, named: have.named });
     await galleryStore.put({ id: p.id, name: p.name, added: p.added, named: p.named, blob });
+    // A picture restored elsewhere comes back here too, so this computer's Trash lets its copy go.
+    await sceneTrash.dropPicture(p.id);
     if (typeof galleryReload === 'function') await galleryReload();
     return { applied: true };
   }
@@ -196,6 +198,15 @@ const syncMerge = (() => {
       notesEntriesAdopt(d && d.entries, esGoneClean(d && d.gone));
       return { applied: true };
     }
+    // Each list the newer of the two, so a reorder here and another there both survive.
+    if (key === 'evermist.notesOrder') {
+      const theirs = notesOrderParse(r.text);
+      if (!theirs) return { skipped: 'bad' };
+      if (ctx.keep) ctx.keep(r.key, localStorage.getItem(key));
+      const applied = notesOrderAdopt(theirs);
+      if (applied && typeof refreshRoomPanel === 'function') refreshRoomPanel();
+      return { applied };
+    }
     if (key === 'evermist.moduleText') {
       if (!(ctx.remoteAt > ctx.localAt)) return { applied: false };
       if (ctx.keep) ctx.keep(r.key, localStorage.getItem(key));
@@ -206,7 +217,8 @@ const syncMerge = (() => {
 
   // The kinds this release applies; the rest are neither sent nor taken.
   const KINDS = ['scene:', 'pic:', 'campaign', 'backdrop', 'local:evermist.campaignNotes', 'local:evermist.campaignNotesAt', 'local:evermist.combat',
-    'local:evermist.combatFights', 'local:evermist.notesEntries', 'local:evermist.moduleText'];
+    'local:evermist.combatFights', 'local:evermist.notesEntries', 'local:evermist.moduleText', 'local:evermist.musicOrder',
+    'local:evermist.soundsLayout', 'local:evermist.picturesLayout', 'local:evermist.notesOrder'];
   const supported = key => KINDS.some(k => key === k || (k.endsWith(':') && key.startsWith(k)));
 
   // `ctx`: firstSync, keep(key, copy), remoteAt, localAt. Never throws for a record it cannot read: it answers skipped.
@@ -216,6 +228,7 @@ const syncMerge = (() => {
     if (r.key.startsWith('pic:')) return _pic(r, io, ctx || {});
     if (r.key === 'campaign') return _campaign(r, ctx || {});
     if (r.key === 'backdrop') return _backdrop(r, io, ctx || {});
+    if (SY_LAYOUT_KEYS.includes(r.key.slice(6))) return syncLayoutAdopt(r, ctx || {});
     return slice('local', () => _local(r, ctx || {}));
   }
 

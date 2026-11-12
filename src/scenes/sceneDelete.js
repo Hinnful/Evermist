@@ -127,17 +127,20 @@ function showUndoToast(msg, onUndo, noTrash) {
   bar.style.animation = 'smUndoTimer 4s linear forwards';
 }
 
-// A music track or one of the DM's own sounds just put in the Trash: the toast whose Undo brings it back, and
+// A music track, a sound or a picture just put in the Trash: the toast whose Undo brings it back, and
 // `onBack(name)` with the name it came back under. A map delete still pending is finalised first, so its Undo is not
 // replaced silently.
+// A picture or a built-in sound (`kind` 'picture' or 'builtin') comes back by its own restore.
 async function showTrackUndo(id, kind, label, onBack) {
-  const { hash } = (await sceneTrash.trackHashes(kind)).find(x => x.id === id) || {};
+  const whole = kind === 'picture' || kind === 'builtin';
+  const { hash } = whole ? {} : (await sceneTrash.trackHashes(kind)).find(x => x.id === id) || {};
   const folder = kind === 'sounds' ? syncSounds : syncMusic;
   commitPendingDelete();
+  const restore = () => (kind === 'picture' ? sceneTrash.restorePicture(id) : kind === 'builtin' ? sceneTrash.restoreBuiltin(id) : sceneTrash.restoreTrack(id));
   const undo = async () => {
     hideUndoToast();
     // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
-    const back = syncIndex.isOn() ? await folder.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
+    const back = syncIndex.isOn() && !whole ? await folder.restoreHere(hash, restore) : await restore();
     if (back && onBack) onBack(back);
     if (syncIndex.isOn()) syncEngine.now().catch(() => {});
   };

@@ -69,22 +69,22 @@ function _clipCommit(listName, toShroud) {
 }
 
 // ⚠ THE OUTER RING ALONE, never pointInShape: that XORs the holes out, so a pillar dropped beside
-// an existing pillar would find no room under the pointer and paste nothing.
+// an existing pillar would find no room under the pointer and paste nothing. Rooms pick as a click does.
 function _clipShapeUnder(listName, x, y) {
   const list = _clipList(listName);
-  for (let i = list.length - 1; i >= 0; i--) {
-    const poly = list[i];
-    const verts = poly.vertices;
-    if (!verts || verts.length < 3) continue;
-    const ring = poly.handles ? flattenRing(verts, poly.handles, 0) : verts;
-    if (pointInPolygon(x, y, ring)) return poly;
-  }
+  const holds = poly => poly.vertices && poly.vertices.length >= 3 &&
+    pointInPolygon(x, y, poly.handles ? flattenRing(poly.vertices, poly.handles, 0) : poly.vertices);
+  if (listName === 'rooms') return roomsAt(list, x, y, holds)[0] || null;
+  for (let i = list.length - 1; i >= 0; i--) if (holds(list[i])) return list[i];
   return null;
 }
 
 // Handles are OFFSETS, radii lengths and a door a fraction along its wall: all three ride a move.
-function _clipMoved(shape, dx, dy) {
-  const out = _clipDetach(copyShapeRings(shape));
+// ⚠ A COPY OF A ROOM STILL ON THE MAP DROPS ITS uid: placed in front of the original, it would keep the uid at the
+// next save and the original would reach the other computer as a new room. A cut's paste keeps it.
+function _clipMoved(clip, dx, dy) {
+  const out = _clipDetach(copyShapeRings(clip.shape));
+  if (_clipList(clip.list).some(s => s.uid && s.uid === out.uid)) delete out.uid;
   out.vertices = out.vertices.map(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
   if (out.holes) out.holes = out.holes.map(h => h.map(v => ({ ...v, x: v.x + dx, y: v.y + dy })));
   return out;
@@ -179,7 +179,7 @@ function _clipDrop(clip, dx, dy, into) {
     drawCursor(lastScreenX, lastScreenY);
     return true;
   }
-  const shape = _clipMoved(clip.shape, dx, dy);
+  const shape = _clipMoved(clip, dx, dy);
   pushUndo();
   Object.assign(pictureBlobs, clip.pictures);
   shape.id = takeShapeId(clip.list);
@@ -223,9 +223,9 @@ function dragCopyOfSelection() {
     selectedHoleIndex = clipAddHole(findActiveShape(), clip.ring, clip);
     return true;
   }
-  const shape = _clipMoved(clip.shape, 0, 0);
+  const shape = _clipMoved(clip, 0, 0);
   shape.id = takeShapeId(clip.list);
-  pushShapeTo(clip.list, shape);
+  appendShapeTo(clip.list, shape);
   selectedPolygonId = shape.id;
   leaveShapeEditMode();
   return true;

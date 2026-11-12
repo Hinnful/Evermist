@@ -31,7 +31,7 @@
   .nw-tree.hide { display: none; }
   .nw-tedge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: var(--cur-ew); z-index: 2; }
   .nw-tedge:hover, .nw-tedge.drag { background: var(--b-tint); }
-  .nw-tl { flex: 1; overflow: auto; padding: 6px 4px; outline: none; }
+  .nw-tl { position: relative; flex: 1; overflow: auto; padding: 6px 4px; outline: none; }
   .nw-row { display: flex; align-items: center; height: 24px; border-radius: 6px; cursor: var(--cur-pointer); color: #c3c8cf; padding-right: 4px; white-space: nowrap; font-size: 12px; }
   .nw-row:hover, .nw-row.cur { background: var(--g-hover); }
   .nw-row.sel { background: var(--plate-sel-bg); color: var(--b-icon); }
@@ -44,7 +44,7 @@
   .nw-menu { position: fixed; min-width: 150px; }
   .nw-menu .sm-mi::before { display: none; }
   .nw-menu .sm-mi:disabled { opacity: .35; pointer-events: none; }
-  .nw-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 4px; padding-bottom: 4px; color: #6b7078; }
+  .nw-menu .sm-mi.why, .lib-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 4px; padding-bottom: 4px; color: #6b7078; }
   .nw-why { font-size: 11px; color: var(--g-dim); }
   .nw-ti { width: 15px; flex: none; color: var(--g-dim); display: flex; }
   .nw-ti svg { width: 12px; height: 12px; }
@@ -54,9 +54,10 @@
   .nw-ta { visibility: hidden; flex: none; width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
   .nw-row:hover .nw-ta { visibility: visible; }
   .nw-ta:hover { background: var(--g-pick); color: var(--g-text); }
-  .nw-row.over-in { background: var(--b-tint); }
-  .nw-row.over-before { box-shadow: inset 0 2px 0 var(--b-solid); }
-  .nw-row.over-after { box-shadow: inset 0 -2px 0 var(--b-solid); }
+  /* The shared list's drag (libraryList.js): the line runs the tree's width, a row a drop goes into lights blue. */
+  .nw-tl .lib-line { left: 4px; right: 4px; }
+  .nw-row.lib-join { background: var(--b-tint); color: var(--b-icon); }
+  .nw-row .lib-more { width: 20px; height: 20px; }
   .nw-row.off { opacity: 0.4; }
   .nw-newb { flex: none; margin: 6px; height: 28px; border: 1px dashed var(--g-line); border-radius: 6px; background: none; color: var(--g-dim); cursor: var(--cur-pointer); font: inherit; font-size: 12px; }
   .nw-newb:hover { color: var(--g-text); border-color: var(--g-pick); }

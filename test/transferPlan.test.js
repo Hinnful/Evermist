@@ -145,9 +145,10 @@ describe('tpMergeScene: fog, grid, fog look and lights', () => {
 
   it('labels every scene part and writes each one it takes onto the record', () => {
     const mine = { name: 'Local', gridConfig: { size: 50 }, notes: 'local', fogSettings: { blur: 1 }, weather: 'rain', timeOfDay: 'day',
-      lightsHidden: false, lightShapes: [], tvFit: { step: 1, turn: 0 }, group: 'Town', worldPos: { x: 1, y: 2 } };
+      lightsHidden: false, lightShapes: [], tvFit: { step: 1, turn: 0 }, group: 'Town', worldPos: { x: 1, y: 2 }, polygons: [room(1), room(2)] };
     const home = { name: 'Home', gridConfig: { size: 70 }, notes: 'home', fogSettings: { blur: 5 }, fogTheme: 'ice',
-      weather: 'storm', timeOfDay: 'night', lightsHidden: true, lightShapes: [{ id: 1 }], tvFit: { step: 2, turn: 90 }, group: 'Keep', worldPos: { x: 5, y: 6 } };
+      weather: 'storm', timeOfDay: 'night', lightsHidden: true, lightShapes: [{ id: 1 }], tvFit: { step: 2, turn: 90 }, group: 'Keep', worldPos: { x: 5, y: 6 },
+      polygons: [room(2), room(1)] };
     for (const part of ES.ES_SCENE_PARTS) {
       assert.ok(T.TP_PART_LABEL[part], part + ' has a label');
       const local = scene([], { scene: Object.fromEntries(ES.ES_SCENE_PARTS.map(p => [p, p === part ? 100 : 500])) }, mine);
@@ -210,9 +211,9 @@ describe('tpMergeScene: rooms', () => {
     assert.deepEqual(m.report.overwritten, [{ room: 'Room 1', part: 'shape' }, { room: 'Room 1', part: 'mode' }]);
   });
 
-  it('appends a room new from home with home state, and keeps the local order', () => {
+  it('appends a room new from home that overlaps nothing, with home state, and keeps the local order', () => {
     const local = scene([room(1, { mode: 'revealed' }), room(2)]);
-    const inc = scene([room(3, { id: 5 }), room(1)]);
+    const inc = scene([room(3, { id: 5, vertices: sq().map(v => ({ x: v.x + 100, y: v.y })) }), room(1)]);
     const m = T.tpMergeScene(local, inc, NOW);
     assert.deepEqual(m.record.polygons.map(r => r.uid), ['u1', 'u2', 'u3']);
     assert.equal(find(m.record, 'u3').mode, 'shroud');
@@ -338,5 +339,36 @@ describe('tpMergeScene: a collision suffix is not a rename', () => {
   it('still takes a different name on a tie', () => {
     const r = T.tpMergeScene(scene([], at(500), { name: 'Cave (2)' }), scene([], at(500), { name: 'Vault' }), NOW);
     assert.equal(r.record.name, 'Vault');
+  });
+});
+
+describe('tpMergeScene: room layers', () => {
+  const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+  const r = (id, verts) => room(id, { vertices: verts });
+  const hall = () => r(1, box(0, 0, 300, 300)), side = () => r(2, box(400, 0, 500, 100)), far = () => r(4, box(900, 900, 950, 950));
+  const uids = m => m.record.polygons.map(p => p.uid);
+
+  it('a room moved to the front on the other computer is at the front here, local-only rooms kept in their slots', () => {
+    const local = scene([hall(), far(), side()], { scene: { order: 100 } });
+    const inc = scene([side(), hall()], { scene: { order: 300 } });
+    const m = T.tpMergeScene(local, inc, NOW);
+    assert.deepEqual(uids(m), ['u2', 'u4', 'u1']);
+    assert.equal(m.record.edits.scene.order, 300);
+    assert.ok(m.report.changed.some(c => c.part === 'order'));
+  });
+
+  it('keeps the local order when it moved later, and on a tie (maps from before the order was timed)', () => {
+    const inc = scene([side(), hall()], { scene: { order: 300 } });
+    assert.deepEqual(uids(T.tpMergeScene(scene([hall(), side()], { scene: { order: 500 } }), inc, NOW)), ['u1', 'u2']);
+    assert.deepEqual(uids(T.tpMergeScene(scene([hall(), side()]), scene([side(), hall()]), NOW)), ['u1', 'u2']);
+  });
+
+  it('places a room from the other computer by what contains what: a closet drawn in a hidden hall is above it', () => {
+    const closet = r(3, box(50, 50, 80, 80));
+    const m = T.tpMergeScene(scene([side(), hall()]), scene([side(), hall(), closet]), NOW);
+    assert.deepEqual(uids(m), ['u2', 'u3', 'u1']);
+    // and a hall drawn round a closet goes below it
+    const n = T.tpMergeScene(scene([r(3, box(50, 50, 80, 80))]), scene([r(3, box(50, 50, 80, 80)), hall()]), NOW);
+    assert.deepEqual(uids(n), ['u3', 'u1']);
   });
 });

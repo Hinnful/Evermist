@@ -200,6 +200,78 @@ function syMuRecordParse(text, key = 'music') {
   return { tracks, gone: syMuGoneClean(r.gone), groups: syMuGroupsClean(r.groups) };
 }
 
+// ─── The panes' order, names and groups ──────────────────────────────────────
+// evermist.musicOrder and evermist.soundsLayout key by file name here and by content hash in the synced record. A
+// hash this computer has no file for yet stays in the local form as '#<hash>' until the file lands. Built-ins,
+// `builtin:<file>`, travel as they are.
+
+const SY_HOLD = '#';
+
+// Every key in a layout (`order`, each group's `members`, the `labels`) put through `fn`; null drops it.
+function syLayoutMap(layout, fn) {
+  const out = { ...layout };
+  const list = a => (Array.isArray(a) ? a.map(fn).filter(k => k != null).filter((k, i, all) => all.indexOf(k) === i) : a);
+  out.order = list(layout.order);
+  if (layout.groups) {
+    out.groups = {};
+    for (const g of Object.keys(layout.groups)) out.groups[g] = { ...layout.groups[g], members: list(layout.groups[g].members) };
+  }
+  if (layout.labels) {
+    out.labels = {};
+    for (const k of Object.keys(layout.labels)) { const n = fn(k); if (n != null && !(n in out.labels)) out.labels[n] = layout.labels[k]; }
+  }
+  return out;
+}
+
+const _syIsBuiltin = k => k.startsWith('builtin:');
+
+// The local form as it is sent: a file by its hash (`byName`: file -> hash), a held hash bare. A file not hashed yet
+// is left out until it is.
+function syLayoutOut(layout, byName) {
+  return syLayoutMap(layout, k => {
+    if (_syIsBuiltin(k)) return k;
+    if (k.startsWith(SY_HOLD) && _SYM_HASH.test(k.slice(1))) return k.slice(1);
+    return byName[k] || null;
+  });
+}
+
+// Another computer's form as stored here: a hash by its file (`byHash`: hash -> file), or held until the file lands.
+function syLayoutIn(layout, byHash) {
+  return syLayoutMap(layout, k => {
+    if (_syIsBuiltin(k)) return k;
+    if (!_SYM_HASH.test(k)) return null;
+    return byHash[k] || SY_HOLD + k;
+  });
+}
+
+// The held hashes whose file has landed, named by it; null when none has.
+function syLayoutResolve(layout, byHash) {
+  let hit = false;
+  const out = syLayoutMap(layout, k => {
+    if (!k.startsWith(SY_HOLD) || !byHash[k.slice(1)]) return k;
+    hit = true;
+    return byHash[k.slice(1)];
+  });
+  return hit ? out : null;
+}
+
+// file -> hash and hash -> file from a folder's state (`tracks`: hash -> { name }).
+function syLayoutNames(tracks) {
+  const byName = {}, byHash = {};
+  for (const h of Object.keys(tracks || {})) { const n = tracks[h] && tracks[h].name; if (n) { byName[n] = h; byHash[h] = n; } }
+  return { byName, byHash };
+}
+
+// The whole record whose edit came later wins; a tie keeps this computer's.
+const syLayoutTakes = (mine, theirs) => !!theirs && (theirs.at || 0) > ((mine && mine.at) || 0);
+
+// Built-in sounds hidden there and not here (each lands in this computer's Trash), and hidden here and not there
+// (restored there: each leaves this computer's Trash).
+function syHiddenChange(mine, theirs) {
+  const a = new Set(mine || []), b = new Set(theirs || []);
+  return { trash: [...b].filter(f => !a.has(f)), back: [...a].filter(f => !b.has(f)) };
+}
+
 // ─── One tick's moves ────────────────────────────────────────────────────────
 
 // `o`: st (this computer's state after syMuObserve), list (the folder), remotes [{ machine, rec }], files (the Drive's
@@ -251,6 +323,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     syMuNameOk, syMuLocal, syMuEmpty, syMuGoneWins, syMuObserve, syMuGoneClean, syMuGoneMerge, syMuTrash, syMuTrashDue,
     syMuPurge, syMuRestore, syMuFromTrash, syMuGroupsClean, syMuGroupsFromLocal, syMuGroupsPick, syMuGroupsToLocal, syMuRecordText,
-    syMuRecordParse, syMuPlan, syMuLoose,
+    syMuRecordParse, syMuPlan, syMuLoose, SY_HOLD, syLayoutMap, syLayoutOut, syLayoutIn, syLayoutResolve, syLayoutNames,
+    syLayoutTakes, syHiddenChange,
   };
 }

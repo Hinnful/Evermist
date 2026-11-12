@@ -1,6 +1,7 @@
 'use strict';
 // roomSwitcher.js — the selected room's own controls, on the map just above it: its fog as the same
-// three clouds the tool row holds, in a well, a divider, and the door as a bare button. A click on a
+// three clouds the tool row holds, in a well, a divider, the door, then Bring to front and Send to back, bare
+// buttons. A click on a
 // cloud sets THIS room's fog at once (T still cycles it); the door button arms the Door tool, which then
 // works on any room's wall, as the tool always did. The row's clouds (fogBar.js) set what is drawn next
 // and touch no room. doRender calls refreshRoomSwitcher.
@@ -16,10 +17,14 @@ function initRoomSwitcher() {
   if (!el) return;
   el.innerHTML = fogCloudsHtml(RF_TIPS) +
     '<i class="tb-mdiv"></i>' +
-    '<button type="button" class="tool-btn rf-door">' + uiIcon('door', 18, 1.5) + '</button>';
+    '<button type="button" class="tool-btn rf-door">' + uiIcon('door', 18, 1.5) + '</button>' +
+    '<button type="button" class="tool-btn rf-layer rf-front">' + uiIcon('layerFront', 18, 1.5) + '</button>' +
+    '<button type="button" class="tool-btn rf-layer rf-back">' + uiIcon('layerBack', 18, 1.5) + '</button>';
   el.addEventListener('mousedown', e => e.stopPropagation());
   el.querySelectorAll('.fx-dir').forEach(b => b.onclick = () => _rfSetMode(b.dataset.dir));
   el.querySelector('.rf-door').onclick = () => setShape(shape === 'door' ? 'select' : 'door');
+  el.querySelector('.rf-front').onclick = () => _rfLayer(true);
+  el.querySelector('.rf-back').onclick = () => _rfLayer(false);
 }
 
 // The room the switcher is for: the selected room, while Select or Door is in hand. In two-map mode
@@ -38,6 +43,21 @@ function _rfSetMode(mode) {
   if (paneRoomEdit('mode', { mode })) return;
   setPolygonMode(room.id, mode);
   refreshRoomSwitcher();
+}
+
+// Index 0 wins the fog where rooms overlap, so the front is the list's start. setPolygonMode's fog and TV
+// steps with no crossfade: no room changed its fog state, so the TV takes the new picture at once.
+function _rfLayer(toFront) {
+  const room = _rfRoom();
+  if (!room || polygons.indexOf(room) === (toFront ? 0 : polygons.length - 1)) return;
+  pushUndo();
+  polygons = polygons.filter(p => p !== room);
+  if (toFront) polygons.unshift(room); else polygons.push(room);
+  rebuildFogFromPolygons();
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync(true);   // which schedules the save
 }
 
 // Placed over the room's top edge, centred on it and kept in the window; under the room when there
@@ -61,6 +81,8 @@ function refreshRoomSwitcher() {
   door.classList.toggle('active', shape === 'door');
   door.title = shape === 'door' ? t('Click the wall where the door goes. Click a door to remove it. Esc when done.')
                                 : t('Add a door - then click a wall');
+  el.querySelector('.rf-front').title = t('Bring to front');
+  el.querySelector('.rf-back').title = t('Send to back');
   el.style.display = 'flex';
   const box = el.getBoundingClientRect(), m = 8;
   const left = Math.max(m, Math.min(innerWidth - box.width - m, (l + r) / 2 - box.width / 2));

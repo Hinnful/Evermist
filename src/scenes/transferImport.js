@@ -58,6 +58,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   tiAdoptWorld(raw, plans, shift, sceneMap, mentions.groupUids);
   const entries = notesParseEntries(raw);
   notesEntriesAdopt(entries.entries.map(e => (e && typeof e.note === 'string' ? { ...e, note: mentions.remap(e.note) } : e)), notesParseGone(raw).entries);
+  notesOrderImport(raw, mentions.maps, mentions.groupRemap);
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];
@@ -117,7 +118,7 @@ function _tiMentions(raw, items, incoming, moment) {
   };
   for (const p of incoming.places) p.note = remap(p.note);
   for (const k of Object.keys(incoming.roads)) incoming.roads[k].note = remap(incoming.roads[k].note);
-  return { remap, skipped: () => skipped, groupUids: merged.keep };
+  return { remap, skipped: () => skipped, groupUids: merged.keep, maps, groupRemap: merged.remap };
 }
 
 // A campaign.json's places and roads against the library's, nothing written: the mentions remapped first, then the plan.

@@ -188,3 +188,44 @@ describe('a track in this computer\'s Recently deleted', () => {
     assert.deepEqual(p.upload.map(u => u.hash), [H('a')]);
   });
 });
+
+// ─── The panes' order, names and groups ──────────────────────────────────────
+
+{
+  const S = require('../src/scenes/syncMusicPlan.js');
+  const { describe: d2, it: i2 } = require('node:test');
+  const eq = require('node:assert/strict').deepEqual;
+  const H1 = '1'.repeat(64), H2 = '2'.repeat(64), H3 = '3'.repeat(64);
+
+  d2('layout records: file names here, hashes on the Drive', () => {
+    i2('sends a file by its hash, a held hash bare, a built-in as it is, and leaves out a file not hashed yet', () => {
+      const local = { at: 7, order: ['Битва.mp3', 'new.mp3', '#' + H3, 'builtin:bell.mp3'], labels: { 'Битва.mp3': 'Бой', 'new.mp3': 'x', 'builtin:bell.mp3': 'Колокол' },
+        groups: { g: { name: 'Ночь', members: ['Тема.mp3'] } } };
+      const out = S.syLayoutOut(local, { 'Битва.mp3': H1, 'Тема.mp3': H2 });
+      eq(out, { at: 7, order: [H1, H3, 'builtin:bell.mp3'], labels: { [H1]: 'Бой', 'builtin:bell.mp3': 'Колокол' }, groups: { g: { name: 'Ночь', members: [H2] } } });
+    });
+    i2('takes another computer\'s record by this computer\'s file names, holding a hash with no file here', () => {
+      const got = S.syLayoutIn({ at: 9, order: [H1, H2, 'builtin:bell.mp3', '../evil'], labels: { [H2]: 'Тема' } }, { [H1]: 'Битва.mp3' });
+      eq(got, { at: 9, order: ['Битва.mp3', '#' + H2, 'builtin:bell.mp3'], labels: { ['#' + H2]: 'Тема' } });
+    });
+    i2('names a held hash once its file lands, and says so only then', () => {
+      const held = { at: 9, order: ['#' + H2, 'a.mp3'], labels: { ['#' + H2]: 'Тема' } };
+      eq(S.syLayoutResolve(held, { [H2]: 'Тема (2).mp3' }), { at: 9, order: ['Тема (2).mp3', 'a.mp3'], labels: { 'Тема (2).mp3': 'Тема' } });
+      eq(S.syLayoutResolve(held, { [H1]: 'x.mp3' }), null);
+    });
+    i2('round trip: out on one computer, in on the other, the same layout by that computer\'s names', () => {
+      const a = { at: 3, order: ['x.wav', 'builtin:a.mp3'], groups: { g1: { name: 'Сессия', members: ['y.wav'] } }, labels: { 'y.wav': 'Хруст' }, hidden: ['bell.mp3'] };
+      const sent = S.syLayoutOut(a, { 'x.wav': H1, 'y.wav': H2 });
+      eq(S.syLayoutIn(sent, { [H1]: 'x (2).wav', [H2]: 'y.wav' }), { ...a, order: ['x (2).wav', 'builtin:a.mp3'] });
+    });
+    i2('maps a folder state both ways', () => {
+      eq(S.syLayoutNames({ [H1]: { name: 'a.mp3' }, [H2]: {} }), { byName: { 'a.mp3': H1 }, byHash: { [H1]: 'a.mp3' } });
+    });
+    i2('the later whole record wins, a tie stays here', () => {
+      eq([S.syLayoutTakes({ at: 5 }, { at: 6 }), S.syLayoutTakes({ at: 6 }, { at: 6 }), S.syLayoutTakes(null, { at: 1 }), S.syLayoutTakes({ at: 1 }, { at: 0 })], [true, false, true, false]);
+    });
+    i2('a built-in hidden there lands in the Trash here; one shown there again leaves it', () => {
+      eq(S.syHiddenChange(['bell.mp3', 'crow.mp3'], ['crow.mp3', 'rats.mp3']), { trash: ['rats.mp3'], back: ['bell.mp3'] });
+    });
+  });
+}

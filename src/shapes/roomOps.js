@@ -143,6 +143,56 @@ function trimShapes(rooms, drawn, minArea) {
   return { groups };
 }
 
+// ─── Where a new room goes in the list ───────────────────────────────────────
+// Index 0 wins the fog, so a new room goes below every room it contains and above every room that
+// contains it or that it only partly overlaps. A wall that overshoots another by less than the sliver
+// floor still counts as inside. ⚠ ON A LEGACY MAP IN THE WRONG ORDER the two can conflict, and "below
+// what it contains" wins: a room drawn around a closet must never hide it.
+
+function _multiArea(multi) {
+  let a = 0;
+  for (const poly of multi) {
+    if (!Array.isArray(poly) || !poly.length) continue;
+    a += ringArea(ringToVerts(poly[0]));
+    for (let i = 1; i < poly.length; i++) a -= ringArea(ringToVerts(poly[i]));
+  }
+  return a;
+}
+
+function _ringsBox(rings) {
+  const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  for (const p of rings[0]) {
+    b.x0 = Math.min(b.x0, p[0]); b.y0 = Math.min(b.y0, p[1]);
+    b.x1 = Math.max(b.x1, p[0]); b.y1 = Math.max(b.y1, p[1]);
+  }
+  return b;
+}
+
+// The array position for `shape` (a record or a point list); list.length, as before, on a clipping throw.
+function layerInsertIndex(list, shape, cellSize) {
+  const minArea = roomOpMinArea(cellSize);
+  const sr = toRings(shape);
+  if (!sr.length) return list.length;
+  const sb = _ringsBox(sr);
+  let after = 0, before = list.length;
+  for (let i = 0; i < list.length; i++) {
+    const rr = list[i] && list[i].vertices && list[i].vertices.length >= 3 ? toRings(list[i]) : [];
+    if (!rr.length) continue;
+    const rb = _ringsBox(rr);
+    if (rb.x0 >= sb.x1 || rb.x1 <= sb.x0 || rb.y0 >= sb.y1 || rb.y1 <= sb.y0) continue;
+    const inR = runClip(() => clip.difference(sr, rr));
+    const both = runClip(() => clip.intersection(sr, rr));
+    if (inR.reason || both.reason) return list.length;
+    if (_multiArea(both.multi) <= 0) continue;
+    if (_multiArea(inR.multi) < minArea) { before = Math.min(before, i); continue; }
+    const rOut = runClip(() => clip.difference(rr, sr));
+    if (rOut.reason) return list.length;
+    if (_multiArea(rOut.multi) < minArea) after = i + 1;
+    else before = Math.min(before, i);
+  }
+  return after > before ? after : before;
+}
+
 // ─── Split along an edge ──────────────────────────────────────────────────────
 // The drawn shape's edge cuts every room it crosses in two: the part outside stays the room, the part
 // inside is a room of its own. `groups` aligns to `rooms`; a room the shape does not divide (it lies
@@ -304,7 +354,7 @@ function cutRing(src, path, minArea) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toRings, fromRings, ringToVerts, ringArea, resultPieces, shapesOverlap,
-    joinShapes, trimShapes, splitShapes, cutRings, cutRing, mostHiddenMode, roomOpMinArea,
+    joinShapes, trimShapes, splitShapes, cutRings, cutRing, mostHiddenMode, roomOpMinArea, layerInsertIndex,
     crossSegments, ringPathCrossings, arcForward, dedupeRing,
     pointInRing, ringHomePiece, splitHoleAcrossPieces,
     ROOM_OP_MIN_AREA, REASON_FAILED, REASON_CUT,

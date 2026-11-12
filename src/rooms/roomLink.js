@@ -39,6 +39,14 @@ function paneApplyRoomEdit(m) {
 // A room's name or notes written by id while it is not the column's selection: the Notes window's tree.
 function paneApplyRoomPatch(m) { roomCardPatch(m.id, m.fields || {}); }
 
+// The Notes tree ordered a room that had no uid yet: it takes the one the tree stored, and keeps it at the next save.
+function paneApplyRoomUid(m) {
+  const p = polygons.find(x => x.id === m.id);
+  if (!p || p.uid || typeof m.uid !== 'string') return;
+  p.uid = m.uid;
+  scheduleAutoSave();
+}
+
 // The Notes window picked a room of this column's map.
 function paneApplyRoomSelect(m) {
   const p = polygons.find(x => x.id === m.id);

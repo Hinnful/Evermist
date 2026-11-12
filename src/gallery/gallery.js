@@ -1,6 +1,7 @@
 'use strict';
 // gallery.js — the Gallery pane: every picture the DM keeps, tied to no scene or room, and the one
-// on the TV. Pictures decode through pictureDecode.js and live in galleryStore.js.
+// on the TV. Pictures decode through pictureDecode.js and live in galleryStore.js. Their order and groups are
+// evermist.picturesLayout (libraryPlan.js), a `local:` sync record; the shared list parts are libraryList.js's.
 
 let _gaPics = [];          // { id, name, blob, added }, newest first
 let _gaLive = null;        // the id on the TV, or null
@@ -9,6 +10,9 @@ let _gaQuery = '';
 let _gaPicked = null;       // the picture the search picked: marked, never shown on the TV
 const _gaUrls = {};
 const _gaTiles = {};
+const GA_SHUT_KEY = 'evermist.picturesShut';
+let _gaL = null;            // evermist.picturesLayout, null until the pictures were first read
+let _gaShut = {};           // group key, '' for Ungrouped → folded shut, on this computer only
 
 function _gaUrl(p) {
   if (!_gaUrls[p.id]) _gaUrls[p.id] = URL.createObjectURL(p.blob);
@@ -117,22 +121,13 @@ function _gaRename(p, name) {
   galleryStore.put(p);
 }
 
-function _gaRemove(p) {
-  confirmDialog({
-    title: t('Remove this picture?'),
-    message: t('“{name}” leaves Pictures for good.', { name: p.name }),
-    confirmLabel: t('Remove'),
-    danger: true,
-    onConfirm: async () => {
-      if (_gaLive === p.id) galleryTakeDown();
-      await galleryStore.remove(p.id);
-      _gaGoneWrite(esGoneNote(_gaGoneRead(), [p.id], [], Date.now()));
-      _gaPics = _gaPics.filter(x => x.id !== p.id);
-      if (_gaUrls[p.id]) { URL.revokeObjectURL(_gaUrls[p.id]); delete _gaUrls[p.id]; }
-      delete _gaTiles[p.id];
-      _gaRender();
-    },
-  });
+// No question: the whole picture goes to the Trash first, then leaves Pictures, and keeps its place for a restore. A
+// picture on the TV comes down.
+async function _gaRemove(p) {
+  if (_gaLive === p.id) galleryTakeDown();
+  const id = await sceneTrash.putPicture(p, Date.now());
+  await galleryDrop(p.id);
+  await showTrackUndo(id, 'picture', p.name);
 }
 
 // What Claude's picture tools (src/mcp/mcpGallery.js) use. None of them touches the TV: a picture on the TV is
@@ -192,6 +187,9 @@ async function galleryRestore(p) {
 async function galleryReload() {
   try { _gaPics = (await galleryStore.all()).sort((a, b) => b.added - a.added); }
   catch (_) { _gaPics = []; }
+  // The upgrade: newest first, as the gallery always listed them, until the DM changes it.
+  if (!_gaL) _gaL = libParse(localStorage.getItem(LIB_PICTURES_KEY), cleanPicturesLayout);
+  if (!_gaL) { _gaL = picturesSeed(_gaPics); _gaSave(); }
   for (const id of Object.keys(_gaTiles)) delete _gaTiles[id];   // ⚠ a kept tile's clicks hold the old object
   _gaRender();
 }
@@ -231,9 +229,13 @@ async function galleryAdoptBackup(zipPath, goneFile) {
   return added.length;
 }
 
+// A picture deleted elsewhere moves into this computer's Trash, its time the deletion's.
 async function _gaDropGone(plan) {
+  const have = plan.remove.length ? await galleryStore.all() : [];
   for (const id of plan.remove) {
     if (_gaLive === id) galleryTakeDown();
+    const rec = have.find(p => p.id === id);
+    if (rec) await sceneTrash.putPicture(rec, (plan.gone && plan.gone[id]) || Date.now());
     await galleryStore.remove(id);
     if (_gaUrls[id]) { URL.revokeObjectURL(_gaUrls[id]); delete _gaUrls[id]; }
   }
@@ -272,6 +274,7 @@ function _gaEditName(p, label) {
     if (done) return;
     done = true;
     if (keep) _gaRename(p, input.value);
+    input.remove();
     _gaRender();
   };
   input.onkeydown = e => {
@@ -280,38 +283,53 @@ function _gaEditName(p, label) {
     if (e.key === 'Escape') finish(false);
   };
   input.onblur = () => finish(true);
+  input.onmousedown = input.onclick = e => e.stopPropagation();
 }
 
 function _gaRender() {
   const grid = document.getElementById('ga-grid');
-  if (!grid) return;
+  if (!grid || libHold(grid)) return;
   grid.textContent = '';
   document.getElementById('ga-top').style.display = _gaPics.length ? '' : 'none';
   if (!_gaPics.length) {
-    grid.className = 'ga-grid ga-empty';
+    grid.className = 'ga-list ga-empty';
     grid.innerHTML = `<div class="ga-well">${uiIcon('plus', 18)}<b></b><span></span></div>`;
     grid.querySelector('b').textContent = t('Drop pictures here');
     grid.querySelector('span').textContent = t('Portraits, monsters, letters. A click shows one on the TV.');
     grid.querySelector('.ga-well').onclick = () => document.getElementById('ga-input').click();
     return;
   }
-  grid.className = 'ga-grid';
+  grid.className = 'ga-list mu-list';
   const words = _gaQuery.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = _gaPics.filter(p => words.every(w => p.name.toLowerCase().includes(w)));
-  if (!shown.length) {
+  const byId = new Map(_gaPics.map(p => [p.id, p]));
+  const match = id => words.every(w => byId.get(id).name.toLowerCase().includes(w));
+  const sections = libSections(_gaLib(), _gaPics.map(p => p.id));
+  let any = false;
+  for (const sec of sections) {
+    const items = sec.items.filter(match);
+    if (words.length && !items.length) continue;
+    any = any || items.length > 0;
+    const tiles = document.createElement('div');
+    tiles.className = 'ga-grid';
+    tiles.append(...items.map(id => {
+      const p = byId.get(id), tile = _gaTile(p);
+      tile.classList.toggle('on', p.id === _gaLive);
+      tile.classList.toggle('picked', p.id === _gaPicked);
+      tile.querySelector('.ga-name').textContent = p.name;
+      return tile;
+    }));
+    if (sections.length === 1) { grid.appendChild(tiles); continue; }
+    const el = libSection(sec.key, sec.key ? sec.name : t('Ungrouped'), items.length, !words.length && !!_gaShut[sec.key || '']);
+    if (!items.length) el.classList.add('lib-empty');
+    el.querySelector('.lib-body').appendChild(tiles);
+    grid.appendChild(el);
+  }
+  if (!any) {
     const none = document.createElement('div');
     none.className = 'ga-none';
     none.textContent = t('No picture has that name.');
-    grid.appendChild(none);
-    return;
+    grid.replaceChildren(none);
   }
-  grid.replaceChildren(...shown.map(p => {
-    const tile = _gaTile(p);
-    tile.classList.toggle('on', p.id === _gaLive);
-    tile.classList.toggle('picked', p.id === _gaPicked);
-    tile.querySelector('.ga-name').textContent = p.name;
-    return tile;
-  }));
 }
 
 // Built once per picture and reused: a rebuilt <img> paints blank for a frame on every keystroke.
@@ -324,20 +342,16 @@ function _gaTile(p) {
   const img = document.createElement('img');
   img.src = _gaUrl(p);
   img.draggable = false;
-  const x = document.createElement('button');
-  x.className = 'ga-x';
-  x.title = t('Remove picture');
-  x.innerHTML = uiIcon('trash', 12);
   const name = document.createElement('div');
-  name.className = 'ga-name';
+  name.className = 'ga-name lib-name';
   name.title = t('Double-click to rename');
-  th.append(img, x, name);
+  th.append(img, libMoreBtn(), name);
   tile.append(th);
+  tile.dataset.libKey = p.id;
   th.onclick = e => {
-    if (e.target.closest('.ga-x')) return;
+    if (e.target.closest('.lib-more, input')) return;
     if (p.id === _gaLive) galleryTakeDown(); else _gaShow(p);
   };
-  x.onclick = e => { e.stopPropagation(); _gaRemove(p); };
   name.onclick = e => e.stopPropagation();
   name.ondblclick = () => _gaEditName(p, name);
   return (_gaTiles[p.id] = tile);
@@ -353,6 +367,8 @@ async function initGallery() {
     input.value = '';
     if (files.length) _gaAdd(files);
   };
+  try { _gaShut = JSON.parse(localStorage.getItem(GA_SHUT_KEY) || '{}') || {}; } catch (_) { _gaShut = {}; }
+  _gaListInit();
   filter.oninput = () => { _gaQuery = filter.value; _gaPicked = null; _gaRender(); };
   filter.onkeydown = e => {
     e.stopPropagation();
@@ -376,3 +392,76 @@ async function initGallery() {
 
   await galleryReload();
 }
+
+// ─── Order and groups ────────────────────────────────────────────────────────
+
+// `edited`: the DM changed it now; otherwise the time stays what it was.
+function _gaSave(edited) {
+  if (edited) _gaL.at = Date.now();
+  try { localStorage.setItem(LIB_PICTURES_KEY, JSON.stringify(_gaL)); } catch (_) {}
+  syncNoteLocal(LIB_PICTURES_KEY);
+}
+
+const _gaLib = () => libNormalize(_gaL || libEmpty(), _gaPics.map(p => p.id));
+
+function _gaCommit(L) {
+  if (!_gaL) _gaL = picturesSeed(_gaPics);
+  Object.assign(_gaL, { order: L.order, groups: L.groups, groupOrder: L.groupOrder });
+  _gaSave(true);
+  _gaRender();
+}
+
+function picturesLayoutAdopt(theirs) {
+  _gaL = theirs;
+  _gaSave();
+  _gaRender();
+}
+
+const _gaGroupName = gk => (_gaL && _gaL.groups[gk] ? _gaL.groups[gk].name : gk);
+
+function _gaRenameGroup(gk) {
+  libEditGroup(document.getElementById('ga-grid'), gk, _gaGroupName(gk), typed => {
+    const next = sanitizeGroupName(typed);
+    if (!next) return;
+    const L = _gaLib(), clash = libGroupNamed(L, next, _gaGroupName, gk);
+    if (!clash) { _gaCommit(libRenameGroup(L, gk, next)); return; }
+    libAskMerge(_gaGroupName(clash), _gaGroupName(gk), () => _gaCommit(libMergeGroups(_gaLib(), gk, clash)));
+  });
+}
+
+function _gaHold(drag, target) {
+  const L = _gaLib(), gk = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const r = libHoldGroup(L, drag, target, gk, uniqueGroupName(t('New group'), L.groupOrder.map(_gaGroupName)));
+  _gaCommit(r.L);
+  if (r.made) _gaRenameGroup(r.group);
+}
+
+function _gaListInit() {
+  const root = document.getElementById('ga-grid');
+  libraryList(root, {
+    grid: true,
+    redraw: _gaRender,
+    scroller: root.closest('.dk-scroll'),
+    filtering: () => !!_gaQuery.trim(),
+    groups: () => libSections(_gaLib(), _gaPics.map(p => p.id)).filter(s => s.key).map(s => ({ key: s.key, name: s.name })),
+    rename: id => { const tile = _gaTiles[id], p = _gaPics.find(x => x.id === id); if (tile && p) _gaEditName(p, tile.querySelector('.ga-name')); },
+    del: id => { const p = _gaPics.find(x => x.id === id); if (p) _gaRemove(p); },
+    moveTo: (id, g) => _gaCommit(libMove(_gaLib(), [id], g, null)),
+    move: (id, g, before) => _gaCommit(libMove(_gaLib(), [id], g, before)),
+    hold: _gaHold,
+    groupRename: _gaRenameGroup,
+    ungroup: g => _gaCommit(libUngroup(_gaLib(), g)),
+    fold: g => {
+      const k = g || '';
+      if (_gaShut[k]) delete _gaShut[k]; else _gaShut[k] = true;
+      try { localStorage.setItem(GA_SHUT_KEY, JSON.stringify(_gaShut)); } catch (_) {}
+      _gaRender();
+    },
+  });
+}
+
+// What Claude's picture tools (mcpGallery.js) read and change of the order and groups.
+function galleryLayoutNow() { return _gaLib(); }
+function galleryCommit(L) { _gaCommit(L); }
+function galleryGroupName(gk) { return _gaGroupName(gk); }
+function galleryNewGroupKey() { return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }

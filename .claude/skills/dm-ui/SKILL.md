@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesWindow.js, src/notes/notesEditor.js, src/notes/notesAppears.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's 1 inch and Sync, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesTreeDrag.js, src/notes/notesMapDrop.js, src/ui/libraryList.js, src/notes/notesWindow.js, src/notes/notesEditor.js, src/notes/notesAppears.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's 1 inch and Sync, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -117,6 +117,10 @@ The room card's module renders into the Notes window's room level; there is no f
   opens that level, the middle folds into "…" with a list when narrow). The tree sits left, its width dragged on its
   edge: the campaign, groups nested by outline, maps and rooms, a Roads section (only with roads), Monsters and
   NPCs (a DM note, or made with "+ New"), Factions and Lore. Section titles are the dock's 12px bold, sentence case.
+- **The tree uses the library pattern** (`notesTreeDrag.js`, `notesMapDrop.js`): ⋯ on every row but a section title, Ctrl+R
+  renames, every list reorders by drag with a blue line, and rooms, roads and monsters group by a hold over a middle. A map
+  dropped on a Campaign group moves its card inside the outline. The order is Notes-only (`evermist.notesOrder`) and never
+  touches the fog; Ctrl+Z with the tree focused undoes a drop, with no toast.
 - **What is shown is a target** `{ kind, id, scene? }`: what the DM picked in the tree or a crumb
   (`notesLevelPick`, `state.js`), else what the selection follows - the Campaign's pick, the selected room, the open
   map. A new room pick, a deselect, a column switch or a scene switch puts the pick back to following.
@@ -228,8 +232,9 @@ wears the colour of the room outline it will draw. Reveal all and Hide all wear 
   and never touches a room. Half is shapes only and is ABSENT under the Brush. The clouds grey
   while a repair is lit. Select shows no row.
 - **A selected room carries its own popup, on the map just above it**: the same three clouds in a
-  well (a click sets that room's fog at once; `T` still cycles it), a divider, then the door as a
-  bare button. It is hidden while the room is dragged, in the players' view and on the world map,
+  well (a click sets that room's fog at once; `T` still cycles it), a divider, the door as a
+  bare button, then Bring to front and Send to back (stacked-squares glyphs, names in tooltips; they move the room in the
+  layer order, undoable). It is hidden while the room is dragged, in the players' view and on the world map,
   and `drawCursor` is what places it. The door button arms Door; Esc or Select ends it and the
   room stays selected.
 - **The old trio (`#ctx-rooms`) and its ids are the hidden back end.** Pressed with Select in hand
@@ -342,24 +347,25 @@ shuts, **without touching `selectedPolygonId`**, and leaving restores the pane t
 unless the DM picked another tab meanwhile. The rail never hides, so that is a real click and
 it wins. The Notes window commits its fields on the way out, the same as the deselect path.
 
-## Music and Sounds panes
+## Music and Sounds panes (and Pictures)
 
 Players, not forms: Scene control's field rules do not apply here, and **volume is always a
 slider** (`.cp-slider`'s markup, never a styled native range).
 
 - **Music opens on a player**: a round play/pause, the track, level bars, the state line, the
   volume slider and the download bar. Pause keeps the position.
-- **Sounds opens on its volume slider**, then its groups as tiles two to a row. Left click plays
-  one more copy, right click stops the newest; ×N and the draining bar show what is playing.
+- **Sounds open on their volume slider and a card** naming what plays, with a round stop-all button (grey when
+  nothing plays), then 30px rows. Left click plays one more copy, right click stops the newest; ×N and the draining bar stay.
+- **One list pattern for Music, Sounds and Pictures** (`libraryList.js`): a "+ Add" word button in the header (never a bare +);
+  a ⋯ on the item under the pointer holds Rename, Move to group, Delete; Ctrl+R renames, F2 does not; drag reorders with a blue
+  line and a hold over another's middle groups the two; a group's ⋯ holds Rename and Ungroup, and an empty group does not exist.
+  **Right-click stops or pauses, so there is no context menu**; the ⋯ is the only menu. A rename changes the shown name, never the file.
 - **The filter and URL fields are `.cp-field`.** The black inset pill means *pick one of these*
   and never wraps a field the DM types into.
 - **Add from YouTube selects as the Bestiary does** (Windows, below), and a track already
   on disk wears `.sm-tick.done` and an In library chip.
-- **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers (a sound's is a ×, by the DM's call). A
-  track's delete asks nothing: it goes to the Trash with the undo toast.
-- **Music groups** (`musicGroups.js`): New group in the header,
-  a row dragged onto a heading, Ungrouped first. **A group is renamed by its name, never a pencil.**
-  A track's file never moves.
+- **Delete is in ⋯, never a per-row icon.** A track, sound or picture goes to the Trash with the undo toast, which
+  belongs to Trash actions only.
 
 ## Windows
 
