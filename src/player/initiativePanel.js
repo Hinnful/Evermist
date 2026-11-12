@@ -26,7 +26,7 @@ const INP_BEHAVE = {
   toxic: { speed: 1.6, rise: 0.7, edge: 'acid', fx: 'fumes' },
 };
 
-let _inp = null;   // { canvas, ctx, slots, raf, last, geo, masks, copies, drawn, themes, namePx, still }
+let _inp = null;   // { canvas, ctx, slots, raf, last, geo, masks, copies, drawn, themes, namePx, still, fontReady }
 let _inpTex = null;
 
 const _inpMix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
@@ -376,6 +376,11 @@ function _inpEnsure() {
   _inp = { canvas, ctx: canvas.getContext('2d'), slots: null, raf: 0, last: 0, geo: null, masks: null, copies: {},
     drawn: [], themes: [], namePx: 0, size: '', mq };
   window.addEventListener('resize', () => { if (_inp.slots) _inp.size = ''; });
+  // ⚠ Canvas text never waits for a web font: a slot drawn before Alegreya lands stays in the fallback for good.
+  Promise.all([INP_NAME_FONT, INP_NUM_FONT].map(f => document.fonts.load(f))).catch(() => {}).then(() => {
+    _inp.fontReady = true;
+    if (_inp.slots) initiativePanelShow(_inp.slots);
+  });
   return _inp;
 }
 
@@ -390,6 +395,7 @@ function initiativePanelShow(slots) {
     return;
   }
   s.slots = slots;
+  if (!s.fontReady) return;
   s.geo = _inpSheet(s.ctx, slots);
   s.masks = slots.length ? _inpMasks(s.geo) : null;
   s.copies = {};

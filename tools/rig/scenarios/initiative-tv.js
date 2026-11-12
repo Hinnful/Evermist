@@ -9,6 +9,7 @@
 //   2. After Start fight the button reads End fight, pressed, and the Player draws every row of the open fight in the
 //      table's own order (not sorted by initiative), rows with no initiative and monsters at 0 HP included: allies by
 //      name, enemies back to back as one slot with a count, slots numbered 1, 2, 3.
+//   2b. The Player has Alegreya loaded from the app's own file, and the names were laid out in it, not in the fallback.
 //   3. Names are 2.7% of the Player window's height.
 //   4. A rename in the table reaches the TV within one second, and so do a monster added and a monster deleted.
 //   4b. A monster's line is the word "Monster" with its count, in red whatever the fog theme.
@@ -68,6 +69,19 @@ module.exports = async function initiativeTv(rig) {
   const drawn = await player.evaluate(DRAWN);
   rig.check(drawn === JSON.stringify(WANT), '2: the Player drew ' + drawn + ', want ' + JSON.stringify(WANT));
   rig.check(await player.evaluate(`!_inp.canvas.hidden && !!_inp.raf`), '2: the panel canvas is hidden or its loop is not running');
+
+  // ── 2b ──
+  // The panel's one column ends at its widest name, so its box gives back the width the names were measured at.
+  const face = await player.evaluate(`(() => {
+    const c = document.createElement('canvas').getContext('2d'), names = _inp.geo.items.map(it => it.s.name != null ? it.s.name : _inpMonsterText(it.s));
+    const widest = f => { c.font = '700 ' + INP_U + 'px ' + f; return Math.max(...names.map(n => c.measureText(n).width)); };
+    return { check: document.fonts.check('700 20px Alegreya'), loaded: [...document.fonts].some(f => f.family.replace(/"/g, '') === 'Alegreya' && f.status === 'loaded'),
+      cols: _inp.geo.cols, used: _inp.geo.box[2] - _inp.geo.items[0].ix, alegreya: widest('Alegreya'), fallback: widest(INP_FONT.replace(/^Alegreya, /, '')) };
+  })()`);
+  rig.note('2b: widest name ' + face.used.toFixed(1) + ' px as laid out, ' + face.alegreya.toFixed(1) + ' in Alegreya, ' + face.fallback.toFixed(1) + ' in the fallback');
+  rig.check(face.check && face.loaded, '2b: Alegreya is not loaded in the Player: ' + JSON.stringify(face));
+  rig.check(face.cols === 1 && Math.abs(face.used - face.alegreya) < 0.5 && Math.abs(face.alegreya - face.fallback) > 1,
+    '2b: the names were not laid out in Alegreya: ' + JSON.stringify(face));
 
   // ── 3 ──
   const size = await player.evaluate(`({ px: _inp.namePx, h: innerHeight })`);

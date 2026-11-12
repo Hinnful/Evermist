@@ -1434,8 +1434,9 @@ Two sheets in haze, names at 2.7% of window height. Rejected for monsters: glowi
 italic word, a blank nameplate, "???", and a dark band behind monster rows (a band behind one row reads as the current
 turn, a band behind every row too); a darker haze behind the sheet was kept. Rejected for showing: a plain TV toggle, a
 Turns button on the minimap, automatic showing while the table is open; Start fight / End fight on the table won. All
-rows show, as an earlier default of hiding rows with no initiative left the TV empty on first use. Alegreya is not
-bundled, since that needs a `build.files` entry.
+rows show, as an earlier default of hiding rows with no initiative left the TV empty on first use. Alegreya was first left
+unbundled, since that needs a `build.files` entry; 5.13.1 bundled it (SIL OFL allows redistribution, licence file beside
+it, about 200 KB of installer) because names fell back to Georgia or the system serif.
 
 ### Notes opening on a room pick, and a phone remote · `REJECTED` (2026-11-05)
 Opening the Notes window when a room is picked (was BACKLOG 249) and a phone remote for the DM (was BACKLOG 144) were dropped

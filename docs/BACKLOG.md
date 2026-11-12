@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 293."
+description: "Open work only. 6 open items; IDs run to 293."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -137,12 +137,6 @@ dropped on the window, glances at a room as it is revealed, and has more idle ha
 finds it too small or too big. The settled design is in `docs/decisions/ui-and-control-panel.md`
 ("The pointer is one dart and a crystal companion"). **Waits on the DM's call.**
 **Polish · DM and Player**
-
-### 293. Bundle the Alegreya font for the TV turn order
-Filed 2026-11-11, with 5.12.0. The turn order on the TV was designed in Alegreya, which covers Cyrillic, but the app does
-not ship it, so names fall back to Georgia on Windows and Mac and to the system serif on Linux. One font file goes in
-`build.files` and the panel's font list. Small; the risk is the packaged build missing the file, so verify on the `.exe`.
-**Polish · Player**
 
 ---
 
