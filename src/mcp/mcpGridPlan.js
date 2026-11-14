@@ -7,6 +7,8 @@ const MG = (typeof module !== 'undefined' && module.exports)
   ? Object.assign({}, require('../fog/fogGeometry.js'), require('../shapes/presetGeometry.js'), require('./mcpPlan.js'),
     require('../render/effectMaterials.js'))
   : { circleVertices, presetRings, EFFECT_PRESETS, GRID_FT, mcpCleanHex, EFFECT_MATERIALS };
+// The Russian dictionary, so a material named in Russian is found too.
+const MG_RU = (typeof module !== 'undefined' && module.exports) ? require('../i18n/ru.js').RU : RU;
 
 const MCP_GRID_TYPES = { square: 'square', hex: 'hex-pointy' };
 // Off drawGridLines (grid.js): a hex grid's cellSize is the corner radius, which is also a side's length.
@@ -136,8 +138,9 @@ function mcpFxShape(a, mapW, mapH, pxPerFt) {
 function mcpFxMaterial(raw) {
   const m = String(raw || '').trim().toLowerCase();
   if (m === 'light') return { error: 'Light is a light, not an effect: use create_light.' };
-  // The DM's name for a material (its label) names it as much as its key does.
-  const key = Object.keys(MG.EFFECT_MATERIALS).find(k => k === m || MG.EFFECT_MATERIALS[k].label.toLowerCase() === m);
+  // The DM's name for a material (its label, in English or Russian) names it as much as its key does.
+  const named = l => l.toLowerCase() === m || String(MG_RU[l] || '').toLowerCase() === m;
+  const key = Object.keys(MG.EFFECT_MATERIALS).find(k => k === m || named(MG.EFFECT_MATERIALS[k].label));
   if (key) return { material: key };
   return { error: 'material must be one of ' + Object.keys(MG.EFFECT_MATERIALS).map(mcpFxName).join(', ') + '.' };
 }

@@ -187,8 +187,40 @@ function roomAfter(list, x, y, fromId) {
   return under.length ? under[(under.findIndex(p => p.id === fromId) + 1) % under.length] : null;
 }
 
+// How deep a shape is at its deepest point: the largest distance from any wall, holes included. An effect's look
+// shrinks its edge work to fit, so a 1 ft wall or ring still shows its fill. A coarse grid, then a finer pass round
+// the best point.
+function ringsInRadius(rings) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const r of rings) for (const v of r) {
+    if (v.x < x1) x1 = v.x; if (v.x > x2) x2 = v.x;
+    if (v.y < y1) y1 = v.y; if (v.y > y2) y2 = v.y;
+  }
+  if (!(x2 > x1) || !(y2 > y1)) return 0;
+  const depth = (x, y) => {
+    let inside = false, near = Infinity;
+    for (const r of rings) {
+      if (pointInPolygon(x, y, r)) inside = !inside;
+      for (let i = 0; i < r.length; i++) {
+        const a = r[i], b = r[(i + 1) % r.length];
+        near = Math.min(near, distPointToSegment(x, y, a.x, a.y, b.x, b.y));
+      }
+    }
+    return inside ? near : 0;
+  };
+  const N = 32, sx = (x2 - x1) / N, sy = (y2 - y1) / N;
+  let best = 0, bx = x1, by = y1;
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+    const d = depth(x1 + i * sx, y1 + j * sy);
+    if (d > best) { best = d; bx = x1 + i * sx; by = y1 + j * sy; }
+  }
+  for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) best = Math.max(best, depth(bx + i * sx / 4, by + j * sy / 4));
+  return best;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    ringsInRadius,
     pointInPolygon, pointInShape, findHoleAt,
     distPointToSegment, closestPointOnSegment,
     edgeEndFlat, edgePolyline, distToEdge, closestOnEdge,

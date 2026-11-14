@@ -139,3 +139,22 @@ describe('an open line (a road)', () => {
     assert.equal(distToEdge(l, ring, 0, 0, 50, 0), 0, 'the first wall is there');
   });
 });
+
+describe('ringsInRadius', () => {
+  const { ringsInRadius } = require('../src/shapes/shapeHit.js');
+  const circle = (r, n = 32) => Array.from({ length: n }, (_, i) => ({ x: r * Math.cos(i / n * 2 * Math.PI), y: r * Math.sin(i / n * 2 * Math.PI) }));
+  test('a square is half its side deep', () => {
+    assert.ok(Math.abs(ringsInRadius([room().vertices]) - 50) < 1);
+  });
+  test('a 1 ft wall is half a foot deep, however long', () => {
+    const d = ringsInRadius([[{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 7.2 }, { x: 0, y: 7.2 }]]);
+    assert.ok(Math.abs(d - 3.6) < .2, String(d));
+  });
+  test('a ring is half its band deep, not its radius', () => {
+    const d = ringsInRadius([circle(72), circle(64.8).reverse()]);
+    assert.ok(d > 3 && d < 4, String(d));
+  });
+  test('nothing to measure is 0', () => {
+    assert.equal(ringsInRadius([[{ x: 1, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 1 }]]), 0);
+  });
+});

@@ -182,7 +182,7 @@ the honest outcome and needs no apology.
 ### Map effects indicate an area, they are not rendered art · `SETTLED` (design)
 An effect marks WHERE an area effect sits so combat stays legible; it is a tool, not a beautiful
 VFX. It is drawn as a flaming border - the shape's outline burning inward with dissolving tongues,
-over a faint fill, with sparks and smoke, and the map grid relit inside the zone so covered squares
+over a faint fill, with sparks and smoke, and the map grid relit along the zone's edge (one cell deep, in the effect's colour) so covered squares
 stay countable. Clipped to the true shape so a circle stays a circle. Typed by material (fire, acid,
 ...), never per-spell: the combinatorics rule out a spell library, about a dozen types cover the
 list, and size is drawn or picked from presets. No metrics on the shape - no rounds, damage or duration, just the

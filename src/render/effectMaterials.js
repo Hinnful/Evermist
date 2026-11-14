@@ -8,10 +8,11 @@
 //
 // ⚠ EVERY NUMBER HERE IS A LOOK THE DM PICKED in `.claude/private/design/item-46/acid-lab.html`.
 // Change one only on a fresh look call. A term a material does not use is 0, which skips it.
-// `kind` picks the shader: 'flame' reads ramp and look; 'ward' and 'rough' (effectShaderKinds.js) read `tint` alone.
+// `kind` picks the shader: 'flame' reads ramp and look, 'ward' reads `tint`, the rest carry their own colours.
+// `edge` (= `grid`) is its one colour everywhere; `group` its palette section: ground, cloud or marks.
 const EFFECT_MATERIALS = {
   fire: {
-    kind: 'flame', label: 'Fire', warm: 0.30, grid: '#ffa040', edge: '#ff8a3d',
+    kind: 'flame', label: 'Fire', group: 'ground', warm: 0.30, grid: '#ff8a3d', edge: '#ff8a3d',
     ramp: [[0.06, 0.0, 0.0], [0.62, 0.05, 0.0], [1.0, 0.30, 0.03],
            [1.0, 0.64, 0.14], [1.0, 0.84, 0.42], [1.0, 0.97, 0.85]],
     look: { heightMul: 0.80, diss: 0.60, smoke: 0.35, haze: 0, spark: 0,
@@ -20,7 +21,7 @@ const EFFECT_MATERIALS = {
             toon: 0.8, core: 0.45, spill: 0.35, flicker: 0.6, scorch: 0.6, drift: 1.0 },
   },
   acid: {
-    kind: 'flame', label: 'Acid', warm: 0.45, grid: '#d8f040', edge: '#d8f040',
+    kind: 'flame', label: 'Acid', group: 'ground', warm: 0.45, grid: '#d8f040', edge: '#d8f040',
     ramp: [[0.04, 0.03, 0.0], [0.25, 0.30, 0.02], [0.60, 0.80, 0.05],
            [0.85, 1.0, 0.2], [0.95, 1.0, 0.5], [1.0, 1.0, 0.85]],
     look: { heightMul: 0.28, diss: 0.30, smoke: 0.20, haze: 0, spark: 0.45,
@@ -29,8 +30,13 @@ const EFFECT_MATERIALS = {
             toon: 0, core: 0, spill: 0, flicker: 0, scorch: 0, drift: 0 },
   },
   // Picked in `.claude/private/design/item-187/materials-lab-5.html` (Bezel with glyphs, Heaving ground).
-  area: { kind: 'ward', label: 'Area', edge: '#ffd173', tint: [1.0, 0.82, 0.45] },
-  terrain: { kind: 'rough', label: 'Difficult terrain', edge: '#b9a58a' },
+  area: { kind: 'ward', label: 'Area', group: 'marks', edge: '#ffd173', grid: '#ffd173', tint: [1.0, 0.82, 0.45] },
+  terrain: { kind: 'rough', label: 'Difficult terrain', group: 'ground', edge: '#e0bf8a', grid: '#e0bf8a' },
+  // Picked on `.claude/private/design/item-286/` round 4.
+  ice: { kind: 'frost', label: 'Ice', group: 'ground', edge: '#4d9ef5', grid: '#4d9ef5' },
+  web: { kind: 'orbweb', label: 'Web', group: 'ground', edge: '#ece8dc', grid: '#ece8dc' },
+  grease: { kind: 'tar', label: 'Grease', group: 'ground', edge: '#dca04a', grid: '#dca04a' },
+  darkness: { kind: 'billows', label: 'Darkness', group: 'cloud', edge: '#a57cff', grid: '#a57cff' },
 };
 
 // The record for a stored name. An unknown one, from a newer release, burns as fire.
@@ -48,7 +54,7 @@ function effectRamp(name) {
 
 // What every material shares. The grid relight is separate, in grid.js, because the map grid is
 // a canvas above this layer.
-const FX_LOOK = { speed: 1.00, fill: 0.20, gridGlow: 0.60 };
+const FX_LOOK = { speed: 1.00, fill: 0.20, gridGlow: 0.70 };
 
 // A material's editing outline and tint, for a selected or previewed effect: separate from the
 // burning render, and a different colour family from POLY_EDGE_COLORS so an effect never reads as

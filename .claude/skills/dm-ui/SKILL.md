@@ -298,7 +298,8 @@ One box from any view: Ctrl+F (not while a text field has focus), the bar's last
   colour as a lit cloud wears its own, none lit with Select; a click arms the shape at the current size), a divider, the
   material field (glyph, name and arrow on one grey field, like the size field), the size field at the row's 8px gap, a divider,
   Snap, Straight walls, the repair icon. The material palette opens above the row, a "Find a material" field over glyph
-  and name (Fire, Acid, Light). **The material glyphs alone carry colour and depth**, a gradient fill under the
+  and name, in Ground, Cloud and Marks sections (each material's `group`; Light is Marks), each heading hidden when search
+  leaves it empty. **The material glyphs alone carry colour and depth**, a gradient fill under the
   outline; their gradients are defined once in `index.html` outside any hidden element, because the glyphs are copied and a
   copied id resolves to the first copy. Every other bar icon stays a flat outline. The size field steps one grid square (5 ft) by drag, typing, scroll or [ ]; it stops at
   both ends, and its chevron lists the sizes largest first with "By hand" last for the shapes that have it.
@@ -315,7 +316,8 @@ One box from any view: Ctrl+F (not while a text field has focus), the bar's last
   stays Room, with the room shape and the word, in both modes. The one control that is absent inside a row is Half
   under the Brush.
 - **Effects is a switch, the Room button's twin** (`#btn-effects`, `effectsTool.js`): the word and the glyph and colour of the
-  current material (fire, acid or light, `effectEdgeColor`; Light its own outline colour), no arrow. A click or E turns Effects
+  current material (`effectEdgeColor`; Light its own outline colour). A picked effect or light outlines in that same colour, never
+  a room's gold, no arrow. A click or E turns Effects
   mode on with the last effect shape armed at the last size (Circle, 20 ft at first). In the mode, a click or E with Select in
   hand arms that effect again, because a placement ends on Select; with an effect armed it turns the mode off (Fog, Select).
   It owns its sub-toolbar: while on, the button wears the blue tint of a switch that is on (`.fx-on`), its glyph blue with it,

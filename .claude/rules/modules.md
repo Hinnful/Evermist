@@ -81,7 +81,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/weather.js` | Weather on a map: the meshes under the fog, the fade, the room mask, the push to the TV |
 | `render/effectMaterials.js` | One record per material: ramp, warmth, grid colour, look |
 | `render/effectShader.js` | An effect's two fragment passes and their vertex cap |
-| `render/effectShaderKinds.js` | The one-pass shaders of Area and Difficult terrain, which are not flames |
+| `render/effectShaderKinds.js` | The one-pass shaders of Area and Difficult terrain, which are not flames, and the prefix every one-pass kind shares |
+| `render/effectKinds/darkness.js` | The Darkness shader, registered in `_FX_KIND_FRAG`. One file per kind: `ice.js`, `web.js` and `grease.js` beside it. Data only |
 | `render/grid.js` | Grid config + render |
 | `render/gridCalibrate.js` | The calibration square that fits the grid to the map |
 | `scenes/scenes.js` | Fog persistence + scene fade helpers |
@@ -315,7 +316,7 @@ shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → un
 scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
 scenes/trashPlan.js → scenes/sceneTrash.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
-scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
+scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js → render/effectShaderKinds.js → render/effectKinds/darkness.js → render/effectKinds/ice.js → render/effectKinds/web.js → render/effectKinds/grease.js →
 render/effects.js → render/weatherShader.js → render/timeOfDay.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →

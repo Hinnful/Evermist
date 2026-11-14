@@ -1,7 +1,7 @@
 'use strict';
 // effectsRow.js — Effects mode's row: the effect shapes as a pick-one well, a divider, the material field (a button
 // and its chevron on one grey field), then the size field of the picked shape, with no divider between them. The
-// material field opens a palette of the materials that exist, over a "Find a material" field. The size field steps one grid square (5 ft) at a time: drag its
+// material field opens a palette of the materials that exist in Ground, Cloud and Marks sections, over a "Find a material" field. The size field steps one grid square (5 ft) at a time: drag its
 // arrows, type, scroll, or [ ]; it stops at both ends. Its chevron lists the sizes largest first, "By
 // hand" last for the shapes that have it. The buttons in #material-row are the back end that holds each
 // material's name, glyph and id; setMaterial (toolbar.js) is what a pick calls.
@@ -70,21 +70,35 @@ function _togglePalette() {
   find.focus();
 }
 
+// The palette's sections in order, each a material's `group`; Light is a mark.
+const MAT_SECTIONS = [['ground', 'Ground'], ['cloud', 'Cloud'], ['marks', 'Marks']];
+function _materialGroup(id) { return id === 'light' ? 'marks' : effectMaterial(id).group; }
+
+// The materials under their section headings. Search runs across all three, and a section with no match hides its heading.
 function _renderPalette() {
   const pal = document.getElementById('mat-pal');
   const q = pal.querySelector('#mat-find').value.trim().toLowerCase();
   const grid = pal.querySelector('#mat-grid');
   grid.innerHTML = '';
   const shown = _materials().filter(m => !q || t(m[1]).toLowerCase().indexOf(q) >= 0 || m[1].toLowerCase().indexOf(q) >= 0);
-  for (const [id, name, glyph] of shown) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'mt-tile' + (id === currentMaterial ? ' on' : '');
-    b.dataset.material = id;
-    b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
-    b.lastChild.textContent = t(name);
-    b.onclick = () => { setMaterial(id); pal.hidden = true; };
-    grid.appendChild(b);
+  for (const [group, title] of MAT_SECTIONS) {
+    const inGroup = shown.filter(m => _materialGroup(m[0]) === group);
+    if (!inGroup.length) continue;
+    const head = document.createElement('div');
+    head.className = 'mt-sec';
+    head.dataset.group = group;
+    head.textContent = t(title);
+    grid.appendChild(head);
+    for (const [id, name, glyph] of inGroup) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mt-tile' + (id === currentMaterial ? ' on' : '');
+      b.dataset.material = id;
+      b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
+      b.lastChild.textContent = t(name);
+      b.onclick = () => { setMaterial(id); pal.hidden = true; };
+      grid.appendChild(b);
+    }
   }
   if (!shown.length) {
     const none = document.createElement('div');

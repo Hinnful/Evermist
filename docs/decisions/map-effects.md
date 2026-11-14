@@ -200,7 +200,7 @@ field, because a sine of height or time moved every flame the same way at once.
 The light pass was additive. An animated map is a `<video>` under the canvas on the DM and a sprite
 inside it on the Player, so ADD added to the map on the TV alone: the same effect came out see-through
 and hue-shifted there. Painted over the map, it is one look on both screens. The DM's orange wash and
-edge over every effect went for the same reason; a picked effect keeps its gold outline.
+edge over every effect went for the same reason; a picked effect keeps its gold outline (reversed 2026-11-14: it outlines in its own colour).
 
 ---
 
@@ -209,7 +209,7 @@ edge over every effect went for the same reason; a picked effect keeps its gold 
 Realistic flame patches, cartoon flame icons, inward waves, rising ribbons, glowing lava cracks,
 streaked sparks (they read as lanterns) and stepped or boiled frames (they read as low frame rate).
 A colour picker per effect was refused too: an effect is typed by material, and three clouds
-(Darkness, poison, fog) are one future look with three materials, not a picker.
+(Darkness, poison, fog) are one future look with three materials, not a picker (reversed 2026-11-14: each cloud is its own look).
 
 ---
 
@@ -222,7 +222,7 @@ glyphs and a faint fill. Glyphs were chosen knowingly, though the ping refused a
 to fantasy. **Difficult terrain** is one material for every ground: rough relief whose lumps rise and sink,
 dark pools crawling over it, a ragged edge with a faint ink line. A material record now carries `kind`
 (`flame`, `ward`, `rough`) and a `label`, the name the DM sees and the AI tools accept. Non-flame kinds draw
-one normal-blend pass from `effectShaderKinds.js`, no grid relight, lengths scaled by gridSize/36. Known
+one normal-blend pass from `effectShaderKinds.js`, no grid relight (reversed 2026-11-14: every effect relights its edge squares), lengths scaled by gridSize/36. Known
 limit: on an effect with a hole, ticks and glyphs follow the outer ring only. A rollback draws them as fire until the next update.
 Rejected, do not retry: a colour picker per effect; one terrain per ground type (vines, grass, bog,
 thornbrush; a bog on a snowy mountain reads wrong); static hatching and per-square triangle markers; shadow
@@ -234,3 +234,46 @@ Floor-plan rooms get the free-standing buildings they enclose as holes (`vttHole
 face walk emits only outer rings and a hall covered its vault. Merge, Cut out and Split restore curves and doors on a wall
 walked backwards, so an anticlockwise room keeps them; a Split line cuts the flattened outline (`cutRings`), so its
 crossings land on a bent wall rather than its chord.
+
+### The effect palette is grouped by where an effect sits · `SETTLED` (2026-11-14)
+Ground (Fire, Acid, Difficult terrain, Ice, Web, Grease), Cloud (Darkness), Marks (Area, Light), after Baldur's Gate 3's
+surfaces and clouds. Rejected: one flat list (Table Slayer); groups by what an effect does (Hurts, Slows, Blocks sight,
+Marks), because Cloudkill, Spike Growth and Hunger of Hadar belong to several; a form-by-harm grid (too much to read before
+a pick); tabs (a cloud takes two clicks and search must cross them). Damage-type grounds and clouds join one at a time
+when a spell needs them, not every type up front. Clouds are not one look in several colours: smoke and fog differ in
+particles and light, and Hunger of Hadar is its own cloud. Poison cloud and Fog wait for later rounds.
+
+---
+
+### Darkness, Ice, Web and Grease, each a look of its own · `SETTLED` (2026-11-14)
+Picked over board rounds (`.claude/private/design/item-286/`), one file per kind in `src/render/effectKinds/`.
+- **Darkness**: Difficult terrain's recipe as a heavy, slow, blurry void. Churning billows (each point orbits a small
+  circle out of phase with its neighbours, so eddies twist and return and the cloud never turns as a whole, as with the fog's
+  whirlpool), a wavering violet edge, purple light on folds and pockets, rare dark motes. Rejected: cartoon puff billows,
+  a feathered haze, a flat veil, a faster swirl, wisps past the edge.
+- **Ice**: a cracked see-through sheet, blue frost rim, crystal clusters and a honeycomb near the rim (from the Ice fog
+  theme). Blue, because a white rim vanished on snowy maps. Rejected: frost alone, a cartoon slab, long spiky crystals,
+  crystals all round the edge.
+Every non-flame look fits thin and small shapes (1 ft Ring and Wall, 5 ft presets): the shape's depth at its deepest scales
+each look's edge work, so the fill still shows.
+
+---
+
+### Web and Grease looks · `SETTLED` (2026-11-14)
+Picked over the same board rounds.
+- **Web**: ONE orb web per effect (spokes from a hub near the middle, one spiral, the edge as frame), the old variant with
+  broken threads. Several webs side by side read as unnatural; a tangle net and a milky sheet were rejected. Over a hole the
+  web spans it and the hole cuts the threads.
+- **Grease**: bubbling black tar whose flow turns (a flow map whose directions shift per region), amber rim. A one-way flow
+  read as static. Rejected: oil slick, cartoon puddle, rainbow film, creeping lobes.
+
+---
+
+### Edge-squares grid relight and one colour per material · `SETTLED` (2026-11-14)
+Every effect and light relights the grid as "Edge squares": lines in the effect's colour, bright at its edge, gone within
+one cell inward, the plain map grid in the middle; DM and TV, square and hex. It replaces Fire and Acid's every-line relight,
+which buried a look under squares (a web became unreadable, darkness a checkerboard), and the rule that non-flame kinds draw
+none. Rejected: every line bright, faint lines, corner crosses, a stepped outline of covered squares (Foundry's centre-in
+rule), the grid drawn under the effect. A material has one colour, used for its edge, grid relight, picked outline, palette
+icon and drawing preview. A picked effect or light outlines in its own colour, not gold; editing stays white. Difficult
+terrain became sand #e0bf8a; Fire's grid colour became its edge colour.

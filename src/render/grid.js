@@ -105,53 +105,135 @@ function renderGrid(vp) {
   drawEffectGridGlow(gridCtx, vp);
 }
 
-// Relight the grid in the material's colour inside an effect zone, so the cells a hazard covers stay
-// countable. ⚠ It has to live HERE, on the grid's own canvas: the effect is a PixiJS layer below it.
-// Hex grids relight too — drawGridLines applies the style override before it branches on gridMode.
+// Edge squares: the grid relit in each effect's and light's own colour, bright at its edge and gone within one
+// cell inward, so the middle shows the plain map grid and the cells along the edge stay countable. ⚠ It has to
+// live HERE, on the grid's own canvas: the effects and lights are a PixiJS layer below it. Hex grids relight
+// too: drawGridLines applies the style override before it branches on gridMode.
 function drawEffectGridGlow(ctx, vp) {
-  if (typeof effects === 'undefined' || !effects.length) return;
-  const scale = vp.dstW / vp.srcW;
-  const vx2 = vp.srcX + vp.srcW, vy2 = vp.srcY + vp.srcH;
-  for (const e of effects) {
-    if (!e.vertices || e.vertices.length < 3 || effectMaterial(e.material).kind !== 'flame') continue;
-    // ⚠ HAND drawGridLines THIS EFFECT'S BOX, never the whole viewport. It walks every cell in
-    // the region it is given, and a hex cell is a six-point subpath, so the viewport would rebuild
-    // the entire grid once per effect to stroke the few cells this clip keeps.
-    let mx1 = Infinity, my1 = Infinity, mx2 = -Infinity, my2 = -Infinity;
-    for (const v of e.vertices) {
-      if (v.x < mx1) mx1 = v.x;
-      if (v.x > mx2) mx2 = v.x;
-      if (v.y < my1) my1 = v.y;
-      if (v.y > my2) my2 = v.y;
+  const items = [];
+  if (typeof effects !== 'undefined') {
+    for (const e of effects) {
+      if (!e.vertices || e.vertices.length < 3) continue;
+      items.push({ key: _gridGlowKey(e), color: effectMaterial(e.material).grid, shapes: [_glowRingsOf(e)] });
     }
-    mx1 = Math.max(mx1, vp.srcX); my1 = Math.max(my1, vp.srcY);
-    mx2 = Math.min(mx2, vx2);     my2 = Math.min(my2, vy2);
-    if (mx2 <= mx1 || my2 <= my1) continue;
-    const sub = { ...vp,
-      srcX: mx1, srcY: my1, srcW: mx2 - mx1, srcH: my2 - my1,
-      dstX: vp.dstX + (mx1 - vp.srcX) * scale, dstY: vp.dstY + (my1 - vp.srcY) * scale,
-      dstW: (mx2 - mx1) * scale, dstH: (my2 - my1) * scale };
-    ctx.save();
-    // Clipped to the ROUNDED outline, the same shape the fire is drawn from. Raw vertices leave
-    // square ember corners, so the grid and the fire disagree about the shape.
-    const toScreenRing = ring => ring.map(v => ({
-      x: vp.dstX + (v.x - vp.srcX) * scale,
-      y: vp.dstY + (v.y - vp.srcY) * scale,
-    }));
-    const sv = toScreenRing(e.vertices);
-    // The holes go in too, or the embers relight inside a bagel-shaped burn.
-    const svHoles = polyHoleRings(e).map(toScreenRing);
-    const cr  = (e.cornerRadius || 0) * scale;
-    const pvR = e.cornerRadii
-      ? e.cornerRadii.map(rv => (rv != null ? rv : (e.cornerRadius || 0)) * scale)
-      : null;
-    ctx.beginPath();
-    buildRoundedPolyPath(ctx, sv, cr, pvR, svHoles, scaleHandles(e.handles, scale));
-    ctx.clip();
-    const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
-    drawGridLines(ctx, sub, { color: effectMaterial(e.material).grid, alpha: emberAlpha, widthMul: 1.8 });
-    ctx.restore();
   }
+  // Every light as one union, as lights.js draws their glow; lightPolys is what both screens hold.
+  if (typeof lightPolys !== 'undefined' && lightPolys.length) {
+    items.push({ key: lightPolys, color: LIGHT_RGB,
+      shapes: lightPolys.map(rings => rings.map(flat => {
+        const pts = [];
+        for (let i = 0; i < flat.length; i += 2) pts.push({ x: flat[i], y: flat[i + 1] });
+        return pts;
+      })) });
+  }
+  const live = new Set();
+  for (const it of items) {
+    live.add(it.key);
+    _drawEdgeSquares(ctx, vp, it);
+  }
+  for (const k of _glowMasks.keys()) if (!live.has(k)) _glowMasks.delete(k);
+}
+
+// One effect's rings, corners and curves resolved the way its shader draws them.
+function _glowRingsOf(e) {
+  let offset = 0;
+  return polyRings(e).map(ring => {
+    const pts = roundEffectRing(ring, e.cornerRadius || 0, e.cornerRadii || null, offset, e.handles);
+    offset += ring.length;
+    return pts;
+  });
+}
+
+function _gridGlowKey(e) {
+  return 'fx' + e.id + '|' + e.material + '|' + (e.cornerRadius || 0) + '|' + (e.cornerRadii || '') + '|' +
+    JSON.stringify(e.handles || null) + '|' + polyRings(e).map(r => r.map(v => (v.x | 0) + ',' + (v.y | 0)).join(';')).join('/');
+}
+
+function _glowBox(shapes) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const rings of shapes) for (const ring of rings) for (const v of ring) {
+    if (v.x < x1) x1 = v.x; if (v.x > x2) x2 = v.x;
+    if (v.y < y1) y1 = v.y; if (v.y > y2) y2 = v.y;
+  }
+  return { x1, y1, x2, y2 };
+}
+
+function _fillShapes(c, shapes, map) {
+  c.fillStyle = '#fff';
+  for (const rings of shapes) {
+    c.beginPath();
+    for (const ring of rings) {
+      ring.forEach((v, i) => { const p = map(v); if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); });
+      c.closePath();
+    }
+    c.fill('evenodd');
+  }
+}
+
+// The falloff, in map space and kept per shape and cell size: the shape less its own blurred copy, as lights.js
+// builds its glow, so it is bright at the edge and gone within one cell without a per-pixel distance.
+const GLOW_MASK_MAX = 1024;
+const _glowMasks = new Map();
+function _glowMask(it, box) {
+  const cached = _glowMasks.get(it.key);
+  if (cached && cached.cell === gridSize) return cached;
+  const pad = gridSize;
+  const s = Math.min(1, GLOW_MASK_MAX / Math.max(box.x2 - box.x1 + 2 * pad, box.y2 - box.y1 + 2 * pad));
+  const W = Math.max(1, Math.ceil((box.x2 - box.x1 + 2 * pad) * s)), H = Math.max(1, Math.ceil((box.y2 - box.y1 + 2 * pad) * s));
+  const mk = () => { const k = document.createElement('canvas'); k.width = W; k.height = H; return k; };
+  const shape = mk(), blurred = mk(), out = mk();
+  _fillShapes(shape.getContext('2d'), it.shapes, v => ({ x: (v.x - box.x1 + pad) * s, y: (v.y - box.y1 + pad) * s }));
+  const b = blurred.getContext('2d');
+  b.filter = 'blur(' + (gridSize * 0.35 * s) + 'px)';
+  b.drawImage(shape, 0, 0);
+  const o = out.getContext('2d');
+  o.drawImage(shape, 0, 0);
+  o.globalCompositeOperation = 'destination-out';
+  o.drawImage(blurred, 0, 0);
+  // Right at the edge the blurred copy is half there; drawn over itself the edge comes back to full.
+  o.globalCompositeOperation = 'source-over';
+  o.drawImage(out, 0, 0);
+  const m = { canvas: out, x: box.x1 - pad, y: box.y1 - pad, s, cell: gridSize };
+  _glowMasks.set(it.key, m);
+  return m;
+}
+
+const _glowScratch = [];
+function _glowLayer(i, W, H) {
+  let k = _glowScratch[i];
+  if (!k) { k = document.createElement('canvas'); _glowScratch[i] = k; }
+  if (k.width < W || k.height < H) { k.width = Math.max(k.width, W); k.height = Math.max(k.height, H); }
+  const c = k.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.clearRect(0, 0, W, H);
+  return k;
+}
+
+function _drawEdgeSquares(ctx, vp, it) {
+  const scale = vp.dstW / vp.srcW;
+  const box = _glowBox(it.shapes);
+  // ⚠ HAND drawGridLines THIS SHAPE'S BOX, never the whole viewport. It walks every cell in the region it is
+  // given, and a hex cell is a six-point subpath, so the viewport would rebuild the entire grid once per effect.
+  const mx1 = Math.max(box.x1, vp.srcX), my1 = Math.max(box.y1, vp.srcY);
+  const mx2 = Math.min(box.x2, vp.srcX + vp.srcW), my2 = Math.min(box.y2, vp.srcY + vp.srcH);
+  if (mx2 <= mx1 || my2 <= my1) return;
+  const ox = vp.dstX + (mx1 - vp.srcX) * scale, oy = vp.dstY + (my1 - vp.srcY) * scale;
+  const W = Math.ceil((mx2 - mx1) * scale) + 2, H = Math.ceil((my2 - my1) * scale) + 2;
+  const mask = _glowMask(it, box);
+  const lines = _glowLayer(0, W, H), l = lines.getContext('2d');
+  drawGridLines(l, { ...vp, srcX: mx1, srcY: my1, srcW: mx2 - mx1, srcH: my2 - my1, dstX: 0, dstY: 0,
+    dstW: (mx2 - mx1) * scale, dstH: (my2 - my1) * scale }, { color: it.color, alpha: 1, widthMul: 1.8 });
+  l.globalCompositeOperation = 'destination-in';
+  l.drawImage(mask.canvas, (mask.x - mx1) * scale, (mask.y - my1) * scale,
+    mask.canvas.width / mask.s * scale, mask.canvas.height / mask.s * scale);
+  // The crisp outline, so the lines stop at the edge the effect draws and not at the mask's softer copy.
+  const clip = _glowLayer(1, W, H), c = clip.getContext('2d');
+  _fillShapes(c, it.shapes, v => ({ x: (v.x - mx1) * scale, y: (v.y - my1) * scale }));
+  l.drawImage(clip, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.7;
+  ctx.drawImage(lines, 0, 0, W, H, ox, oy, W, H);
+  ctx.restore();
 }
 
 function renderPlayerGrid(vp) {

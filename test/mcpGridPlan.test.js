@@ -123,7 +123,17 @@ describe('materials and finding one', () => {
     assert.deepEqual(mcpFxMaterial('Difficult terrain'), { material: 'terrain' });
     assert.deepEqual(mcpFxMaterial('area'), { material: 'area' });
     assert.match(mcpFxMaterial('light').error, /create_light/);
-    assert.match(mcpFxMaterial('ice').error, /Fire, Acid/);
+    assert.match(mcpFxMaterial('lava').error, /Fire, Acid/);
+  });
+  it('names Ice, Web, Grease and Darkness by key, by label and by their Russian names', () => {
+    const want = { ice: ['Ice', 'Лёд'], web: ['Web', 'Паутина'], grease: ['Grease', 'Жир'], darkness: ['Darkness', 'Тьма'] };
+    for (const [key, [en, ru]] of Object.entries(want)) {
+      assert.deepEqual(mcpFxMaterial(key), { material: key });
+      assert.deepEqual(mcpFxMaterial(' ' + en + ' '), { material: key });
+      assert.deepEqual(mcpFxMaterial(ru), { material: key });
+    }
+    assert.deepEqual(mcpFxMaterial('огонь'), { material: 'fire' });
+    assert.match(mcpFxMaterial('lava').error, /Ice, Web, Grease, Darkness/);
   });
   const fx = [{ material: 'fire' }, { material: 'acid' }, { material: 'fire' }, {}];
   it('finds by index from 1', () => {

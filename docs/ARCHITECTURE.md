@@ -538,6 +538,17 @@ mark there for about two and a half seconds, sized to the window and not the map
 drag still pans, as does a two-finger scroll on a touchpad, where a pinch zooms. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
 only while one is showing, and nothing of it is stored.
 
+### Effects
+
+Effect looks beyond flames are one-pass kinds, one file each in `src/render/effectKinds/`, each adding itself to
+`_FX_KIND_FRAG`. The shared prefix in `effectShaderKinds.js` gives them `uHub` (the web hub: the outer ring's area centroid
+moved up 8% of its height), `uInR` (the shape's depth, from `ringsInRadius` in `shapeHit.js`) and `fit(ref, lo)`, which
+scales edge work down on thin shapes. The palette renders sections from each material's `group` (Ground, Cloud, Marks; Light
+is a mark). Every effect and light relights the grid at its edge: `grid.js` builds a falloff mask per shape and cell size
+(the shape less its blurred copy) and draws the lines in the material's colour, and `lights.js` marks the grid dirty.
+`shapeSelect.js` outlines a held effect in its material's colour. Claude's effect tools take a material by key or by its
+English or Russian label.
+
 ### Lights
 
 A light is a polygon, the same record as a room or an effect, in a list of its own. Lights are edited

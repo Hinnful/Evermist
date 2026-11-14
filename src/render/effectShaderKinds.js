@@ -2,7 +2,8 @@
 // effectShaderKinds.js — the one-pass fragment shaders of the effects that are not flames: 'ward'
 // (Area: a bezel of edge lines, crawling ticks and glyphs) and 'rough' (Difficult terrain: heaving
 // relief under crawling shadow pools). Ported from `.claude/private/design/item-187/materials-lab-5.html`,
-// modes 0 and 3, which the DM picked.
+// modes 0 and 3, which the DM picked. The shared prefix here also serves the kinds in render/effectKinds/,
+// one file each, which add themselves to _FX_KIND_FRAG.
 //
 // ⚠ THE LAB DREW IN PIXELS WITH A 36PX CELL. Every length is divided by k = uG/36 on the way in, so
 // the look keeps its size against the map grid and the prototype's numbers stay as picked.
@@ -15,6 +16,8 @@ uniform float uBreak[${MAX_FX_VERTS}];
 uniform int uCount;
 uniform float uTime, uG, uPerim;
 uniform vec3 uTint;
+uniform vec2 uHub;
+uniform float uInR;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
@@ -55,6 +58,23 @@ vec4 col = vec4(0.);
 void over(vec3 c, float a){ a = clamp(a, 0., 1.); col = col*(1.-a) + vec4(c*a, a); }
 float band(float x, float w){ return 1. - smoothstep(w - .7, w + .7, abs(x)); }
 float segD(vec2 p, vec2 a, vec2 b, out float h){ vec2 pa = p - a, ba = b - a; h = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); return length(pa - ba*h); }
+
+// The lab's own units: K map units to one lab pixel, set by main. sdLab and per are in lab pixels.
+float K = 1.;
+float sdLab(vec2 p, out float per){ float d = sdPolyP(p * K, per) / K; per /= K; return d; }
+float sdLab(vec2 p){ float q; return sdLab(p, q); }
+// The shape's depth at its deepest (uInR, effects.js) over ref lab pixels, never below lo: a look scales its edge
+// work by it, or a 1 ft wall or ring shows nothing but its rim.
+float fit(float ref, float lo){ return clamp(uInR / K / ref, lo, 1.); }
+vec2 h22(vec2 p){ return vec2(hash(p), hash(p + 17.3)); }
+float star(vec2 r, float s){ float a = exp(-abs(r.x)*1.1/s) * exp(-r.y*r.y/(.6*s)); float b = exp(-abs(r.y)*1.1/s) * exp(-r.x*r.x/(.6*s));
+  return max(a, b) + exp(-dot(r, r)/(2.*s)); }
+float sparkle(vec2 p, float t, float cell, float rate){
+  vec2 c = floor(p / cell); float h = hash(c);
+  vec2 sp = (c + .2 + .6*vec2(hash(c + 1.), hash(c + 2.))) * cell;
+  float tw = pow(max(0., sin(t*1.6 + h*40.)), 14.) * step(1. - rate, h);
+  return star(p - sp, 1.) * tw;
+}
 
 // A glowing line with a dark line under it, so it reads on snow and on stone alike.
 void edgeLine(float x, float w, float a, vec3 c){
@@ -126,7 +146,8 @@ void main(){
   float d = sdPolyP(vMap, per) / k;
   if (d > 12.) discard;
   vec3 ink = vec3(.08, .06, .05);
-  float dd = ragged(p, d, 12.); float m = smoothstep(.6, -.6, dd);
+  K = k;
+  float dd = ragged(p, d, 12. * fit(30., .15)); float m = smoothstep(.6, -.6, dd);
   vec3 shade = vec3(.03, .02, .05);
   relief(p, t, vec2(fbm(p * .01 + t * .12), fbm(p * .01 + 5. - t * .1)) * 16., 2.3, m, .9);
   vec2 wq = p * .014 + vec2(fbm(p * .008 + t * .07), fbm(p * .008 + 3. - t * .06)) * 1.8;

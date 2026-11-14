@@ -47,6 +47,7 @@ function lightsChanged() {
   if (!isPlayer) lightPolys = _liveLightPolys();
   _lightsTexDirty = true;
   cursorDirty = true;   // the editing outlines are on the overlay canvas
+  gridDirty = true;     // the grid's relight along the edge (grid.js)
   if (typeof scheduleRender === 'function') scheduleRender();
   if (typeof refreshLightsControlUI === 'function') refreshLightsControlUI();
 }
@@ -86,6 +87,7 @@ function restoreLights(s) {
 function setLightPolys(list) {
   lightPolys = Array.isArray(list) ? list : [];
   _lightsTexDirty = true;
+  gridDirty = true;
   scheduleRender();
 }
 

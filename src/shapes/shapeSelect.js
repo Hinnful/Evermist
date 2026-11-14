@@ -715,8 +715,8 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const holeSel = editing && selectedHoleIndex >= 0 && selectedHoleIndex < holeRings.length
                 ? selectedHoleIndex : -1;
 
-  // The wash is always the fog state's own colour; only the edge and line go gold once held.
-  // `material` tells an effect from a room and never reads as a fourth fog state.
+  // The wash is always the fog state's own colour; once held, a room's edge and line go gold and an effect's or
+  // light's take its own colour. `material` tells an effect from a room and never reads as a fourth fog state.
   const isEffect = !!poly.material || !!poly.light;
   const baseRgb = poly.light ? LIGHT_OUTLINE_RGB : isEffect ? EFFECT_RGB : (POLY_STATE_RGB[poly.mode] || POLY_STATE_RGB.shroud);
   const look = isEffect ? EFFECT_LOOK : (POLY_LOOK[poly.mode] || POLY_LOOK.shroud);
@@ -725,12 +725,12 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   let softRgb = baseRgb, softA = look.edgeA, softW = look.edgeW;
   if (dimmed) { fillA *= POLY_LOOK_DIM.fillMul; lineA = POLY_LOOK_DIM.lineA; softA = 0; }
   if (isSelected) {
-    lineRgb = softRgb = HELD_RGB;
+    lineRgb = softRgb = poly.light ? LIGHT_OUTLINE_RGB : poly.material ? effectEdgeRgb(poly.material) : HELD_RGB;
     lineA = 1; lineW = HELD_LOOK.lineW;
     softA = HELD_LOOK.edgeA; softW = HELD_LOOK.edgeW;
   }
   // Editing goes one step further than held: Figma's own signal for "you are inside this one
-  // now" is the outline turning white, so editing takes the line past gold rather than beside it.
+  // now" is the outline turning white, so editing takes the line past held rather than beside it.
   if (editing) lineRgb = softRgb = EDIT_RGB;
   // A picked hole takes the outline down, so its own ring and hatch are what Delete visibly
   // points at, not the room the hole sits inside.

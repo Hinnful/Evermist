@@ -120,6 +120,18 @@ function _fxQuad(verts, cell) {
   return new Float32Array([loX, loY, hiX, loY, hiX, hiY, loX, hiY]);
 }
 
+// Where a web's spokes meet: the outer ring's area centroid, moved up by 8% of its height.
+function _fxHub(ring) {
+  let a = 0, cx = 0, cy = 0, loY = Infinity, hiY = -Infinity;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length], c = p.x * q.y - q.x * p.y;
+    a += c; cx += (p.x + q.x) * c; cy += (p.y + q.y) * c;
+    if (p.y < loY) loY = p.y; if (p.y > hiY) hiY = p.y;
+  }
+  if (Math.abs(a) < 1e-6) return [ring[0].x, ring[0].y];
+  return [cx / (3 * a), cy / (3 * a) - (hiY - loY) * 0.08];
+}
+
 function _fxGeomKey(e) {
   // Corner radius is part of the shape now, so a rounding change reloads the outline. The material
   // ends the key, or picking Acid for a placed fire keeps its fire uniforms.
@@ -175,6 +187,8 @@ function _loadFxGeometry(inst, e) {
     u.uVerts = inst.verts; u.uBreak = inst.breaks; u.uCount = n;
     u.uPerim = rings[0] ? _ringLength(rings[0]) : 0;
     u.uTint = mat.tint || [1, 1, 1];
+    u.uHub = _fxHub(rings[0] || e.vertices);
+    u.uInR = ringsInRadius(rings);
     inst.geom.getBuffer('aVertexPosition').update(_fxQuad(rings[0] || e.vertices, _gridCell()));
     return;
   }
@@ -208,7 +222,7 @@ function _makeFxInstance(kind) {
     uSpark: 0, uSmoke: 0, uHaze: 0, uCentroid: [0, 0],
     uSparkCol: [0, 0, 0], uSmokeCol: [0, 0, 0], uSteamCol: [0, 0, 0], uSteam: 0, uLiquid: 0,
     uBub: 0, uBubSize: 0, uToon: 0, uCore: 0, uSpill: 0, uFlicker: 0, uScorch: 0, uDrift: 0,
-    uPerim: 0, uTint: [1, 1, 1],
+    uPerim: 0, uTint: [1, 1, 1], uHub: [0, 0], uInR: 1e4,
   });
   // ⚠ EVERY PASS BLENDS NORMALLY. An animated map is a <video> under this canvas on the DM and a
   // sprite inside it on the Player, so ADD only added to the map on the Player: the same effect

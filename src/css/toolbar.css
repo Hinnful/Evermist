@@ -178,6 +178,8 @@
   #mat-grid .mt-tile svg { width: 18px; height: 18px; flex: none; }
   #mat-grid .mt-tile:hover { background: var(--g-field); }
   #mat-grid .mt-tile.on { background: var(--g-pick); }
+  #mat-grid .mt-sec { grid-column: 1 / -1; padding: 9px 8px 4px; color: var(--g-dim); font: 600 10.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+  #mat-grid .mt-sec:first-child { padding-top: 3px; }
   #mat-grid .mt-none { grid-column: 1 / -1; padding: 10px 6px; color: var(--g-dim); font: 500 12px/1 system-ui, -apple-system, sans-serif; }
 
   #ctx-door { gap: 6px; }
