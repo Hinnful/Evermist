@@ -84,7 +84,8 @@ stand-in rather than a better option.
 Everything a DM tracks in a fight, on the DM's screen and never on the Player's. The fight
 table is its first shape: a list of fights prepared ahead and run from one table, a row per
 creature with initiative, name, HP typed as a running sum, AC, conditions and attacks, and a stat
-block per creature. A fight belongs to no scene, so the same one opens wherever it happens, and a place can list it. It holds monsters
+block per creature. The table teaches itself: a Sort button, a dim "-12 damage" / "+5 healing" sample in
+the empty HP field of the first two enemy rows, AC editable in the row, and a side switch on hover. A fight belongs to no scene, so the same one opens wherever it happens, and a place can list it. It holds monsters
 and names the players only so the turn order can be read out; a player's character sheet is the
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
 rounds until something counts turns. The bestiary holds every stat block and is the source the
@@ -102,13 +103,13 @@ overlay breaks the Player's zero-UI rule. A ruler on the DM's own screen is drop
 ### Turn order on the TV · `REOPENED` (2026-11-09, narrows "The VTT line" and "A combat helper on the DM's screen", BACKLOG 290)
 Start fight on the fight table puts the open fight's initiative order on the TV as two sheets, one in the
 bottom-left corner and one in the top-right turned for the far side, each in a pool of haze drawn in the
-map's fog theme. End fight takes it off, and so does the last monster going down, with an Undo; the DM
-has nothing to remember after a fight. Nothing about it is saved, so every start begins with no fight. The order is static: no current-turn marker and no Next turn button, so the DM has
+map's fog theme. Only the DM ends a fight: End fight takes it off, and nothing ends it by itself, as initiative
+without monsters is real (an avalanche, closing walls). Nothing about it is saved, so every start begins with no fight. The order is static: no current-turn marker and no Next turn button, so the DM has
 nothing more to keep up during a fight. Players are named. A monster reads "Monster", in red in every
 fog theme, and monsters that act back to back share one slot with a count ("Monster ×3"). The rest of
 the panel takes the map's fog theme. A monster added to or deleted from the fight shows on the TV at
-once. Every row shows in the fight table's own order, initiative typed or not and monsters at 0 HP
-included, by the DM's call (2026-11-11). The names are 2.7% of the TV's height, never tied to map zoom. It is the one exception
+once. Allies always show; an enemy shows once it has an initiative typed and while above 0 HP, so unmet
+and dead monsters stay off the TV (2026-11-14, reverses the 2026-11-11 call that every row shows). The names are 2.7% of the TV's height, never tied to map zoom. It is the one exception
 to both entries above. Reason: the strongest demand found that crosses the line (seven request boards, a
 +25 Roll20 request for a TV turn tracker, four DM forum sources, 8+ rival products ship it), and the
 physical rival, tent cards, loses because the fight table fills the sheets with no extra work. Tokens and

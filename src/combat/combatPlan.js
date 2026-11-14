@@ -38,6 +38,11 @@ function combatSortByInit(rows) {
     .map(x => x.r);
 }
 
+// Rows already as a sort would leave them: Sort has nothing to do.
+function combatIsSortedByInit(rows) {
+  return combatSortByInit(rows).every((r, i) => r === rows[i]);
+}
+
 function combatAbilityMod(score) {
   const n = parseInt(score, 10);
   if (Number.isNaN(n)) return '';
@@ -193,7 +198,7 @@ function combatSearchBlocks(blocks, query) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
+  module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatIsSortedByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid,
     combatAddEntry, combatRowFromEntry, combatRowIsFresh, combatCleanBlock, combatCleanRow, combatRowHpState, combatSourceName, combatNewBlocks,
     combatSearchBlocks, combatNextName, combatDuplicateRow };

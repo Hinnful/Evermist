@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
+  combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatIsSortedByInit, combatAbilityMod,
 } = require('../src/combat/combatPlan.js');
 
 describe('combatHpSum', () => {
@@ -78,6 +78,24 @@ describe('combatSortByInit', () => {
     const rows = [{ init: '1' }, { init: '2' }];
     combatSortByInit(rows);
     assert.equal(rows[0].init, '1');
+  });
+});
+
+describe('combatIsSortedByInit', () => {
+  const rows = (...inits) => inits.map(init => ({ init: String(init) }));
+  it('says yes for highest first, ties included', () => {
+    assert.equal(combatIsSortedByInit(rows(18, 12, 12, 3)), true);
+  });
+  it('says yes with the rows with no initiative at the bottom', () => {
+    assert.equal(combatIsSortedByInit(rows(18, 3, '', 'x')), true);
+    assert.equal(combatIsSortedByInit(rows('', '')), true);
+    assert.equal(combatIsSortedByInit([]), true);
+  });
+  it('says no when a lower initiative stands above a higher one', () => {
+    assert.equal(combatIsSortedByInit(rows(12, 18)), false);
+  });
+  it('says no when a row with no initiative stands above one with it', () => {
+    assert.equal(combatIsSortedByInit(rows(18, '', 3)), false);
   });
 });
 

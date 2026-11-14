@@ -6,28 +6,39 @@
 // fight's rows the way the table's own writers leave them; Start fight is the fight table's own button.
 //
 //   1. At start the button reads Start fight, not pressed, and the Player window has no panel.
-//   2. After Start fight the button reads End fight, pressed, and the Player draws every row of the open fight in the
-//      table's own order (not sorted by initiative), rows with no initiative and monsters at 0 HP included: allies by
-//      name, enemies back to back as one slot with a count, slots numbered 1, 2, 3.
+//   1b. The fight table's header fits Sort, Start fight, Add creature and Close at the default width, in English and
+//       with the Russian labels, with the fight's name not cut. Measured and noted.
+//   2. After Start fight the button reads End fight, pressed, and the Player draws the open fight in the table's own
+//      order (not sorted by initiative): every ally by name, an enemy only with an initiative and above 0 HP, enemies
+//      back to back as one slot with a count, slots numbered 1, 2, 3.
 //   2b. The Player has Alegreya loaded from the app's own file, and the names were laid out in it, not in the fallback.
 //   3. Names are 2.7% of the Player window's height.
-//   4. A rename in the table reaches the TV within one second, and so do a monster added and a monster deleted.
-//   4b. A monster's line is the word "Monster" with its count, in red whatever the fog theme.
+//   4. A rename in the table reaches the TV within one second, and so do a monster added, a monster deleted, and an
+//      initiative typed for a monster that had none.
+//   4b. A monster's line is the word "Monster", with its count past one, in red whatever the fog theme.
 //   5. The panel follows the map's fog theme: Default, then Blood after a pick on the DM's map. Screenshotted in both.
 //   6. After End fight the button reads Start fight and the panel is gone, its frame loop stopped.
-//   7. Started, the last living monster going to 0 HP ends the fight by itself: the panel leaves the TV and the
-//      button reads Start fight.
-//   8. The undo toast says "All monsters are down. The turn order left the TV." with no trash icon.
-//   9. Undo starts the fight again and the panel is back on the TV with the monster still at 0 HP; the fight stays
-//      started until a monster lives again and goes down.
-//   9b. The toast's × closes it, with no map delete pending, and the fight stays ended.
+//   7. Started, the last living monster going to 0 HP does NOT end the fight: the button still reads End fight, no
+//      toast shows, and the monster leaves the TV while the player stays. Healed, it comes back.
+//   8. Sort is lit while the rows are out of initiative order; a click puts them in order, and it greys with the
+//      tooltip "The rows are already in initiative order".
+//   9. A row's Enemy | Ally switch lights its side, and a click on the other half switches it. The first two enemy
+//      rows with an empty HP field show the samples "-12 damage" and "+5 healing", and no other row does. A
+//      stat-block AC shows in the table, editable, and a new number lands in that row's copy and lights its Save.
 //   10. With two maps the panel shows once, in the shell, and in neither half.
+//   11. The fight table on the DM screen, in Russian, screenshotted for the DM's eye: rows out of order with Sort lit
+//       and the HP samples, then after Sort with Sort greyed, then a hovered enemy row showing its actions.
+//   11b. A hovered row's actions are exactly the side switch (a devil and an angel), Duplicate and ⋯. A real click on
+//       ⋯ opens the row's menu with Open stat block and Delete, the actions staying up; a second click closes it.
+//       Neither that click nor one on Duplicate lights the Attacks cell's focus ring, which reads as an edit.
+//   11c. Three real clicks at one spot, measured once before the first, on Duplicate make three copies below the
+//       row, so the button is back under the pointer after each. A real click on an enemy row's angel makes it an ally.
 
 const path = require('path');
 const lib = require('../lib');
 
 // Селестия sits first though her initiative is lower, so a sorted list would put Алистер first.
-// The ghoul at 0 HP, the ghost with no initiative and the last ghost stand back to back, so they are one slot ×3.
+// The ghoul at 0 HP and the ghost with no initiative stay off the TV, so the last ghost is a slot of its own.
 const ROWS = [
   { id: 906, init: '9', name: 'Селестия', side: 'ally', hp: '', ac: '', conds: [] },
   { id: 901, init: '18', name: 'Алистер', side: 'ally', hp: '', ac: '', conds: [] },
@@ -40,7 +51,7 @@ const ROWS = [
 ];
 const WANT = [
   { n: 1, name: 'Селестия', count: 0 }, { n: 2, name: 'Алистер', count: 0 }, { n: 3, name: null, count: 2 },
-  { n: 4, name: 'Вотан', count: 0 }, { n: 5, name: null, count: 3 },
+  { n: 4, name: 'Вотан', count: 0 }, { n: 5, name: null, count: 1 },
 ];
 const DRAWN = 'JSON.stringify(_inp && _inp.drawn)';
 
@@ -58,11 +69,26 @@ module.exports = async function initiativeTv(rig) {
     '1: the button does not read Start fight at start: ' + JSON.stringify(start));
   rig.check(await player.evaluate(`!document.getElementById('initiative-tv')`), '1: the Player has a panel before Start fight was pressed');
 
-  // ── 2 ──
+  // ── 1b ──
   // The ghoul's stat block holds its 9 max HP, and the row's "- 9" takes it to 0.
   await dm.evaluate(`cbState.rows = ${JSON.stringify(ROWS)};
     cbState.rows.find(r => r.id === 905).sb = Object.assign(combatBlankBlock('', 'Гуль'), { hp: '9' });
-    cbSetOpen(true); document.getElementById('cb-tv').click(); 0`);
+    cbSetOpen(true); 0`);
+  const HEAD = `(() => { const h = document.querySelector('#cb-fight .cb-head'), nm = document.querySelector('#cb-fightpick .nm');
+    return { head: Math.round(h.getBoundingClientRect().width), over: h.scrollWidth - h.clientWidth, name: nm.textContent, cut: nm.scrollWidth - nm.clientWidth,
+      btns: ['cb-sort', 'cb-tv', 'cb-add'].map(id => Math.round(document.getElementById(id).getBoundingClientRect().width)) }; })()`;
+  const headEn = await dm.evaluate(HEAD);
+  const RU_LABELS = `[['cb-sort', 'Sort'], ['cb-tv', 'Start fight'], ['cb-add', 'Add creature']].forEach(([id, k]) => {
+    const sp = document.querySelector('#' + id + ' span'); sp.dataset.en = sp.textContent; sp.textContent = RU[k]; }); 0`;
+  await dm.evaluate(RU_LABELS);
+  const headRu = await dm.evaluate(HEAD);
+  await dm.evaluate(`document.querySelectorAll('#cb-fight .cb-head [data-en]').forEach(sp => { sp.textContent = sp.dataset.en; delete sp.dataset.en; }); 0`);
+  rig.note('1b: header English ' + JSON.stringify(headEn) + ', Russian ' + JSON.stringify(headRu));
+  rig.check(headEn.over <= 0 && headEn.cut <= 0 && headRu.over <= 0 && headRu.cut <= 0,
+    '1b: the header does not fit at the default width: English ' + JSON.stringify(headEn) + ', Russian ' + JSON.stringify(headRu));
+
+  // ── 2 ──
+  await dm.evaluate(`document.getElementById('cb-tv').click(); 0`);
   const started = await dm.evaluate(BUTTON);
   rig.check(started.pressed === 'true' && started.text === 'End fight' && started.icon === 'i-stop', '2: the button does not read End fight: ' + JSON.stringify(started));
   await lib.settle(player, `${DRAWN} === ${JSON.stringify(JSON.stringify(WANT))}`, 10000);
@@ -98,18 +124,23 @@ module.exports = async function initiativeTv(rig) {
 
   const added = Date.now();
   await dm.evaluate(`cbState.rows.push({ id: 920, init: '11', name: 'Гуль 2', side: 'enemy', hp: '', ac: '', conds: [] }); 0`);
-  const sawAdd = await lib.poll(async () => (await player.evaluate(`_inp.drawn.length === 5 && _inp.drawn[4].count === 4`)) || null, 3000, 25);
+  const sawAdd = await lib.poll(async () => (await player.evaluate(`_inp.drawn.length === 5 && _inp.drawn[4].count === 2`)) || null, 3000, 25);
   rig.check(sawAdd && Date.now() - added <= 1000, '4: an added monster did not reach the TV within a second: ' + await player.evaluate(DRAWN));
   const removed = Date.now();
   await dm.evaluate(`cbState.rows = cbState.rows.filter(r => r.id !== 920 && r.id !== 908); 0`);
-  const sawDel = await lib.poll(async () => (await player.evaluate(`_inp.drawn.length === 5 && _inp.drawn[4].count === 2`)) || null, 3000, 25);
+  const sawDel = await lib.poll(async () => (await player.evaluate(`_inp.drawn.length === 4 && _inp.drawn[3].name === 'Вотан Рыжий'`)) || null, 3000, 25);
   rig.check(sawDel && Date.now() - removed <= 1000, '4: deleted monsters did not leave the TV within a second: ' + await player.evaluate(DRAWN));
-  await dm.evaluate(`cbState.rows.push(${JSON.stringify(ROWS.find(r => r.id === 908))}); 0`);
+  // The ghost with no initiative gets one and joins the TV; taking it away again takes it off.
+  const typed = Date.now();
+  await dm.evaluate(`cbState.rows.find(r => r.id === 907).init = '7'; 0`);
+  const sawInit = await lib.poll(async () => (await player.evaluate(`_inp.drawn.length === 5 && _inp.drawn[4].count === 1`)) || null, 3000, 25);
+  rig.check(sawInit && Date.now() - typed <= 1000, '4: a monster given an initiative did not reach the TV within a second: ' + await player.evaluate(DRAWN));
+  await dm.evaluate(`cbState.rows.find(r => r.id === 907).init = ''; cbState.rows.push(${JSON.stringify(ROWS.find(r => r.id === 908))}); 0`);
   await lib.settle(player, `${DRAWN} === ${JSON.stringify(JSON.stringify(WANT.map(w => w.name === 'Вотан' ? Object.assign({}, w, { name: 'Вотан Рыжий' }) : w)))}`, 5000);
 
   // ── 4b ──
   const word = await player.evaluate(`JSON.stringify(_inp.slots.filter(s => s.name == null).map(s => _inpMonsterText(s)))`);
-  rig.check(word === JSON.stringify(['Monster ×2', 'Monster ×3']), '4b: the monster lines read ' + word);
+  rig.check(word === JSON.stringify(['Monster ×2', 'Monster']), '4b: the monster lines read ' + word);
   // Red pixels on each line as drawn: a monster line is mostly red, a player's name has none.
   const RED_ON = (theme) => `(() => {
     const cp = _inp.copies['${theme}'], c = cp && cp.text; if (!c) return null;
@@ -155,41 +186,50 @@ module.exports = async function initiativeTv(rig) {
     cbState.rows.find(r => r.id === 930).sb = Object.assign(combatBlankBlock('', 'Гуль'), { hp: '7' });
     document.getElementById('cb-tv').click(); 0`);
   await lib.settle(player, `!!_inp.drawn && _inp.drawn.length === 2`, 10000);
+  rig.check(await player.evaluate(DRAWN) === JSON.stringify([WANT[0], { n: 2, name: null, count: 1 }]), '7: the fight did not start with the player and the monster: ' + await player.evaluate(DRAWN));
   await dm.evaluate(`cbState.rows.find(r => r.id === 930).hp = '- 7'; 0`);
-  await lib.settle(dm, `!_itvOn`, 3000);
+  await lib.settle(player, `!!_inp.drawn && _inp.drawn.length === 1`, 5000);
+  await lib.hold(1000, 'four ticks of the clock with the last monster down, long enough for the fight to end by itself');
+  const kept = await dm.evaluate(BUTTON);
+  rig.check(kept.on === true && kept.pressed === 'true' && kept.text === 'End fight', '7: the fight ended when the last monster went down: ' + JSON.stringify(kept));
+  rig.check(await dm.evaluate(`document.getElementById('scene-undo-toast').style.display === 'none'`), '7: a toast showed when the last monster went down');
+  rig.check(await player.evaluate(DRAWN) === JSON.stringify([WANT[0]]), '7: the TV does not show the player alone with the monster down: ' + await player.evaluate(DRAWN));
+  await dm.evaluate(`cbState.rows.find(r => r.id === 930).hp = ''; 0`);
+  await lib.settle(player, `!!_inp.drawn && _inp.drawn.length === 2`, 5000);
+  rig.check(await player.evaluate(DRAWN) === JSON.stringify([WANT[0], { n: 2, name: null, count: 1 }]), '7: the healed monster did not come back to the TV: ' + await player.evaluate(DRAWN));
+  await dm.evaluate(`document.getElementById('cb-tv').click(); 0`);
   await lib.settle(player, `_inp.slots === null`, 5000);
-  const auto = await dm.evaluate(BUTTON);
-  rig.check(auto.on === false && auto.pressed === 'false' && auto.text === 'Start fight', '7: the fight did not end by itself: ' + JSON.stringify(auto));
-  rig.check(await player.evaluate(`_inp.slots === null && _inp.canvas.hidden`), '7: the turn order is still on the TV after the last monster went down');
 
   // ── 8 ──
-  const toast = await dm.evaluate(`(() => { const t = document.getElementById('scene-undo-toast');
-    return { shown: t.style.display !== 'none' && t.offsetParent !== null, msg: t.querySelector('.undo-msg').textContent,
-      trash: getComputedStyle(t.querySelector('.i-trash')).display }; })()`);
-  rig.check(toast.shown && toast.msg === 'All monsters are down. The turn order left the TV.', '8: the toast did not say the fight ended: ' + JSON.stringify(toast));
-  rig.check(toast.trash === 'none', '8: the toast shows the trash icon: ' + JSON.stringify(toast));
+  const SORT = `(() => { const b = document.getElementById('cb-sort');
+    return { lit: b.classList.contains('lit'), off: b.getAttribute('aria-disabled'), title: b.title, ids: cbState.rows.map(r => r.id) }; })()`;
+  await dm.evaluate(`cbState.rows = ${JSON.stringify(ROWS)}; cbRender(); 0`);
+  const unsorted = await dm.evaluate(SORT);
+  rig.check(unsorted.lit && unsorted.off === 'false' && unsorted.title === 'Sort by initiative', '8: Sort is not lit over rows out of order: ' + JSON.stringify(unsorted));
+  await dm.evaluate(`document.getElementById('cb-sort').click(); 0`);
+  const sorted = await dm.evaluate(SORT);
+  rig.check(JSON.stringify(sorted.ids) === JSON.stringify([901, 902, 903, 904, 905, 906, 908, 907]), '8: Sort did not put the rows in initiative order: ' + JSON.stringify(sorted.ids));
+  rig.check(!sorted.lit && sorted.off === 'true' && sorted.title === 'The rows are already in initiative order', '8: Sort did not grey once the rows were in order: ' + JSON.stringify(sorted));
 
   // ── 9 ──
-  await dm.evaluate(`document.querySelector('#scene-undo-toast .undo-btn').click(); 0`);
-  await lib.settle(dm, `_itvOn`, 5000);
-  await lib.settle(player, `!!_inp.drawn && _inp.drawn.length === 2`, 5000);
-  const back = await dm.evaluate(BUTTON);
-  rig.check(back.on === true && back.text === 'End fight', '9: Undo did not start the fight again: ' + JSON.stringify(back));
-  rig.check(await player.evaluate(`JSON.stringify(_inp.drawn)`) === JSON.stringify([WANT[0], { n: 2, name: null, count: 1 }]), '9: Undo did not put the turn order back, the downed monster in its place: ' + await player.evaluate(DRAWN));
-  await lib.hold(1000, 'four ticks of the clock with the monster still down, long enough to end it again');
-  rig.check(await dm.evaluate(`_itvOn`), '9: the fight ended again with no monster coming back to life');
-  await dm.evaluate(`cbState.rows.find(r => r.id === 930).hp = ''; 0`);
-  await lib.settle(dm, `!!_itvLiving && _itvLiving.living === 1`, 5000);
-  await dm.evaluate(`cbState.rows.find(r => r.id === 930).hp = '- 7'; 0`);
-  await lib.settle(dm, `!_itvOn`, 3000);
-  rig.check(await dm.evaluate(`!_itvOn`), '9: the monster back to life and down again did not end the fight');
-
-  // ── 9b ──
-  await lib.settle(dm, `document.getElementById('scene-undo-toast').style.display !== 'none'`, 3000);
-  await dm.evaluate(`document.querySelector('#scene-undo-toast .undo-x').click(); 0`);
-  await lib.settle(dm, `document.getElementById('scene-undo-toast').style.display === 'none'`, 2000);
-  const closed = await dm.evaluate(`({ shown: document.getElementById('scene-undo-toast').style.display !== 'none', on: _itvOn })`);
-  rig.check(!closed.shown && !closed.on, "9b: the toast's × did not close it: " + JSON.stringify(closed));
+  const SIDE = `[...document.querySelectorAll('#cb-list .cb-row[data-id="902"] .cb-side-switch .cp-segtab.active')].map(b => b.dataset.side).join()`;
+  rig.check(await dm.evaluate(SIDE) === 'enemy', '9: the enemy row does not light Enemy: ' + await dm.evaluate(SIDE));
+  await dm.evaluate(`document.querySelector('#cb-list .cb-row[data-id="902"] .cb-side-switch [data-side="ally"]').click(); 0`);
+  const switched = await dm.evaluate(`({ side: cbState.rows.find(r => r.id === 902).side, lit: ${SIDE} })`);
+  rig.check(switched.side === 'ally' && switched.lit === 'ally', '9: a click on Ally did not switch the row: ' + JSON.stringify(switched));
+  // The enemies in table order are now 903, 905 (typed HP), 908, 907 (no max HP): the samples sit on 903 and 908.
+  await dm.evaluate(`for (const id of [903, 908]) cbState.rows.find(r => r.id === id).sb = Object.assign(combatBlankBlock('', 'Призрак'), { hp: '30' }); cbRender(); 0`);
+  const samples = await dm.evaluate(`JSON.stringify([...document.querySelectorAll('#cb-list .cb-row')].map(el => [Number(el.dataset.id), el.querySelector('[data-f="hp"]').placeholder]).filter(x => x[1]))`);
+  rig.check(samples === JSON.stringify([[903, '-12 damage'], [908, '+5 healing']]), '9: the HP samples are not on the first two empty enemy rows: ' + samples);
+  await dm.evaluate(`Object.assign(cbState.rows.find(r => r.id === 903).sb, { ac: '15 (natural armor)' }); cbRender(); 0`);
+  const AC = `document.querySelector('#cb-list .cb-row[data-id="903"] [data-f="ac"]')`;
+  const acBefore = await dm.evaluate(`({ value: ${AC}.value, readonly: ${AC}.readOnly, bold: getComputedStyle(${AC}).fontWeight })`);
+  rig.check(acBefore.value === '15' && !acBefore.readonly && Number(acBefore.bold) >= 600, '9: the stat-block AC does not show, editable and bold: ' + JSON.stringify(acBefore));
+  await dm.evaluate(`cbOpenStat(cbState.rows.find(r => r.id === 903)); const i = ${AC}; i.value = '12'; i.dispatchEvent(new Event('input', { bubbles: true })); 0`);
+  const acAfter = await dm.evaluate(`(() => { const r = cbState.rows.find(r => r.id === 903), save = document.querySelector('#cb-stat [data-save]');
+    return { sb: r.sb.ac, changed: r.sbChanged, save: !save.disabled, bestiary: Object.values(cbState.blocks).some(b => /^12(?!\d)/.test(b.ac || '')) }; })()`);
+  rig.check(acAfter.sb === '12 (natural armor)' && acAfter.changed && acAfter.save && !acAfter.bestiary, '9: a new AC did not land in the row\'s copy alone: ' + JSON.stringify(acAfter));
+  await dm.evaluate(`cbCloseStat(); 0`);
 
   // ── 10 ──
   await lib.step(rig, '10: two maps', async () => {
@@ -205,5 +245,84 @@ module.exports = async function initiativeTv(rig) {
     await dm.evaluate(`document.getElementById('cb-tv').click(); 0`);
     await lib.settle(half, `${shell}.hidden`, 5000);
     rig.check(await half.evaluate(`${shell}.hidden`), '10: the shell kept the panel after End fight');
+  });
+
+  // ── 11 ──
+  await lib.step(rig, '11: the table in Russian', async () => {
+    const ru = await lib.inRussian(rig);
+    const foe = (id, init, name, hp, ac, typed) => ({ id, init, name, side: 'enemy', hp: typed || '', ac, conds: [],
+      sb: { hp, ac } });
+    const rows = [foe(951, '13', 'Огр', '59', '11'), foe(952, '12', 'Гоблин 1', '7', '15'),
+      { id: 953, init: '18', name: 'Алистер', side: 'ally', hp: '', ac: '', conds: [] }, foe(954, '9', 'Волк', '11', '13', '- 4'),
+      { id: 955, init: '15', name: 'Вотан', side: 'ally', hp: '', ac: '', conds: [] }];
+    await ru.evaluate(`cbState.rows = ${JSON.stringify(rows)}.map(r => (r.sb = Object.assign(combatBlankBlock('', r.name), r.sb || {}), r)); cbSetOpen(true); cbRender(); 0`);
+    await lib.settle(ru, `document.getElementById('cb-sort').textContent.includes('Сортировать')`, 5000);
+    const clip = async () => ru.evaluate(`(() => { const r = document.getElementById('cb-fight').getBoundingClientRect();
+      return { x: Math.max(0, r.left), y: Math.max(0, r.top), width: Math.min(r.width, innerWidth - Math.max(0, r.left)), height: r.height }; })()`);
+    const shot = async name => { const f = path.join(rig.outDir, name); await ru.screenshot(f, await clip()); rig.note('11: ' + f); };
+    rig.check(await ru.evaluate(`document.getElementById('cb-sort').classList.contains('lit')`), '11: Sort is not lit over rows out of order');
+    await shot('fight-table-a-unsorted.png');
+    await ru.evaluate(`document.getElementById('cb-sort').click(); 0`);
+    await lib.settle(ru, `document.getElementById('cb-sort').getAttribute('aria-disabled') === 'true'`, 3000);
+    await lib.settle(ru, `![...document.querySelectorAll('#cb-list .cb-row.moved')].some(el => el.getAnimations().length)`, 3000);
+    await shot('fight-table-b-sorted.png');
+    const at = await ru.evaluate(`(() => { const r = document.querySelector('#cb-list .cb-row[data-id="952"] .cb-cell.name').getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+    await ru.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y, button: 'none' });
+    await lib.settle(ru, `getComputedStyle(document.querySelector('#cb-list .cb-row[data-id="952"] .cb-acts')).display === 'flex'`, 3000);
+    rig.check(await ru.evaluate(`getComputedStyle(document.querySelector('#cb-list .cb-row[data-id="952"] .cb-acts')).display === 'flex'`), '11: the hovered row does not show its actions');
+    await shot('fight-table-c-hover.png');
+
+    // ── 11b ──
+    const ACTS = `document.querySelector('#cb-list .cb-row[data-id="952"] .cb-acts')`;
+    const acts = await ru.evaluate(`[...${ACTS}.children].map(el => el.dataset.b || el.className + ':' +
+      [...el.children].map(h => h.dataset.side + '/' + h.querySelector('svg').getAttribute('class') + (h.classList.contains('active') ? '*' : '')).join())`);
+    rig.check(JSON.stringify(acts) === JSON.stringify(['cp-tabs cb-side-switch:enemy/i-devil*,ally/i-angel', 'dup', 'more']),
+      '11b: the hovered row\'s actions are not the switch, Duplicate and ⋯: ' + JSON.stringify(acts));
+    const centre = sel => ru.evaluate(`(() => {
+      const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+    const click = async p => {
+      await ru.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, button: 'none' });
+      await ru.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'left', clickCount: 1 });
+      await ru.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', clickCount: 1 });
+    };
+    const more = await centre('#cb-list .cb-row[data-id="952"] [data-b="more"]');
+    await click(more);
+    await lib.settle(ru, `!!document.getElementById('cb-menu')`, 3000);
+    const menu = await ru.evaluate(`(() => { const m = document.getElementById('cb-menu'), has = k => !!m && [...m.querySelectorAll('[data-i]')].some(d => d.textContent.includes(RU[k] || k));
+      return { open: !!m, stat: has('Open stat block'), del: has('Delete'), shown: getComputedStyle(${ACTS}).display, owner: document.querySelector('#cb-list .cb-row[data-id="952"] [data-b="more"]').classList.contains('open') }; })()`);
+    rig.check(menu.open && menu.stat && menu.del && menu.shown === 'flex' && menu.owner, '11b: ⋯ did not open the row\'s menu with Open stat block and Delete: ' + JSON.stringify(menu));
+    const RING = `getComputedStyle(document.querySelector('#cb-list .cb-row[data-id="952"] .cb-cell.atk')).boxShadow`;
+    const ringMore = await ru.evaluate(RING);
+    // What the ring reads as with a button focused, so the check below can tell it apart from no ring.
+    const ringForced = await ru.evaluate(`(() => { const b = document.querySelector('#cb-list .cb-row[data-id="952"] [data-b="dup"]'), a = document.activeElement;
+      b.focus(); const v = ${RING}; b.blur(); if (a && a.focus) a.focus(); return v; })()`);
+    rig.note('11b: Attacks cell box-shadow after a click on ⋯: ' + ringMore + '; with a button focused: ' + ringForced);
+    rig.check(ringForced !== 'none' && ringMore === 'none', '11b: a click on ⋯ lit the Attacks cell\'s focus ring: ' + ringMore);
+    await shot('fight-table-d-menu.png');
+    await click(more);
+    await lib.hold(200, 'a second click on ⋯ has to close the menu, not reopen it');
+    rig.check(await ru.evaluate(`!document.getElementById('cb-menu')`), '11b: a second click on ⋯ did not close the menu');
+
+    // ── 11c ──
+    const before = await ru.evaluate(`cbState.rows.map(r => r.id)`);
+    const dup = await centre('#cb-list .cb-row[data-id="952"] [data-b="dup"]');
+    for (let i = 1; i <= 3; i++) {
+      await click(dup);
+      await lib.settle(ru, `cbState.rows.length === ${before.length + i}`, 3000);
+    }
+    const ringDup = await ru.evaluate(RING);
+    rig.check(ringDup === 'none', '11c: a click on Duplicate lit the Attacks cell\'s focus ring: ' + ringDup);
+    const after = await ru.evaluate(`cbState.rows.map(r => r.id)`), at952 = after.indexOf(952);
+    const copies = after.filter(id => !before.includes(id));
+    rig.check(copies.length === 3 && JSON.stringify(after.slice(at952 + 1, at952 + 4).sort()) === JSON.stringify(copies.slice().sort()),
+      '11c: three clicks on Duplicate did not make three copies below the row: ' + JSON.stringify({ before, after }));
+    await ru.send('Input.dispatchMouseEvent', Object.assign({ type: 'mouseMoved', button: 'none' }, await centre('#cb-list .cb-row[data-id="951"] .cb-cell.name')));
+    await lib.settle(ru, `getComputedStyle(document.querySelector('#cb-list .cb-row[data-id="951"] .cb-acts')).display === 'flex'`, 3000);
+    const angel = await centre('#cb-list .cb-row[data-id="951"] .cb-side-switch [data-side="ally"]');
+    await click(angel);
+    await lib.settle(ru, `cbState.rows.find(r => r.id === 951).side === 'ally'`, 3000);
+    rig.check(await ru.evaluate(`cbState.rows.find(r => r.id === 951).side`) === 'ally', '11c: a click on the angel did not make the enemy row an ally');
+    rig.byEye('11: the fight table reads well in Russian: Sort lit and greyed, the HP samples, the devil | angel switch, Duplicate and ⋯, the ⋯ menu');
   });
 };

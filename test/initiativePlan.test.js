@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { initiativeSlots, initiativeColumns, initiativeLivingMonsters, initiativeFightOver } = require('../src/combat/initiativePlan.js');
+const { initiativeSlots, initiativeColumns } = require('../src/combat/initiativePlan.js');
 
 const ally = (name, init, hp) => ({ name, init: String(init), side: 'ally', hp: hp || '' });
 const foe = (name, init, hp, max) => ({ name, init: String(init), side: 'enemy', hp: hp || '', sb: max ? { hp: String(max) } : undefined });
@@ -39,14 +39,19 @@ describe('initiativeSlots', () => {
     assert.deepEqual(s.map(x => x.count || x.name), [2, 'X', 2, 'Y']);
   });
 
-  it('shows a row with no initiative, in its place', () => {
-    const s = initiativeSlots([ally('X', ''), ally('Y', 7), foe('a', ' '), foe('b', 'abc')]);
-    assert.deepEqual(s, [{ n: 1, name: 'X' }, { n: 2, name: 'Y' }, { n: 3, count: 2 }]);
+  it('leaves off an enemy with no initiative, and keeps an ally with none in its place', () => {
+    const s = initiativeSlots([ally('X', ''), ally('Y', 7), foe('a', ' '), foe('b', 'abc'), foe('c', 4)]);
+    assert.deepEqual(s, [{ n: 1, name: 'X' }, { n: 2, name: 'Y' }, { n: 3, count: 1 }]);
   });
 
-  it('shows an enemy at 0 HP or below', () => {
-    const s = initiativeSlots([foe('a', 20, '- 7', 7), ally('X', 19), foe('b', 18, '12 - 12')]);
-    assert.deepEqual(s, [{ n: 1, count: 1 }, { n: 2, name: 'X' }, { n: 3, count: 1 }]);
+  it('leaves off an enemy at 0 HP or below', () => {
+    const s = initiativeSlots([foe('a', 20, '- 7', 7), ally('X', 19), foe('b', 18, '12 - 12'), foe('c', 17, '- 3', 7)]);
+    assert.deepEqual(s, [{ n: 1, name: 'X' }, { n: 2, count: 1 }]);
+  });
+
+  it('merges the enemies left either side of one left off', () => {
+    const s = initiativeSlots([foe('a', 20), foe('b', ''), foe('c', 18, '- 9', 9), foe('d', 15)]);
+    assert.deepEqual(s, [{ n: 1, count: 2 }]);
   });
 
   it('keeps an ally at 0 HP', () => {
@@ -80,44 +85,5 @@ describe('initiativeColumns', () => {
     assert.deepEqual(initiativeColumns(11), { cols: 2, per: 6 });
     assert.deepEqual(initiativeColumns(13), { cols: 2, per: 7 });
     assert.deepEqual(initiativeColumns(21), { cols: 3, per: 7 });
-  });
-});
-
-describe('initiativeFightOver', () => {
-  const at = (rows, fight) => ({ fight: fight || 'f1', living: initiativeLivingMonsters(rows) });
-
-  it('counts the monsters still standing, initiative or not', () => {
-    assert.equal(initiativeLivingMonsters([foe('a', 20), foe('b', 19, '- 7', 7), foe('c', ''), ally('X', 10), { name: 'W', init: '4' }]), 3);
-    assert.equal(initiativeLivingMonsters(undefined), 0);
-  });
-
-  it('ends when the last monster goes down', () => {
-    assert.equal(initiativeFightOver(at([foe('a', 20, '', 7), ally('X', 9)]), at([foe('a', 20, '- 7', 7), ally('X', 9)])), true);
-  });
-
-  it('ends when the last monster is deleted', () => {
-    assert.equal(initiativeFightOver(at([foe('a', 20), ally('X', 9)]), at([ally('X', 9)])), true);
-  });
-
-  it('never ends a fight that had no monster yet', () => {
-    assert.equal(initiativeFightOver(at([]), at([])), false);
-    assert.equal(initiativeFightOver(at([ally('X', 9)]), at([ally('X', 9), foe('a', '')])), false);
-  });
-
-  it('does not end while a monster is left', () => {
-    assert.equal(initiativeFightOver(at([foe('a', 20), foe('b', 19)]), at([foe('a', 20), foe('b', 19, '- 9', 9)])), false);
-  });
-
-  it('never ends on a change to the allies alone', () => {
-    assert.equal(initiativeFightOver(at([ally('X', 9)]), at([ally('X', 9, '20 - 20')])), false);
-    assert.equal(initiativeFightOver(at([foe('a', 20), ally('X', 9)]), at([foe('a', 20)])), false);
-  });
-
-  it('never ends on the first count after a start', () => {
-    assert.equal(initiativeFightOver(null, at([])), false);
-  });
-
-  it('does not end when another fight with no monster is opened', () => {
-    assert.equal(initiativeFightOver(at([foe('a', 20)], 'f1'), at([], 'f2')), false);
   });
 });

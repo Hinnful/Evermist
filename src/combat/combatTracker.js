@@ -9,10 +9,7 @@ const CB_COL_MIN = { name: 90, hp: 80, cond: 70, atk: 110 };
 const CB_CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible',
   'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Concentrating'];
 const CB_ICON_X = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>';
-const CB_ICON_DEL = '<svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>';
-const CB_ICON_BOOK = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg>';
 const CB_ICON_DUP = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><path d="M8.5 1.5h-6a1 1 0 0 0-1 1v6"/></svg>';
-const CB_ICON_SWAP = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h9M8.5 2l2.5 2.5L8.5 7"/><path d="M12 9.5H3M5.5 7L3 9.5 5.5 12"/></svg>';
 
 // `rows` is the open fight's; the other fights carry their own in `fights` (fightPlan.js).
 let cbState = { rows: [], blocks: {}, nextId: 1, openId: null, fights: [] };
@@ -107,7 +104,7 @@ function _cbAtkCell(sb) {
 function cbRender() {
   const list = document.getElementById('cb-list');
   if (!list) return;
-  const shown = cbStatRowId();
+  const shown = cbStatRowId(), ex = cbState.rows.filter(r => r.side !== 'ally' && !String(r.hp || '').trim() && combatFirstNum(cbRowBlock(r).hp)).slice(0, 2);   // the HP line's sample
   list.innerHTML = (cbState.rows.length ? '' : '<div class="cb-empty">No creatures yet.</div>') + cbState.rows.map(r => {
     const sb = cbRowBlock(r), max = combatFirstNum(sb.hp), ac = combatFirstNum(sb.ac);
     const hp = combatRowHpState(max, r.hp), hint = max || ac ? combatAbilityMod(sb.abil[1]) : '';
@@ -115,18 +112,18 @@ function cbRender() {
     return `<div class="${cls}" data-id="${r.id}">
       <div class="cb-cell num init"><input data-f="init" value="${_cbEsc(r.init)}" placeholder="${_cbEsc(hint)}" inputmode="numeric" spellcheck="false"></div>
       <div class="cb-cell name"><input data-f="name" value="${_cbEsc(r.name)}" placeholder="Name" spellcheck="false"></div>
-      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"><span class="sum">${_cbSumText(hp.value)}</span></div>
-      <div class="cb-cell num ac"><input data-f="ac" value="${_cbEsc(r.ac)}" inputmode="numeric" spellcheck="false"${ac ? ' readonly title="From the stat block. Change it there."' : ''}></div>
+      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"${ex.includes(r) ? ` class="ex" placeholder="${t(ex[0] === r ? '-12 damage' : '+5 healing')}"` : ''}><span class="sum">${_cbSumText(hp.value)}</span></div>
+      <div class="cb-cell num ac"><input data-f="ac" value="${_cbEsc(r.ac || ac)}" inputmode="numeric" spellcheck="false"${ac ? ' class="sbn"' : ''}></div>
       <div class="cb-cell cond" data-cond>${_cbCondCell(r)}</div>
       <div class="cb-cell atk" title="Double-click to write your own line">${_cbAtkCell(sb)}
         <span class="cb-acts">
-          <button class="cb-iconbtn" data-b="stat" title="Stat block">${CB_ICON_BOOK}</button>
+          <span class="cp-tabs cb-side-switch">${['enemy', 'ally'].map(s => `<button class="cp-segtab${(r.side === 'ally') === (s === 'ally') ? ' active' : ''}" data-b="side" data-side="${s}" title="${s === 'ally' ? 'Ally' : 'Enemy'}">${uiIcon(s === 'ally' ? 'angel' : 'devil', 14)}</button>`).join('')}</span>
           <button class="cb-iconbtn" data-b="dup" title="Duplicate (Ctrl+D)">${CB_ICON_DUP}</button>
-          <button class="cb-iconbtn" data-b="side" title="Switch enemy / ally">${CB_ICON_SWAP}</button>
-          <button class="cb-iconbtn del" data-b="del" title="Delete">${CB_ICON_DEL}</button>
+          <button class="cb-iconbtn" data-b="more" title="More">${uiIcon('more', 14)}</button>
         </span></div>
     </div>`;
   }).join('');
+  cbSortRefresh();
 }
 
 function _cbAddRow(side) {
@@ -150,7 +147,7 @@ function _cbDuplicateRow(r) {
 }
 
 function _cbSwitchSide(r) {
-  r.side = r.side === 'enemy' ? 'ally' : 'enemy';
+  r.side = r.side === 'ally' ? 'enemy' : 'ally';
   cbSave();
   if (cbStatRowId() === r.id) cbOpenStat(r); else cbRender();
 }
@@ -190,7 +187,7 @@ function _cbRowItems(r) {
   return [
     { label: 'Open stat block', pick: () => cbOpenStat(r) },
     { label: 'Duplicate', key: 'Ctrl+D', pick: () => _cbDuplicateRow(r) },
-    { label: r.side === 'enemy' ? 'Make ally' : 'Make enemy', pick: () => _cbSwitchSide(r) },
+    { label: r.side === 'ally' ? 'Make enemy' : 'Make ally', pick: () => _cbSwitchSide(r) },
     { sep: true },
     ..._cbAddItems(),
     { sep: true },
@@ -468,7 +465,7 @@ function initCombatTracker() {
     <div class="cb-head" data-drag><span id="cb-fightslot"></span>
       <button class="sm-hbtn primary" id="cb-add" data-add>${uiIcon('plus')}<span>Add creature</span></button>
       <button class="cb-iconbtn" id="cb-close" title="Close">${uiIcon('x')}</button></div>
-    <div class="cb-colhdr"><span class="c sortable" id="cb-sort" title="Sort by initiative">Init ↓</span>${_cbColHead('Name', 'name')}${
+    <div class="cb-colhdr"><span class="c">Init</span>${_cbColHead('Name', 'name')}${
       _cbColHead('HP', 'hp')}<span class="c">AC</span>${_cbColHead('Conditions', 'cond')}${_cbColHead('Attacks', 'atk')}</div>
     <div id="cb-list"></div>
     <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
@@ -510,7 +507,7 @@ function initCombatTracker() {
       _cbRowEdited(r, 'name');
       _cbSuggest(e.target, r);
     }
-    cbSaveSoon();
+    cbSaveSoon(); cbSortRefresh();
   });
   list.addEventListener('focusin', e => {
     if (e.target.dataset.f !== 'hp') return;
@@ -541,6 +538,8 @@ function initCombatTracker() {
   });
   list.addEventListener('mousedown', e => {
     const rowEl = e.target.closest('.cb-row');
+    // A focused action button would light the Attacks cell's :focus-within ring as if it were being edited.
+    if (e.target.closest('.cb-acts button')) e.preventDefault();
     if (rowEl && e.button === 0 && !e.target.closest('button, .cb-atk.editing')) _cbPressRow(rowEl, e);
   });
   list.addEventListener('click', e => {
@@ -550,10 +549,9 @@ function initCombatTracker() {
     const b = t.closest('[data-b]');
     if (b) {
       const a = b.dataset.b;
-      if (a === 'stat') { if (cbStatRowId() === r.id) { cbCloseStat(); cbRender(); } else cbOpenStat(r); }
       if (a === 'dup') _cbDuplicateRow(r);
-      if (a === 'side') _cbSwitchSide(r);
-      if (a === 'del') _cbRemoveRow(r);
+      if (a === 'side' && b.dataset.side !== (r.side === 'ally' ? 'ally' : 'enemy')) _cbSwitchSide(r);
+      if (a === 'more') { if (_cbClosedOn === b) _cbClosedOn = null; else cbMenu(_cbRowItems(r), b.getBoundingClientRect(), b); }
       return;
     }
     const cell = t.closest('[data-cond]');
@@ -572,14 +570,13 @@ function initCombatTracker() {
     cbMenu(r ? _cbRowItems(r) : _cbAddItems(), { left: e.clientX, top: e.clientY, bottom: e.clientY });
   });
 
-  document.getElementById('cb-sort').addEventListener('click', () => { cbState.rows = combatSortByInit(cbState.rows); cbSave(); cbRender(); });
   document.getElementById('cb-close').addEventListener('click', () => cbSetOpen(false));
   document.getElementById('cb-add').addEventListener('click', () => _cbAddRow('enemy'));
   document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
 
   initCombatStatBlock();
   initBestiary();
-  initCombatFights(); initInitiativeTv();
+  initCombatFights(); initCombatSort(); initInitiativeTv();
 }
 
 // ── The name field's suggestions from the bestiary ───────────────────────────

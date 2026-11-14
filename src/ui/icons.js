@@ -38,6 +38,10 @@ const UI_ICON_PATHS = {
   more: '<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
   play: '<path d="M7.5 5.2l11 6.8-11 6.8z" fill="currentColor"/>',
   stop: '<rect x="6.2" y="6.2" width="11.6" height="11.6" rx="1.6" fill="currentColor"/>',
+  sort: '<path d="M8 19V5M4.5 8.5L8 5l3.5 3.5M16 5v14M12.5 15.5L16 19l3.5-3.5"/>',
+  // The fight row's side switch: a solid head with the face cut out through a mask, so it reads on any background.
+  devil: '<defs><mask id="@ID@"><rect width="24" height="24" fill="#fff" stroke="none"/><g fill="none" stroke="#000" stroke-width="1.7"><path d="M7.6 11.2l3 1.3"/><path d="M16.4 11.2l-3 1.3"/><path d="M7.9 16.4c2.2 2.9 6 2.9 8.2 0"/></g></mask></defs><g fill="currentColor" stroke="none" mask="url(#@ID@)"><circle cx="12" cy="14" r="8"/><path d="M5.6 9.4C3.9 7.9 3.3 5.4 3.8 2.9c1.2 1.9 2.9 3.1 5 3.6z"/><path d="M18.4 9.4c1.7-1.5 2.3-4 1.8-6.5-1.2 1.9-2.9 3.1-5 3.6z"/></g>',
+  angel: '<defs><mask id="@ID@"><rect width="24" height="24" fill="#fff" stroke="none"/><g fill="none" stroke="#000" stroke-width="1.7"><path d="M7.9 13.6c.9-1.3 2.4-1.3 3.3 0"/><path d="M12.8 13.6c.9-1.3 2.4-1.3 3.3 0"/><path d="M8.7 17c1.9 2.2 4.7 2.2 6.6 0"/></g></mask></defs><g fill="currentColor" stroke="none" mask="url(#@ID@)"><circle cx="12" cy="14.6" r="7.6"/></g><ellipse cx="12" cy="3.7" rx="6.6" ry="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   tv: '<rect x="2.8" y="5.2" width="18.4" height="12.6" rx="2"/><path d="M12 17.8v3M8 20.8h8"/>',
 };
 

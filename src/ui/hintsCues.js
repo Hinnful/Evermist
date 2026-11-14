@@ -116,9 +116,9 @@ function hintsFightOpened(creatures) {
 
 function hintsFightClosed() { hintClose('fight'); hintClose('stat-block'); }
 
-// The row's stat block icon, which shows only under the pointer: its own box, else where it will be, at the row's end.
-const _hcStatIcon = id => () => {
-  const row = document.querySelector('#cb-list .cb-row[data-id="' + id + '"]'), b = row && row.querySelector('[data-b="stat"]');
+// The row's ⋯, which shows only under the pointer: its own box, else where it will be, at the row's end.
+const _hcRowMore = id => () => {
+  const row = document.querySelector('#cb-list .cb-row[data-id="' + id + '"]'), b = row && row.querySelector('[data-b="more"]');
   const r = b && b.getBoundingClientRect();
   if (r && r.width) return r;
   const w = row && row.getBoundingClientRect();
@@ -129,8 +129,8 @@ const _hcStatIcon = id => () => {
 function hintsFightRowAdded(before, rowId) {
   hintClose('fight');
   if (!_hcLive() || !hintStatBlockDue({ before, after: before + 1 })) return;
-  _hintShow('stat-block', 'Its stat block is one click away', 'Press the book on a row to read or edit that creature.',
-    null, _hintNear(_hcStatIcon(rowId), 'below'));
+  _hintShow('stat-block', 'Its stat block is in the row\'s ⋯ menu', 'Press ⋯ on a row, or right-click it, to read or edit that creature.',
+    null, _hintNear(_hcRowMore(rowId), 'below'));
 }
 
 // ─── Panes closing under a toast ─────────────────────────────────────────────

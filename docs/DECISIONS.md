@@ -1434,9 +1434,12 @@ Two sheets in haze, names at 2.7% of window height. Rejected for monsters: glowi
 italic word, a blank nameplate, "???", and a dark band behind monster rows (a band behind one row reads as the current
 turn, a band behind every row too); a darker haze behind the sheet was kept. Rejected for showing: a plain TV toggle, a
 Turns button on the minimap, automatic showing while the table is open; Start fight / End fight on the table won. All
-rows show, as an earlier default of hiding rows with no initiative left the TV empty on first use. Alegreya was first left
+rows show, as an earlier default of hiding rows with no initiative left the TV empty on first use. **Reversed 2026-11-14:** see "The fight table teaches itself". Alegreya was first left
 unbundled, since that needs a `build.files` entry; 5.13.1 bundled it (SIL OFL allows redistribution, licence file beside
 it, about 200 KB of installer) because names fell back to Georgia or the system serif.
+
+### The fight table teaches itself · `SHIPPED` (5.13.2, 2026-11-14)
+A first-time DM missed the hidden sort, ran every fight as one so unmet and dead monsters reached the TV, never found the side icon, and did not know HP takes "-12" / "+5". Settled: (1) a "Sort" header-bar button, lit only when rows are out of order; rejected: auto-sort, an icon in the 64px Init header, icon-only, the header cell as a button. (2) The TV shows allies always and an enemy only with an initiative typed and above 0 HP, **reversing** "every row shows" (2026-11-11). (3) No automatic fight end, **reversing** the auto-end with Undo: initiative without monsters is real. (4) A dim "-12 damage" / "+5 healing" sample in the empty HP of the first two enemy rows with a max HP; rejected: popovers, a sample in normal contrast (reads as real damage). (5) AC editable in the row, writing to its stat-block copy, **reversing** the read-only AC. (6) Hover actions: a solid devil|angel switch, inline Duplicate (clicked fast, many times), and ⋯ with the right-click menu, **reversing** "no ⋯" in the 2026-09-26 table entry; rejected: text or letter switches, sword/shield, hand-drawn art, an always-visible switch, a saved party roster. (7) A missing side counts as enemy. Mockups in `.claude/private/prototypes/initiative/`.
 
 ### Notes opening on a room pick, and a phone remote · `REJECTED` (2026-11-05)
 Opening the Notes window when a room is picked (was BACKLOG 249) and a phone remote for the DM (was BACKLOG 144) were dropped
