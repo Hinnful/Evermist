@@ -367,10 +367,57 @@ const WRAPPER = new RegExp('^(?:[&({]\\s*|(?:call|exec|nohup|time)\\s+' +
   '|start-process\\s+(?:-filepath\\s+)?|start\\s+(?:\\/\\w+\\s+)*(?:""\\s+)?)', 'i');
 const ENV = /^(?:[A-Za-z_][\w]*=\S*\s+)*/;
 
+// Returns the peeled command, or the segments of a quoted `bash -c "…"` body, which is a
+// command line of its own and would otherwise hide `echo a; git push` behind one quote.
 function unwrap(seg) {
   let s = seg.replace(ENV, '');
-  for (let prev = null; s !== prev;) { prev = s; s = s.replace(WRAPPER, '').replace(ENV, ''); }
-  return s;
+  for (let prev = null; s !== prev;) {
+    prev = s;
+    const m = s.match(WRAPPER);
+    if (m && /["']$/.test(m[0])) return splitCommands(quotedBody(s.slice(m[0].length), m[0].slice(-1)));
+    s = s.replace(WRAPPER, '').replace(ENV, '');
+  }
+  return [s];
+}
+
+// The text up to the closing quote, or to the end if it never closes.
+function quotedBody(rest, quote) {
+  for (let i = 0; i < rest.length; i++) {
+    if (quote === '"' && rest[i] === '\\') i++;
+    else if (rest[i] === quote) return rest.slice(0, i);
+  }
+  return rest;
+}
+
+// Split on the operators that start a new command, outside quotes only: `|`, `||`, `&&`, `;`,
+// newline and a lone `&`, but not the one in `2>&1` or `&>`. Single quotes are literal, double
+// quotes and bare text honour a backslash escape.
+function splitCommands(text) {
+  const out = [];
+  let cur = '';
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      cur += c;
+      if (quote === '"' && c === '\\' && i + 1 < text.length) cur += text[++i];
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '\\' && i + 1 < text.length) { cur += c + text[++i]; continue; }
+    if (c === '"' || c === "'") { quote = c; cur += c; continue; }
+    const pair = c + (text[i + 1] || '');
+    const lone = c === '&' && !/[<>&]/.test(text[i - 1] || '') && !/[>&]/.test(text[i + 1] || '');
+    if (pair === '&&' || pair === '||' || lone || c === '|' || c === ';' || c === '\n') {
+      out.push(cur);
+      cur = '';
+      if (pair === '&&' || pair === '||') i++;
+      continue;
+    }
+    cur += c;
+  }
+  out.push(cur);
+  return [].concat(...out.map((s) => unwrap(s.trim())));
 }
 
 function commandsIn(text) {
@@ -390,12 +437,7 @@ function commandsIn(text) {
     }
     kept.push(line);
   }
-  // Segment on the operators that start a new command, a lone `&` included but not the one in
-  // `2>&1` or `&>`, then drop any leading env assignment and wrapper.
-  return kept
-    .join('\n')
-    .split(/&&|\|\||(?<![<>&])&(?![>&])|[;|\n]/)
-    .map((s) => unwrap(s.trim()));
+  return splitCommands(kept.join('\n'));
 }
 
 // One spelling per launch, so the screen and rig guards see `npm.cmd --silent run-script rig`,

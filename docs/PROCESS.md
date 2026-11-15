@@ -107,8 +107,8 @@ A bug report is an ordinary message and needs no command.
   `guard-rig.js` counts them.
 - **One rig run at a time.** `guard-rig.js` refuses a run while another is going, because two share
   the hidden screen. It reads `ps`, so on Windows it lets the run through.
-- **Before look-and-feel work starts,** state what the result should look like and get the DM's
-  agreement. The prototype rule is in CLAUDE.md.
+- **Before changing the look of something the DM already picked,** state what the result should
+  look like and get the DM's agreement. New UI goes to a mockup board (the `mockups` skill).
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
 - **Correctness work gets its check during the build.** Claude proves a behaviour without asking,

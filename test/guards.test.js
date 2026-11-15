@@ -1,6 +1,6 @@
 'use strict';
 
-// The command guards: screen, rig, main and builder. Each refusal is asserted both ways, the spellings
+// The command guards: screen, rig, main, ship and builder. Each refusal is asserted both ways, the spellings
 // that must be refused and the nearest commands that must pass.
 
 const { describe, it } = require('node:test');
@@ -9,6 +9,7 @@ const screen = require('../.claude/hooks/guard-screen.js');
 const rig = require('../.claude/hooks/guard-rig.js');
 const main = require('../.claude/hooks/guard-main.js');
 const builder = require('../.claude/hooks/guard-builder.js');
+const ship = require('../.claude/hooks/guard-ship.js');
 
 const run = (guard, command) => guard.verdict({ tool_input: { command } });
 const ABS_EXE = '"C:\\Users\\hinnf\\OneDrive\\Рабочий стол\\Evermist\\dist\\win-unpacked\\Evermist.exe"';
@@ -118,7 +119,7 @@ describe('main guard', () => {
     'git checkout feature-x', 'git checkout HEAD~3', 'git checkout 85b4c67', 'git checkout -', 'git checkout --detach',
     'git checkout -b foo', 'git -C . checkout -b foo', 'git -C "C:\\a b" checkout feature-x',
     'git -C . worktree add ../x', 'git switch foo', 'git -c core.x=1 switch foo', 'git branch foo', 'git stash',
-    'git checkout .',
+    'git checkout .', 'echo a; git checkout -b x', 'true | git stash', 'bash -c "echo a; git stash"',
   ];
   for (const cmd of away) {
     it('refuses ' + cmd, () => assert.ok(run(main, cmd), cmd));
@@ -126,8 +127,29 @@ describe('main guard', () => {
   const fine = [
     'git checkout main', 'git checkout -- src/a.js', 'git checkout HEAD -- src/a.js', 'git -C . status',
     'git switch main', 'git branch', 'git branch -d old', 'git stash list', 'git checkout main 2>/dev/null',
+    'grep -n -E "permissions|git push|uses:" file', 'echo "a; git checkout -b x"', "echo 'a && git stash'",
   ];
   for (const cmd of fine) {
     it('allows ' + cmd, () => assert.equal(run(main, cmd), null, cmd));
+  }
+});
+
+describe('ship guard', () => {
+  const refused = [
+    'git push', 'git push origin x', 'cd x && git push', 'echo a; git push', 'true | git push', 'echo a & git push',
+    'git -C dir push', 'git -c k=v push', 'gh pr merge 1', 'gh -R a/b release create v1', 'git tag v1',
+    'bash -c "git push"', "bash -c 'git push'", 'bash -c "echo a; git push"', 'sh -c "FOO=1 echo a && git push origin x"',
+    'echo "x" && git push', 'echo a\\\\; git push',
+  ];
+  for (const cmd of refused) {
+    it('refuses ' + cmd, () => assert.ok(run(ship, cmd), cmd));
+  }
+  const fine = [
+    'grep -n -E "permissions|git push|uses:" file', "grep -E 'a;git push' f", 'git commit -m "x; git push"',
+    'git commit -m "x\ngit push"', 'echo "a \\"; git push"', 'echo a\\;git push', 'git tag -l', 'gh pr view 1',
+    'cat <<EOF\ngit push\nEOF',
+  ];
+  for (const cmd of fine) {
+    it('allows ' + cmd.split('\n')[0], () => assert.equal(run(ship, cmd), null, cmd));
   }
 });

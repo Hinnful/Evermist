@@ -48,8 +48,9 @@ Write so they can make decisions, not so they can review your code.
 
 ## Decisions
 
-- Before fixing anything judged by look and feel, say what the fixed version
-  should look like and get agreement. No work starts against an undefined target.
+- Before changing the look of something the user already picked, say what the
+  fixed version should look like and get agreement. New UI goes to a mockup
+  board for the user to pick from.
 - Fix a bug with one approach at a time, so each result can be told apart.
 - For a design question, offer several distinct options for the user to pick
   from, with your recommendation.

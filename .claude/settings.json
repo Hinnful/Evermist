@@ -33,7 +33,7 @@
         ]
       },
       {
-        "matcher": "Bash|PowerShell|Agent|Task|EnterWorktree|mcp__ccd_session__start_session",
+        "matcher": "Bash|PowerShell|Agent|EnterWorktree|mcp__ccd_session__start_session",
         "hooks": [
           {
             "type": "command",
@@ -42,7 +42,7 @@
         ]
       },
       {
-        "matcher": "Agent|Task",
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
@@ -53,7 +53,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
@@ -112,5 +112,8 @@
     ]
   },
   "outputStyle": "Steering",
-  "includeCoAuthoredBy": false
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
 }

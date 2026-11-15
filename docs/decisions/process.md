@@ -504,5 +504,32 @@ in `.claude/commit/notes.md`.
 ### Research and mockup boards have a skill · `SETTLED` (2026-11-15)
 The `research` skill carries how a UX study or a mockup board is run.
 
+**Reversed 2026-11-15** by "Research and mockups are two skills": the board part moved to the `mockups` skill.
+
 ### README clips moved to a release, and /code-review inside /commit · `REJECTED` (2026-11-15)
 Clips: low value. /code-review: run by hand on request, not on every commit.
+
+### Research and mockups are two skills · `SETTLED` (2026-11-15)
+`research` is a study that ends in a report with one recommendation; `mockups` is boards to pick from. UI is picked from pictures,
+never words, so the first answer to a UI question is a board. The loop: research report, a board built on it, then boards that vary
+the pick; a question a board raises that nothing answered goes back to research. Each also runs alone. **Replaces** the single
+combined skill. The "agree on the look first" rule now covers only a change to something already picked; new UI goes to a board.
+Reddit blocks every tool, so research skips it; Claude in Chrome stays denied in `.claude/settings.json`.
+
+### Settings: `attribution` replaces `includeCoAuthoredBy` · `SETTLED` (2026-11-15)
+`attribution` with empty `commit` and `pr` replaces the deprecated `includeCoAuthoredBy`. The dead tool names `Task` and `MultiEdit`
+left the hook matchers.
+
+### Shell guards split only outside quotes · `SETTLED` (2026-11-15)
+`commandsIn()` in `guard-lib.js` split inside quotes, so a grep whose pattern held "git push" was refused. It now splits only on
+separators outside quotes and re-splits the body of a `bash -c`, `sh -c`, `cmd /c` or `powershell -c` wrapper. `bash -c "echo a; git push"`
+stays refused, and `bash -c "git stash"` is now refused too.
+
+### One checkout on main, re-examined and kept · `SETTLED` (2026-11-15)
+Parallel branches were weighed again. Releases are serial: one version is one commit, and `land` fast-forwards main only when nothing
+landed in between, so branches would build in parallel but ship one at a time with rebases and renumbering. Parallel builders
+sharing the checkout have worked without trouble. See "All work happens in the one checkout, on main".
+
+### A pre-mortem in /redteam · `REJECTED` (2026-11-15)
+`/redteam` rarely runs, and each run costs time and tokens with no way to measure the gain. `/spec` keeps its red-team
+recommendation line, which decides whether `/redteam` runs.
