@@ -52,6 +52,20 @@ function disclosureCheck({ amend, paths, disclosure }) {
   return 'this amend edits ' + missing.join(', ') + ' without disclosing it. Write one line per file to disclosure.txt in this session\'s run folder: which test, and why the old expectation was wrong.';
 }
 
+// Every release pulls the newest Electron the package.json range allows; a change/** commit never touches it.
+// Once HEAD is this release's commit it keeps its Electron: a re-run, or an amend, would otherwise
+// pull one published since and commit it twice under one version.
+const updatesElectron = ({ branch, committed }) => String(branch).startsWith('release/') && !committed;
+
+// The lock rides in the commit only when it differs from HEAD, so a re-run after the commit stages nothing.
+function withLock(paths, lockDirty) {
+  if (!lockDirty || paths.some((p) => norm(p) === 'package-lock.json')) return paths;
+  return paths.concat('package-lock.json');
+}
+
+// The Electron a package-lock.json installs, or null when it has none.
+const lockedElectron = (lock) => ((((lock && lock.packages) || {})['node_modules/electron']) || {}).version || null;
+
 // The pull request command the session runs itself, quoted for a POSIX shell.
 const shq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 const prCreateCommand = (branch, title, bodyFile) =>
@@ -67,4 +81,4 @@ function prStep({ open, ownBranch, branch, title, bodyFile }) {
   return { run: 'gh pr close ' + open.number + ' --comment ' + shq('Superseded by a pull request this session opens, so its CI monitor can be armed.') + ' && ' + create };
 }
 
-module.exports = { prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };
+module.exports = { updatesElectron, withLock, lockedElectron, prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };

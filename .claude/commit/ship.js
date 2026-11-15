@@ -74,6 +74,25 @@ function remoteSha(branch) {
   return line ? line.split(/\s+/)[0] : '';
 }
 
+// ⚠ A FAILED UPDATE MUST NOT STOP A RELEASE: offline or a registry outage only warns, and ships the old Electron.
+function stageElectron(opts, notes) {
+  const committed = headMessage() === notes.message.trim();
+  if (!rules.updatesElectron({ branch: opts.branch, committed })) return committed ? 'HEAD is this commit, Electron kept' : 'not a release, Electron untouched';
+  const lockAt = (ref) => { try { return rules.lockedElectron(JSON.parse(git(['show', ref + ':package-lock.json']))); } catch { return null; } };
+  try {
+    // npm is npm.cmd on Windows, which only a shell finds.
+    execFileSync('npm', ['update', 'electron'], { cwd: ROOT, stdio: 'pipe', shell: process.platform === 'win32' });
+  } catch (e) {
+    console.warn('electron: WARNING npm update electron failed, releasing without it: ' + (e.stderr || e.message || e).toString().trim().split('\n')[0]);
+  }
+  const lockDirty = dirty(['package-lock.json']);
+  opts.paths = rules.withLock(opts.paths, lockDirty);
+  let now = null;
+  try { now = rules.lockedElectron(JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'))); } catch { /* reported as null */ }
+  const was = lockAt('HEAD');
+  return `Electron ${was} -> ${now}` + (lockDirty ? ', package-lock.json staged' : ', lock unchanged');
+}
+
 function stageCommit({ branch, paths, amend }, notes) {
   if (!dirty(paths) && headMessage() === notes.message.trim()) return 'already committed';
   // A second commit on a pushed branch puts two commits under one version.
@@ -204,6 +223,7 @@ function main() {
     ['base', stageBase],
     ['guards', stageGuards],
     ['guard inputs', () => stageGuardInputs(opts)],
+    ['electron', () => stageElectron(opts, notes)],
     ['commit', () => stageCommit(opts, notes)],
     ['clean', stageClean],
     ['agree', () => stageAgree(opts)],

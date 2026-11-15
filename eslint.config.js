@@ -84,7 +84,7 @@ module.exports = [
     rules: shippedRules,
   },
   {
-    files: ['tools/**/*.js', 'test/**/*.js', '.claude/**/*.js', 'eslint.config.js', 'stryker.conf.js'],
+    files: ['tools/**/*.js', 'test/**/*.js', '.claude/**/*.js', 'eslint.config.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
     rules,
   },

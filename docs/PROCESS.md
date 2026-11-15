@@ -111,13 +111,13 @@ A bug report is an ordinary message and needs no command.
   agreement. The prototype rule is in CLAUDE.md.
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
-- **Correctness work gets its check during the build.** A shipped behaviour needs a unit test or
-  a rig scenario behind it, and Claude writes it without asking.
+- **Correctness work gets its check during the build.** Claude proves a behaviour without asking,
+  with a unit test or one rig scenario run once and then deleted. A scenario stays only when it
+  guards the DM's data (sync, backup, trash, rollback, upgrade), and is re-run when that code changes.
 - **On this machine the rig is a probe, never a gate.** `/commit` runs unit tests, lint and the
   guards and no scenario; the release gate runs the blocker set. One scenario or one screenshot
-  answers a question code cannot, and a throwaway probe file is deleted afterwards. The DM may ask
-  for `blockers` at low priority. A cloud session runs the rig freely. The rig skill carries how to
-  write and run a scenario.
+  answers a question code cannot. The DM may ask for `blockers` at low priority. A cloud session
+  runs the rig freely. The rig skill carries how to write and run a scenario.
 - **Never ask the DM to hand-verify, run a build, or open Chrome.** The DM runs `npm start` and
   the installed app and judges look, feel and speed.
 

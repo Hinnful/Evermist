@@ -4,7 +4,7 @@
 //
 // The map "Замок" holds "Зал", "Кухня", an unnamed room and "Без", a room stored with no uid (Claude's first order of
 // the map gives it one in the store); on B it gains "Новая", stored with no uid. "Лес" and "Луг" are two more maps; "Волк", "Гоблин" and "Дракон" are monsters with a note. Orders are set through Claude's set_notes_order,
-// the drags themselves being notes-tree.js's. One library plays both ends of a backup, then two apps share a fake Drive.
+// not by drags. One library plays both ends of a backup, then two apps share a fake Drive.
 //
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //

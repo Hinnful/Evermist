@@ -500,3 +500,9 @@ break each other; it reads `ps`, so on Windows it lets the run through.
 A gap a build or builder report names that fits the session (a missed check, a field a test does not watch, a line of wording)
 is done in the commit, never filed. Only work too big for the session, or waiting on a call, reaches the backlog. The rule sits
 in `.claude/commit/notes.md`.
+
+### Research and mockup boards have a skill · `SETTLED` (2026-11-15)
+The `research` skill carries how a UX study or a mockup board is run.
+
+### README clips moved to a release, and /code-review inside /commit · `REJECTED` (2026-11-15)
+Clips: low value. /code-review: run by hand on request, not on every commit.

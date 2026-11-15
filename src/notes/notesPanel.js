@@ -259,8 +259,6 @@ function notesRoomPatch(sceneId, roomId, fields) {
   }).then(refreshRoomPanel);
 }
 
-function notesForeignRoom() { return !!_npForeign; }
-
 // roomCard.js hands the fields' commits here while they hold another map's room. True when it took one.
 function notesForeignRoomEdit(op, payload) {
   if (!_npForeign) return false;

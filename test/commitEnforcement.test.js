@@ -64,6 +64,25 @@ describe('ship.js backlog and disclosure checks', () => {
   });
 });
 
+describe('ship.js Electron update', () => {
+  it('updates Electron for a release only, and not once HEAD is that release', () => {
+    assert.equal(rules.updatesElectron({ branch: 'release/4.15.0', committed: false }), true);
+    assert.equal(rules.updatesElectron({ branch: 'release/4.15.0', committed: true }), false);
+    assert.equal(rules.updatesElectron({ branch: 'change/docs', committed: false }), false);
+  });
+  it('stages the lock only when it changed, and never twice', () => {
+    const paths = ['package.json', 'docs/BACKLOG.md'];
+    assert.deepEqual(rules.withLock(paths, true), ['package.json', 'docs/BACKLOG.md', 'package-lock.json']);
+    assert.deepEqual(rules.withLock(paths, false), paths);
+    assert.deepEqual(rules.withLock(['package-lock.json'], true), ['package-lock.json']);
+  });
+  it('reads the locked Electron version', () => {
+    assert.equal(rules.lockedElectron({ packages: { 'node_modules/electron': { version: '45.3.2' } } }), '45.3.2');
+    assert.equal(rules.lockedElectron({ packages: {} }), null);
+    assert.equal(rules.lockedElectron(null), null);
+  });
+});
+
 describe('check-notes privacy', () => {
   const words = { filler: ['finally'], privateWords: ['he', 'my', 'fixture', 'guard hook', 'rig'], names: [], allowed: [] };
 

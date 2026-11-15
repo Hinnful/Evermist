@@ -31,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           fetch-depth: 0   # the What's new list is read off the release commits and tags
       - uses: actions/setup-node@v5
         with:

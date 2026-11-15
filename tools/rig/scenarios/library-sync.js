@@ -2,8 +2,8 @@
 
 // library-sync.js - THE LIBRARY PANES ACROSS TWO COMPUTERS (spec library-panes, DoD 10, 16).
 //
-// Two apps on one fake Drive, as own-sounds.js. A arranges Music, Sounds and Pictures through the panes' own
-// functions (library-panes.js drives the pointer); B is the other computer. Names are Russian.
+// Two apps on one fake Drive. A arranges Music, Sounds and Pictures through the panes' own functions, not the
+// pointer; B is the other computer. Names are Russian.
 //
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //

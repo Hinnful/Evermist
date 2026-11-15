@@ -21,8 +21,10 @@ on:
       - 'release/**'   # a version bump: gate, land, publish
       - 'change/**'    # docs, tests, tooling: land only
 
+# Read-only by default: verify and the gate run every dependency's install script. Only the jobs
+# that push or publish get write, each in its own block.
 permissions:
-  contents: write
+  contents: read
 
 # One landing at a time, or two runs race to fast-forward main and the loser fails on a
 # non-ancestor.
@@ -44,6 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           fetch-depth: 0   # the tag list is how "already released" is decided
 
       - name: Does this commit ship a new version?
@@ -106,6 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           fetch-depth: 0   # the What's new list is read off the release commits
       - uses: actions/setup-node@v5
         with:
@@ -127,6 +131,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -176,6 +182,8 @@ jobs:
       needs.gate-rig.result != 'failure' && needs.gate-rig.result != 'cancelled' &&
       needs.update.result != 'failure' && needs.update.result != 'cancelled'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -201,9 +209,12 @@ jobs:
     needs: [decide, land]
     if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           fetch-depth: 0   # the notes are read off an older commit when a red gate pushed one on top
 
       # ONE VERSION IS ONE COMMIT, and that commit's message IS the release note. /commit writes
@@ -243,7 +254,7 @@ jobs:
       # releases and silently skips otherwise.
       # ⚠ DRAFT, and carrying no files. The release page and the tag must not exist until every
       # installer is up; the upload step below fills it and the last step makes it public.
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: v${{ needs.decide.outputs.version }}
           target_commitish: ${{ github.sha }}
@@ -310,6 +321,8 @@ jobs:
       needs.land.result == 'success' &&
       needs.publish.result != 'failure' && needs.publish.result != 'cancelled'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # git push --delete, with the checkout's credentials
     steps:
       - uses: actions/checkout@v5
       # Never fail the run over cleanup: the release is already public by this point, and a red X

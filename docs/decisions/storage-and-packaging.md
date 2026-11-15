@@ -449,3 +449,12 @@ Re-downloading tracks on the other computer fails when a video vanishes or the d
 
 ### Each computer keeps its own Trash, in a database of its own · `SETTLED` (2026-11-09)
 A deleted map's whole record waits 30 days in IndexedDB `evermist-trash`, its video file in `userData/trash/`; never a new store in `evermist`, since a version bump breaks the previous release's open on a rollback. The previous release never reads it, so after /rollback it neither shows a trashed map nor loses it. With sync on, a delete also goes to the Drive trash; a delete arriving from another computer moves that computer's copy into its own Trash (at = the deletion record's time) instead of erasing it. Restore uses this computer's copy first and works offline, marking the deletion record restored BEFORE the copy returns so a sync tick cannot drop it again; a computer with no copy restores from the Drive. Maps already in the Trash when sync is turned on stay local only. The `gone` record and the scene record keep their shapes. Music tracks get the same Trash (`userData/trash/music/`, store `tracks`); a track another computer deleted moves into this computer's Trash. Pictures join it (**2026-11-12**) in a second database, `evermist-trash-more` (stores `pictures`, whole record with its blob, and `builtins`, a hidden built-in sound's file name), so `evermist-trash` is never version-bumped; a picture another computer deleted lands in this computer's Trash like a map. The pure rules are in `trashPlan.js`. The trash rig scenarios (trash-local, trash-music, trash-sync) stay out of the blocker set: the first two need the previous release cached on the machine, and the blockers stay four journeys.
+
+### CI token is read-only; the release action is pinned by SHA · `SETTLED` (2026-11-15)
+Every dependency's install script ran with a token able to push `main` and publish releases that installed copies auto-update from. The workflows now default to `contents: read`; only `land`, `publish` and `cleanup` get `contents: write`, checkouts that do not push set `persist-credentials: false`, and `softprops/action-gh-release` is pinned to a commit SHA. `test/workflowPermissions.test.js` enforces both.
+
+### Every release pulls the newest allowed Electron · `SETTLED` (2026-11-15)
+`.claude/commit/ship.js` runs `npm update electron` on a release commit and stages `package-lock.json` if it changed; a failed npm only warns.
+
+### Dependabot for Electron · `REJECTED` (2026-11-15)
+CI runs only on `release/**` and `change/**` pushes, and an app change needs a bump and release notes.

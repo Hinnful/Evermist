@@ -23,8 +23,7 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 scenario, or one `--shot` screenshot, to answer "did it work at all" where code cannot: did it
 show, did it reach the Player, did it save. A look-and-feel change gets one shot at most, then
 goes to the DM. Never a list of names, never a rerun "to be sure". `guard-rig.js` refuses a set,
-except `blockers` or `launch` at `--low-priority`, which the DM may ask for. A probe file is deleted
-afterwards.
+except `blockers` or `launch` at `--low-priority`, which the DM may ask for.
 
 **In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
 belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig.yml` does.
@@ -140,6 +139,9 @@ covers the same packaging bugs and needs no portable step.
 
 `scenarios/blockers/*.js` is the release set, one file per journey. Any other file under `scenarios/`
 is run by name as a one-scenario probe.
+
+**A build's scenario is run once and then deleted.** It stays only when it guards the DM's data
+(sync, backup, trash, rollback, upgrade); those are re-run when that code changes.
 
 **A file's criteria ARE its header.** Plain-language lines at the top, each with its check directly
 beneath, in the same order. There is no separate criteria document.

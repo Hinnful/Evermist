@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "5.14.0",
+  "version": "5.14.1",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -13,7 +13,6 @@
     "postinstall": "node tools/fetch-ytdlp.js",
     "pretest": "node tools/build-changelog.js",
     "test": "node --test",
-    "test:mutation": "stryker run",
     "prestart": "node tools/build-changelog.js",
     "start": "node tools/lab.js",
     "prelab": "node tools/build-changelog.js",
@@ -116,7 +115,6 @@
     "yauzl": "^2.10.0"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "^9.6.1",
     "cross-env": "^10.1.0",
     "electron": "^45.0.0",
     "electron-builder": "^26.15.0",

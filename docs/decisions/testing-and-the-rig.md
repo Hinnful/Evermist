@@ -168,7 +168,8 @@ The real cause of the rest was the shape of the fixtures, not missing tests: eve
 tell `||` from `&&`. Off-origin, oblique, asymmetric and one-axis-zero cases took the two files
 from 59% and 64% to 97% and 96%. The `scaleFactor: NaN` gap recorded earlier is confirmed closed.
 
-### Mutation targets are named, never numbered · `SETTLED` (2026-09-08)
+### Mutation targets are named, never numbered · `REVERTED` (2026-09-08, removed 2026-11-15)
+Stryker itself was removed in 5.14.1, see "Stryker mutation testing was removed". What follows is why it was once shaped this way.
 `stryker.conf.json` listed line ranges, and every edit above one moved it while nothing checked
 it - so a run still reported a score, for whatever code had since slid into those lines. Checked a
 month later, ten of the twelve ranges straddled a function boundary and four exported kernels were
@@ -529,3 +530,18 @@ Wayland ignores the app's `--offscreen` window position and `offscreen.ps1` is W
 
 ### The rig grew to drive sync: two instances, a fake Drive, a binary swap · `SETTLED` (2026-11-07)
 Sync needs two computers, so the rig runs two concurrent app instances against `tools/rig/fakeDrive.js`: resumable uploads, quota, 401 and refresh, paging, down/up and cuts. The rollback trip swaps the binary on one profile, using the previous release's AppImage extracted since it needs FUSE. On Linux a stand-in browser answers Connect. The sync scenarios are probes, not blockers.
+
+### Stryker mutation testing was removed · `SETTLED` (2026-11-15)
+It had not run since October, and "prove a fix both ways" covers what it was used for. The config, `tools/mutation-targets.js`, its test, the npm script and the devDependency are gone.
+
+### A build proves itself with one scenario, run once and deleted · `SETTLED` (2026-11-15)
+Eleven one-shot feature scenarios were deleted. A scenario stays only when it guards the DM's data (sync, backup, trash, rollback, upgrade) and is re-run when that code changes. The rule itself lives in `docs/PROCESS.md`.
+
+### A nightly, non-blocking run of the deleted regression scenarios · `REJECTED` (2026-11-15)
+An unmaintained set generates CI work, and the maintained one caught about three app bugs in its life.
+
+### A test refuses duplicate top-level declarations · `SETTLED` (2026-11-15)
+Lint's `no-redeclare` is off for cross-file globals, so a later copy of a function silently wins and the earlier one never runs; two dead copies were found in `notesPanel.js` and `shapeHit.js`. `test/globals.test.js` refuses a name declared twice in one file, or a function declared in two scripts on one page.
+
+### Cross-file writes to module-level `let` are ratcheted · `SETTLED` (2026-11-15)
+`test/globals.test.js` counts writes to a module-level `let` from outside `src/state.js` against `test/globals.allow.json` (52 entries, may only shrink). Moving the cross-subsystem ones into `state.js` is the next task.

@@ -13,8 +13,9 @@ You implement one agreed change in Evermist and prove it works.
   cannot work, stop and report what you found. Do not redesign it.
 - **You do not diagnose.** The brief's `Cause:` is the main session's finding. If the code or a
   check shows that cause does not hold, stop and report what you saw instead of hunting for another.
-- **Prove it.** Add the unit test or rig scenario the `Done-check:` asks for. Run `npm test` and
-  `npm run lint` and leave both green.
+- **Prove it.** Add the unit test or rig scenario the `Done-check:` asks for. Delete the scenario
+  after its run unless it guards the DM's data (sync, backup, trash, rollback, upgrade). Run
+  `npm test` and `npm run lint` and leave both green.
 - **The rig gives you two runs, one scenario each.** Before a second run, read what the app
   actually did in the first: the scenario's output, its screenshots, the state it read. If the
   second run fails too, stop and report. `guard-rig.js` refuses a third.
