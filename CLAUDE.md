@@ -48,7 +48,7 @@ or two maps at a time.
 - **When a fix fails, say so and re-diagnose** from the evidence, never a second guess on the first.
 - **A brainstorm ends at the proposal, and an analysis ends at the answer**: no tests, rig runs or
   commits. On the DM's "build it", `builder` builds it and this session checks.
-- **Studies follow the `research` skill; UI options and new UI, the `mockups` skill.**
+- **Studies follow the `research` skill; UI options and new UI, the `mockup` skill.**
 - **Finish the whole task.** A failed tool call is a reason to try another way, not to stop.
 - **A feature that replaces another keeps everything the old one did**, unless the DM drops it.
 - **Run `/redteam` only when the DM asks.**

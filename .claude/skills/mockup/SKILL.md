@@ -1,5 +1,5 @@
 ---
-name: mockups
+name: mockup
 description: Load whenever the DM asks for UI options or mockups, and BEFORE designing any UI. Carries how a mockup board is built for the DM to pick from, and the loop from board to pick. Not for a change whose shape the DM already gave, or a fix to a look the DM already picked.
 ---
 

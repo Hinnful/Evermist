@@ -516,6 +516,9 @@ the pick; a question a board raises that nothing answered goes back to research.
 combined skill. The "agree on the look first" rule now covers only a change to something already picked; new UI goes to a board.
 Reddit blocks every tool, so research skips it; Claude in Chrome stays denied in `.claude/settings.json`.
 
+### The `mockups` skill became `mockup` · `SETTLED` (2026-11-15)
+Renamed to `.claude/skills/mockup/`, live references updated; earlier entries keep the old name as written.
+
 ### Settings: `attribution` replaces `includeCoAuthoredBy` · `SETTLED` (2026-11-15)
 `attribution` with empty `commit` and `pr` replaces the deprecated `includeCoAuthoredBy`. The dead tool names `Task` and `MultiEdit`
 left the hook matchers.

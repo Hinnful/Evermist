@@ -108,7 +108,7 @@ A bug report is an ordinary message and needs no command.
 - **One rig run at a time.** `guard-rig.js` refuses a run while another is going, because two share
   the hidden screen. It reads `ps`, so on Windows it lets the run through.
 - **Before changing the look of something the DM already picked,** state what the result should
-  look like and get the DM's agreement. New UI goes to a mockup board (the `mockups` skill).
+  look like and get the DM's agreement. New UI goes to a mockup board (the `mockup` skill).
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
 - **Correctness work gets its check during the build.** Claude proves a behaviour without asking,
