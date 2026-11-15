@@ -17,25 +17,16 @@ const CLOUD_PASSES = [
   { scale: 0.61, angle: -0.29, alpha: 0.3, driftX:  7,  driftY: -14, alphaFreq: 0.06, alphaPhase: 3.5 },
 ];
 const CLOUD_FRAME_COUNT   = 16;
-// The motion and warp are Default theme's; a theme sets them (applyFogThemeLook) and every theme
-// shares its warp, so a theme switch never rebuilds the cloud frames.
-let   cloudFrameSpeed     = 0.20;  // frames per second → full cycle ~46s
+// The warp is Default theme's and every theme shares it, so a theme switch never rebuilds the
+// cloud frames. The motion lives in state.js.
 let   cloudWarpRadius     = 0.06;  // small steps → near-identical consecutive frames
 let   cloudWarpStrength   = 0.10;  // gentle warp so crossfade looks like smooth morphing
-let   driftScale          = 0.5;   // multiplier on all drift speeds
-let   alphaPulseAmp       = 0.15;  // ±15% alpha oscillation
 
 // ─── Fog canvases (offscreen, 1/FOG_SCALE) ───────────────────────────────────
-let fogDataCanvas = null, fogDataCtx = null; // 1/FOG_SCALE, source of truth
-let baseFogCanvas = null, baseFogCtx = null;
+// fogDataCanvas and baseFogCanvas live in state.js.
 let fogBlurCanvas = null, fogBlurCtx = null; // scratch for blur pass
 let fogEffectCanvas = null, fogEffectCtx = null; // cached blur+cloud result (map-rect sized; used for transitions)
 let cloudCanvas = null, cloudPattern = null;
-
-// ─── Fog animation settings ───────────────────────────────────────────────────
-let fogAnimEnabled = false;
-let fogAnimSpeed   = 0.6;
-// The drift and transition state, and every loop that moves them, live in fogAnim.js.
 
 // ─── Cloud frame cycling ─────────────────────────────────────────────────────
 let cloudFrames    = [];   // array of offscreen canvases (domain-warped noise)

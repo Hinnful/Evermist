@@ -3,31 +3,19 @@
 // click to it. A tool's own behaviour lives in its own file.
 
 // ─── Tool state ───────────────────────────────────────────────────────────────
-let tool  = 'reveal';
-let shape = 'select';   // the tool the app is used with; setPlaceMode keeps it across modes
-let brushSize = 40;
+// tool, shape, brushSize, circleCenter, coneApex, activePolygon, snapToGrid and axisLock live in state.js.
 let isDrawing = false;
 let pendingBrushOps = [];
 let fogModifiedThisStroke = false;
 let lastMapX, lastMapY;
 let rectStartX, rectStartY;
-let circleCenter = null;
-// The cone's point of origin, held for the length of the drag. Same lifetime as circleCenter:
-// set on mousedown, cleared on every release path including the one outside the canvas.
-let coneApex = null;
 // Where an effect preset's aiming drag began. Same lifetime as coneApex.
 let presetPress = null;
 // Direction snap for a cone, in degrees, when straighten-walls is on. 15 is what table tools
 // settled on: eight compass points plus the halves between them.
 const CONE_SNAP_DEG = 15;
 
-// ─── Polygon tool state ───────────────────────────────────────────────────────
-let activePolygon = null;   // polygon currently being drawn
-
 // ─── Drawing aids ─────────────────────────────────────────────────────────────
-let snapToGrid = false;
-// Straighten-walls toggle. Runtime-only, like snapToGrid — never per scene, never in a backup.
-let axisLock = false;
 const AXIS_LOCK_PX = 12;   // screen px of slack before the snap lets go
 
 // ─── Polygon helpers ──────────────────────────────────────────────────────────

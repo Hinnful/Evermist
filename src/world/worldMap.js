@@ -12,7 +12,6 @@ const _wmLayers = {};            // hull, card and mark
 const _wmEls = new Map();        // key → element, kept across renders so a move can animate
 let _wmCam = { cx: 0, cy: 0, z: 1 };
 let _wmAnim = false, _wmFlyGen = 0, _wmFlyEnds = false;   // a new fly stops the running one, unless that one ends by leaving
-let _wmQuery = '';
 let _wmPlaceList = [];           // the places as the last draw found them
 let _wmLive = {};                // id → position while a drag is under way
 let _wmRoadPos = Object.create(null);  // id → spot on its road, for every scene a road holds

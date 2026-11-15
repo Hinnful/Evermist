@@ -343,3 +343,41 @@ let pictureBlobs = {};
 // minimap, by Sync View, and by Player freelook reports.
 let minimapView   = { mapCX: 0, mapCY: 0, zoom: 1 };
 let minimapDirty  = false;
+
+// ─── Fog (fog.js) ────────────────────────────────────────────────────────────
+// The motion is Default theme's; a theme sets it (applyFogThemeLook).
+let cloudFrameSpeed = 0.20;  // frames per second → full cycle ~46s
+let driftScale      = 0.5;   // multiplier on all drift speeds
+let alphaPulseAmp   = 0.15;  // ±15% alpha oscillation
+// The offscreen fog canvases, at 1/FOG_SCALE.
+let fogDataCanvas = null, fogDataCtx = null; // source of truth
+let baseFogCanvas = null, baseFogCtx = null;
+let fogAnimEnabled = false;
+let fogAnimSpeed   = 0.6;
+// The drift and transition state, and every loop that moves them, live in fogAnim.js.
+
+// ─── Tools (tools.js) ────────────────────────────────────────────────────────
+let tool  = 'reveal';
+let shape = 'select';   // the tool the app is used with; setPlaceMode keeps it across modes
+let brushSize = 40;
+let circleCenter = null;
+// The cone's point of origin, held for the length of the drag. Same lifetime as circleCenter:
+// set on mousedown, cleared on every release path including the one outside the canvas.
+let coneApex = null;
+let activePolygon = null;   // polygon currently being drawn
+let snapToGrid = false;
+// Straighten-walls toggle. Runtime-only, like snapToGrid — never per scene, never in a backup.
+let axisLock = false;
+
+// ─── Room card (roomCard.js) ─────────────────────────────────────────────────
+// Id of the room the fields currently hold values for. NOT selectedPolygonId: a canvas click
+// changes the selection *before* the focused field's blur fires, so commits key off this.
+let _rpFieldPid = null;
+let _rpTabKey = null;
+
+// ─── World map (worldMap.js) ─────────────────────────────────────────────────
+let _wmQuery = '';
+
+// ─── Fight table (combatTracker.js) ──────────────────────────────────────────
+// `rows` is the open fight's; the other fights carry their own in `fights` (fightPlan.js).
+let cbState = { rows: [], blocks: {}, nextId: 1, openId: null, fights: [] };

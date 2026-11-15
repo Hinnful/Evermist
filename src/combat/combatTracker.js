@@ -11,8 +11,6 @@ const CB_CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled
 const CB_ICON_X = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>';
 const CB_ICON_DUP = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><path d="M8.5 1.5h-6a1 1 0 0 0-1 1v6"/></svg>';
 
-// `rows` is the open fight's; the other fights carry their own in `fights` (fightPlan.js).
-let cbState = { rows: [], blocks: {}, nextId: 1, openId: null, fights: [] };
 let _cbSaveTimer = null;
 let _cbSaveFailed = false;
 

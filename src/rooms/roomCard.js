@@ -3,10 +3,6 @@
 //
 // Called once from initToolbar() (DM only). The name labels on the map are roomPanel.js.
 
-// Id of the room the fields currently hold values for. NOT selectedPolygonId: a canvas click
-// changes the selection *before* the focused field's blur fires, so commits key off this.
-let _rpFieldPid = null;
-
 function _rpEl(id) { return document.getElementById(id); }
 
 // Resolves against whichever list the placement mode names, since that is where the selection
@@ -224,7 +220,7 @@ function _rpFitNotes() {
 
 // Refill, from drawCursor() on every repaint. ⚠ NEVER from setPolygonMode(), where a rebuild
 // mid-edit steals field focus. The tab follows the selection ONLY, never the tool.
-let _rpTrioPid = null, _rpTabKey = null;
+let _rpTrioPid = null;
 function refreshRoomPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const panel = _rpEl('panel-room');

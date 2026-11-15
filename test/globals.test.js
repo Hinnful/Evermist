@@ -2,7 +2,7 @@
 
 // The browser scripts share one global scope, and eslint's no-redeclare is off so they can, which
 // leaves two rules unchecked by lint: a name declared twice silently takes the later copy, and
-// shared mutable state has one home, src/state.js (CLAUDE.md).
+// mutable state written by more than one subsystem lives in src/state.js (CLAUDE.md).
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +11,6 @@ const path = require('path');
 const espree = require('espree');
 // eslint's own scope analyser, installed with eslint.
 const eslintScope = require('eslint-scope');
-const ALLOW = require('./globals.allow.json');
 
 const ROOT = path.join(__dirname, '..');
 const PAGES = ['index.html', 'stage.html', 'splash.html'];
@@ -92,29 +91,61 @@ function crossFileFunctions(page) {
     .map(([name, s]) => page + ' loads ' + name + ' from ' + [...s].join(' and '));
 }
 
-// Every module-level `let` outside src/state.js that another script on the same page writes:
-// a Map of "file" -> Map of name -> Set of writing files.
-function crossFileWrites() {
+// Every write that crosses folders: a module-level `let` or `var` declared in a page-loaded script
+// other than src/state.js, written from a page-loaded script in another folder, by name or through
+// `window.NAME =` / `globalThis.NAME =`. A Map of "file" -> Map of name -> Set of writing files.
+function eachNode(node, visit) {
+  if (!node || typeof node.type !== 'string') return;
+  visit(node);
+  for (const key of Object.keys(node)) {
+    if (key === 'parent') continue;
+    const v = node[key];
+    if (Array.isArray(v)) v.forEach((c) => eachNode(c, visit));
+    else if (v && typeof v.type === 'string') eachNode(v, visit);
+  }
+}
+
+function globalPropertyWrites(ast) {
+  const out = [];
+  eachNode(ast, (n) => {
+    const target = n.type === 'AssignmentExpression' ? n.left : n.type === 'UpdateExpression' ? n.argument : null;
+    if (!target || target.type !== 'MemberExpression' || target.object.type !== 'Identifier') return;
+    if (target.object.name !== 'window' && target.object.name !== 'globalThis') return;
+    if (!target.computed && target.property.type === 'Identifier') out.push(target.property.name);
+    else if (target.computed && target.property.type === 'Literal') out.push(String(target.property.value));
+  });
+  return out;
+}
+
+function crossFolderWrites() {
   const found = new Map();
+  const note = (home, name, rel) => {
+    if (!found.has(home)) found.set(home, new Map());
+    if (!found.get(home).has(name)) found.get(home).set(name, new Set());
+    found.get(home).get(name).add(rel);
+  };
   for (const page of PAGES) {
     const scripts = pageScripts(page);
     const owner = new Map();
     for (const rel of scripts) {
       if (rel === STATE) continue;
-      for (const n of load(rel).ast.body) {
-        if (n.type !== 'VariableDeclaration' || n.kind !== 'let') continue;
-        for (const d of n.declarations) for (const name of bound(d.id, [])) owner.set(name, rel);
-      }
+      const { text, ast } = load(rel);
+      for (const { name, kind } of topLevel(text, ast)) if (kind === 'let' || kind === 'var') owner.set(name, rel);
     }
+    const foreign = (name, rel) => {
+      const home = owner.get(name);
+      return home && path.posix.dirname(home) !== path.posix.dirname(rel) ? home : null;
+    };
     for (const rel of scripts) {
-      const scope = eslintScope.analyze(load(rel).ast, { ecmaVersion: 2022, sourceType: 'script' });
+      const { ast } = load(rel);
+      const scope = eslintScope.analyze(ast, { ecmaVersion: 2022, sourceType: 'script' });
       for (const ref of scope.globalScope.through) {
-        const name = ref.identifier.name;
-        const home = owner.get(name);
-        if (!ref.isWrite() || !home || home === rel) continue;
-        if (!found.has(home)) found.set(home, new Map());
-        if (!found.get(home).has(name)) found.get(home).set(name, new Set());
-        found.get(home).get(name).add(rel);
+        const home = ref.isWrite() && foreign(ref.identifier.name, rel);
+        if (home) note(home, ref.identifier.name, rel);
+      }
+      for (const name of globalPropertyWrites(ast)) {
+        const home = foreign(name, rel);
+        if (home) note(home, name, rel);
       }
     }
   }
@@ -140,28 +171,13 @@ describe('house rules: global declarations', () => {
 });
 
 describe('house rules: shared state lives in src/state.js', () => {
-  const found = crossFileWrites();
-
-  it('writes no module-level let from another file unless allowlisted', () => {
+  it('writes no module-level let or var from another folder', () => {
     const faults = [];
-    for (const [home, names] of found) {
-      for (const [name, writers] of names) {
-        if ((ALLOW[home] || []).includes(name)) continue;
-        faults.push(home + ': ' + name + ' is written from ' + [...writers].join(', '));
-      }
+    for (const [home, names] of crossFolderWrites()) {
+      for (const [name, writers] of names) faults.push(home + ': ' + name + ' is written from ' + [...writers].join(', '));
     }
     assert.deepEqual(faults, [],
-      'shared mutable state has one home. Move the binding to src/state.js; only when the DM agreed ' +
-      'to keep it where it is, add it to test/globals.allow.json under its file:\n' + faults.join('\n'));
-  });
-
-  it('allowlists only names that are still written from another file', () => {
-    const stale = [];
-    for (const [home, names] of Object.entries(ALLOW)) {
-      for (const name of names) if (!(found.get(home) && found.get(home).has(name))) stale.push(home + ': ' + name);
-    }
-    assert.deepEqual(stale, [],
-      'these are no longer written from another file. Delete their entries in test/globals.allow.json, ' +
-      'which may only shrink:\n' + stale.join('\n'));
+      'state written by more than one subsystem has one home. Move the binding into src/state.js:\n' +
+      faults.join('\n'));
   });
 });

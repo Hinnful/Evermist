@@ -91,8 +91,8 @@ or two maps at a time.
   neither: split it. `src/` root holds only what every subsystem reads.
 - **A set that grows by one more of the same thing is a folder, not a branch.** A tool, a
   material, a Player message and a column control each arrive as one file or one record.
-- **Shared mutable state has one home: `state.js`.** Move a piece there when a feature
-  touches it.
+- **State two subsystems write lives in `state.js`**; `globals.test.js` fails
+  cross-folder writes.
 - **Restructuring is its own task.** Splits, moves and renames happen on the DM's yes to a
   stated scope, in their own commit, never inside a feature change, so a feature diff stays
   readable.

@@ -543,5 +543,8 @@ An unmaintained set generates CI work, and the maintained one caught about three
 ### A test refuses duplicate top-level declarations · `SETTLED` (2026-11-15)
 Lint's `no-redeclare` is off for cross-file globals, so a later copy of a function silently wins and the earlier one never runs; two dead copies were found in `notesPanel.js` and `shapeHit.js`. `test/globals.test.js` refuses a name declared twice in one file, or a function declared in two scripts on one page.
 
-### Cross-file writes to module-level `let` are ratcheted · `SETTLED` (2026-11-15)
-`test/globals.test.js` counts writes to a module-level `let` from outside `src/state.js` against `test/globals.allow.json` (52 entries, may only shrink). Moving the cross-subsystem ones into `state.js` is the next task.
+### Mutable state written by more than one subsystem lives in `state.js` · `SETTLED` (2026-11-15)
+`test/globals.test.js` fails, with no allowlist, when a module-level `let` or `var` declared outside `src/state.js` is written from a page-loaded script in another folder, directly or through `window.NAME =` / `globalThis.NAME =`. Same-folder writes are allowed. The 21 variables that crossed folders moved into `state.js` as they were (fog animation and canvases, the tool and shape state, two room-card fields, the world-map query, the combat state); `globals.allow.json` is gone.
+
+### Moving the 31 variables only their own folder writes into `state.js` · `REJECTED` (2026-11-15)
+They are one subsystem's internals; in `state.js` they would invite other subsystems to write them, which the rule exists to prevent.

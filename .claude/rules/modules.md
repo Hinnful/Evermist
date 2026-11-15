@@ -19,7 +19,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `cursor/companionLogic.js` | Pure crystal companion kernel: moods, click and shake rules, offsets and edge hop, the morph shapes and springs. Tested |
 | `cursor/companionSwitch.js` | Settings' "Crystal companion" switch, stored only when off |
 | `cursor/companion.js` | The crystal companion on screen: one small fixed canvas following the pointer while it is in this document, the busy state, the switch passed on to every Player window and column |
-| `state.js` | Shared state: fog constants, grid config, fog RAF handles, and every dirty flag |
+| `state.js` | Shared state: fog constants, grid config, fog RAF handles, every dirty flag, and every variable written from more than one subsystem folder |
 | `i18n/i18nPlan.js` | Pure interface-language kernel: lookup, `{name}` fill, plural pick. Tested |
 | `i18n/ru.js` | The Russian dictionary, keyed by the English text. Data only |
 | `i18n/i18n.js` | The interface language: `t()`, the pass that swaps on-screen English, the About switch |
