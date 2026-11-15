@@ -543,7 +543,7 @@ only while one is showing, and nothing of it is stored.
 Effect looks beyond flames are one-pass kinds, one file each in `src/render/effectKinds/`, each adding itself to
 `_FX_KIND_FRAG`. The shared prefix in `effectShaderKinds.js` gives them `uHub` (the web hub: the outer ring's area centroid
 moved up 8% of its height), `uInR` (the shape's depth, from `ringsInRadius` in `shapeHit.js`) and `fit(ref, lo)`, which
-scales edge work down on thin shapes. It also carries the cloud helpers `sN`, `drift` and `cellsF`: faint patches riding the drift, each opening and closing on its own timer. Darkness and Fog cloud (`fogCloud.js`) draw them. The palette renders sections from each material's `group` (Ground, Cloud, Marks; Light
+scales edge work down on thin shapes. It also carries the cloud helpers `sN`, `drift` and `cellsF`: faint patches riding the drift, each opening and closing on its own timer. Darkness, Fog cloud (`fogCloud.js`) and Poison cloud (`poisonCloud.js`, kind `miasma`) draw them; every cloud takes the Rolling edge. The palette renders sections from each material's `group` (Ground, Cloud, Marks; Light
 is a mark). Every effect and light relights the grid at its edge: `grid.js` builds a falloff mask per shape and cell size
 (the shape less its blurred copy) and draws the lines in the material's colour, and `lights.js` marks the grid dirty.
 `shapeSelect.js` outlines a held effect in its material's colour. Claude's effect tools take a material by key or by its

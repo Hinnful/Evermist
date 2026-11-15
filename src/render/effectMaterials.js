@@ -39,6 +39,8 @@ const EFFECT_MATERIALS = {
   darkness: { kind: 'billows', label: 'Darkness', group: 'cloud', edge: '#a57cff', grid: '#a57cff' },
   // Picked on `.claude/private/design/item-294/` round 6.
   fogcloud: { kind: 'fogbank', label: 'Fog cloud', group: 'cloud', edge: '#d8e6f6', grid: '#d8e6f6' },
+  // Picked on `.claude/private/design/item-294-poison/` round 6.
+  poisoncloud: { kind: 'miasma', label: 'Poison cloud', group: 'cloud', edge: '#8fe060', grid: '#8fe060' },
 };
 
 // The record for a stored name. An unknown one, from a newer release, burns as fire.

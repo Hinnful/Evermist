@@ -293,3 +293,18 @@ fog of war. Grey-blue rather than white so it holds on snowy maps, as Ice taught
   direction times t. The effect clock is seconds since page load and reaches hours on the TV, so the product speeds up with it
   (twice the movement per half second at 3 h as at 60 s); the integral moves the same at any hour.
 
+
+---
+
+### Poison cloud joins the effects, and every cloud takes the Rolling edge · `SETTLED` (2026-11-15)
+Key `poisoncloud`, kind `miasma` (`poisonCloud.js`), Cloud group after Fog cloud, one colour #8fe060 (greener than Acid's #d8f040),
+placeable by the AI assistant. Picked over six board rounds (`.claude/private/design/item-294-poison/`): a pale washed-out green
+gas of soft lit lumps, rings of gas swelling out from points and breaking into wisps, a paler haze drifting on its own path, a
+thick heart with a slightly thinner rim that is never see-through, faint patches only, the Rolling edge. Icon: the cloud outline
+with two bubble rings inside (below reads as rain, side by side as eyes, outside as a speech bubble).
+- Rule for every cloud effect: the Rolling edge (Fog cloud's, slow waves driven by the cloud's own body noise). The lumpy edge
+  deformed the drawn shape and confused the table; it may be revisited. Darkness switched from its wavering edge to it.
+- Rejected, do not retry: curling see-through streams with specks, toon puffs alone, seething rings over opaque murk alone,
+  puffs rising and sinking as lit domes, lumps with rings across them, opaque gooey dark murk, an evenly thin haze, separate puffs
+  in thin gas, a thin rim showing the ground clearly, a lumpy edge and a wavering edge.
+- Rejected: a grid relight following a cloud's moving edge (prototyped, dropped); the static Edge squares stay.

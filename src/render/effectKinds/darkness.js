@@ -1,6 +1,7 @@
 'use strict';
-// darkness.js — Darkness, the 'billows' kind: slow churning billows, a wavering violet edge line, purple light
-// on the folds, rare dark motes. Ported from `.claude/private/design/item-286/` round 4 (`billows4`), in lab
+// darkness.js — Darkness, the 'billows' kind: slow churning billows, a violet edge line that rolls as Fog cloud's
+// does, purple light on the folds, rare dark motes. Ported from `.claude/private/design/item-286/` round 4
+// (`billows4`), the edge from `.claude/private/design/item-294-poison/` round 5 (`darkEdge`, edge 0), in lab
 // pixels on a 36px cell (effectShaderKinds.js).
 
 _FX_KIND_FRAG.billows = _FX_KIND_COMMON + `
@@ -42,7 +43,7 @@ void main(){
   float tt = t * 1.8;
   float n = dens(w, tt);
   float sw = fit(40., .12), se = fit(8., .4);
-  float dd = d + (n - .5) * 30. * fit(60., .1);
+  float dd = d + (sN(p * .02 - drift(t) * .22 + n * 1.5) - .5) * 22. * fit(60., .1);
   float m = smoothstep(2. * sw, -6. * sw, dd);
   float n2 = soft(w, tt), nx = soft(w + vec2(9., 0.), tt), ny = soft(w + vec2(0., 9.), tt);
   float lit = ((n2 - nx) + (n2 - ny)) * 7.;

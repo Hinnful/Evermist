@@ -142,6 +142,13 @@ describe('materials and finding one', () => {
     assert.deepEqual(mcpFxMaterial('Туманное облако'), { material: 'fogcloud' });
     assert.match(mcpFxMaterial('lava').error, /Darkness, Fog cloud/);
   });
+  it('names Poison cloud by key, by label and by its Russian name, and lists it when refusing', () => {
+    assert.deepEqual(mcpFxMaterial('poisoncloud'), { material: 'poisoncloud' });
+    assert.deepEqual(mcpFxMaterial(' Poison cloud '), { material: 'poisoncloud' });
+    assert.deepEqual(mcpFxMaterial('poison CLOUD'), { material: 'poisoncloud' });
+    assert.deepEqual(mcpFxMaterial('Ядовитое облако'), { material: 'poisoncloud' });
+    assert.match(mcpFxMaterial('lava').error, /Fog cloud, Poison cloud/);
+  });
   const fx = [{ material: 'fire' }, { material: 'acid' }, { material: 'fire' }, {}];
   it('finds by index from 1', () => {
     assert.deepEqual(mcpPickOne(fx, 2, 'effect'), { i: 1 });

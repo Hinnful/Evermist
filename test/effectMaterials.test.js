@@ -24,7 +24,7 @@ test('each material has a kind and the label the DM sees', () => {
   assert.deepStrictEqual(got, {
     fire: ['flame', 'Fire'], acid: ['flame', 'Acid'], area: ['ward', 'Area'], terrain: ['rough', 'Difficult terrain'],
     ice: ['frost', 'Ice'], web: ['orbweb', 'Web'], grease: ['tar', 'Grease'], darkness: ['billows', 'Darkness'],
-    fogcloud: ['fogbank', 'Fog cloud'],
+    fogcloud: ['fogbank', 'Fog cloud'], poisoncloud: ['miasma', 'Poison cloud'],
   });
   assert.strictEqual(effectMaterial('lava').kind, 'flame');
 });
@@ -58,6 +58,14 @@ test('fog cloud is a pale blue cloud after darkness', () => {
   assert.strictEqual(EFFECT_MATERIALS.fogcloud.group, 'cloud');
   const keys = Object.keys(EFFECT_MATERIALS);
   assert.strictEqual(keys.indexOf('fogcloud'), keys.indexOf('darkness') + 1);
+});
+
+test('poison cloud is a green cloud after fog cloud, one colour for edge and grid', () => {
+  assert.strictEqual(effectEdgeColor('poisoncloud'), '#8fe060');
+  assert.strictEqual(EFFECT_MATERIALS.poisoncloud.grid, '#8fe060');
+  assert.strictEqual(EFFECT_MATERIALS.poisoncloud.group, 'cloud');
+  const keys = Object.keys(EFFECT_MATERIALS);
+  assert.strictEqual(keys.indexOf('poisoncloud'), keys.indexOf('fogcloud') + 1);
 });
 
 test('a material this release does not know, as the previous release reads ice, burns as fire', () => {
