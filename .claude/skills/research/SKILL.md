@@ -1,6 +1,6 @@
 ---
 name: research
-description: Load whenever the DM asks to research something, to see how other apps do X, or to compare competitors, and before a scope or product call. Carries how a study is run and reported. Not for mockups or UI options (the mockups skill), a bug fix, or a change whose shape the DM already gave.
+description: Load whenever the DM asks to research something, to see how other apps do X, or to compare competitors, and before a scope or product call. Carries how a study is run and reported. Not for mockups or UI options (the mockup skill), a bug fix, or a change whose shape the DM already gave.
 ---
 
 # Research

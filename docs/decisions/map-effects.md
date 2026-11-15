@@ -277,3 +277,19 @@ none. Rejected: every line bright, faint lines, corner crosses, a stepped outlin
 rule), the grid drawn under the effect. A material has one colour, used for its edge, grid relight, picked outline, palette
 icon and drawing preview. A picked effect or light outlines in its own colour, not gold; editing stays white. Difficult
 terrain became sand #e0bf8a; Fire's grid colour became its edge colour.
+
+---
+
+### Fog cloud joins the effects · `SETTLED` (2026-11-15)
+Key `fogcloud`, kind `fogbank`, in the Cloud group after Darkness, one colour #d8e6f6. Picked over six board rounds
+(`.claude/private/design/item-294/`): a rolling grey-blue bank lit pale on top, a rolling edge with a pale line over a dark one,
+faint patches where the map ghosts through, at full speed. Named "Fog cloud" because "Fog" (Russian "Туман") already names the
+fog of war. Grey-blue rather than white so it holds on snowy maps, as Ice taught.
+- Every fog-like cloud, Darkness included, has faint patches at most, never holes or seams. Darkness gained faint patches with a
+  faint dark veil under each so the map never shows bare, and keeps its 5.14 speed.
+- Rejected, do not retry: a wall of fog with streaming wisps (its pockets were kept), droplets with light shafts and a beaded
+  edge, rare clear holes, thin tears along the lumps, a few wide round patches, and slowed speeds (half, a third, a quarter, 66%).
+- Trap: a drift whose direction turns must be the integral of that direction (`drift(t)` in the shared prefix), never the
+  direction times t. The effect clock is seconds since page load and reaches hours on the TV, so the product speeds up with it
+  (twice the movement per half second at 3 h as at 60 s); the integral moves the same at any hour.
+

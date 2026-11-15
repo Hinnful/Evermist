@@ -67,6 +67,29 @@ float sdLab(vec2 p){ float q; return sdLab(p, q); }
 // work by it, or a 1 ft wall or ring shows nothing but its rim.
 float fit(float ref, float lo){ return clamp(uInR / K / ref, lo, 1.); }
 vec2 h22(vec2 p){ return vec2(hash(p), hash(p + 17.3)); }
+
+// The cloud kinds' shared parts, from item-294's board.
+float sN(vec2 q){ return noise(q) * .6 + noise(q * 2.03 + 3.) * .28 + noise(q * 4.1 + 7.) * .12; }
+// How far a drift whose direction turns slowly has carried by t: the integral of (cos .05t, sin .05t).
+// ⚠ Never a turning direction times t: that speeds up with the clock, which on the TV reaches hours.
+vec2 drift(float t){ float a = t * .05; return vec2(sin(a), 1. - cos(a)) / .05; }
+// Faint patches riding pp: each cell may hold one, opening and closing on its own timer. 0 none, 1 open.
+float cellsF(vec2 pp, float t, float size, float keep, float rmax, float soft){
+  vec2 i = floor(pp / size); float o = 0.;
+  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++){
+    vec2 c = i + vec2(float(x), float(y));
+    float h = hash(c + 7.);
+    if (h < keep) continue;
+    vec2 ce = (c + .25 + .5 * h22(c + 3.)) * size;
+    float life = sin(t * .12 + h * 40.);
+    float r = rmax * smoothstep(0., .6, life);
+    if (r < 1.) continue;
+    vec2 v = pp - ce;
+    float dist = length(v) + (sN(v * .03 + c * 5. + t * .1) - .5) * rmax * .45;
+    o = max(o, smoothstep(r, r - soft, dist));
+  }
+  return o;
+}
 float star(vec2 r, float s){ float a = exp(-abs(r.x)*1.1/s) * exp(-r.y*r.y/(.6*s)); float b = exp(-abs(r.y)*1.1/s) * exp(-r.x*r.x/(.6*s));
   return max(a, b) + exp(-dot(r, r)/(2.*s)); }
 float sparkle(vec2 p, float t, float cell, float rate){

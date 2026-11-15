@@ -37,6 +37,8 @@ const EFFECT_MATERIALS = {
   web: { kind: 'orbweb', label: 'Web', group: 'ground', edge: '#ece8dc', grid: '#ece8dc' },
   grease: { kind: 'tar', label: 'Grease', group: 'ground', edge: '#dca04a', grid: '#dca04a' },
   darkness: { kind: 'billows', label: 'Darkness', group: 'cloud', edge: '#a57cff', grid: '#a57cff' },
+  // Picked on `.claude/private/design/item-294/` round 6.
+  fogcloud: { kind: 'fogbank', label: 'Fog cloud', group: 'cloud', edge: '#d8e6f6', grid: '#d8e6f6' },
 };
 
 // The record for a stored name. An unknown one, from a newer release, burns as fire.

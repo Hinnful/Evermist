@@ -48,10 +48,14 @@ void main(){
   float lit = ((n2 - nx) + (n2 - ny)) * 7.;
   vec3 c = mix(vec3(.008, .005, .018), vec3(.07, .05, .12), smoothstep(-.35, .55, lit + (n - .5) * .8));
   c = mix(c, vec3(.3, .16, .52), smoothstep(.35, .95, lit) * .6);
-  over(c, m * .93);
+  // Faint patches with a dark veil under each, from item-294's board (darkRef with patches): never holes.
+  float o = cellsF(w, t, 115., .1, 60., 48.) * .75 * smoothstep(-20., -46., dd);
+  over(c, m * .93 * (1. - o * .82));
+  over(vec3(.4, .2, .75), o * (1. - o) * 4. * .15 * m);
+  over(vec3(.025, .015, .05), o * .45 * m);
   float pk = smoothstep(.58, .74, soft(w * 1.6 + 30., tt * .8));
   over(vec3(.26, .08, .44), pk * .38 * m * (.65 + .35 * sin(t * .8 + n * 6.)));
-  over(vec3(0.), smoothstep(-14. * sw, -70. * sw, dd) * .38 * m);
+  over(vec3(0.), smoothstep(-14. * sw, -70. * sw, dd) * .38 * m * (1. - o));
   over(vec3(.4, .2, .75), exp(-(dd + se) * (dd + se) / (40. * se * se)) * .3);
   over(vec3(.02, 0., .05), band(dd + 1.5 * se, 2.2 * se) * .5);
   over(vec3(.66, .46, 1.), band(dd + 1.5 * se, .85 * se) * .85);
