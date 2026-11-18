@@ -750,6 +750,8 @@ and no Player warmed. The app holds one copy per library, so the DM opening Ever
 same app, which reloads its page as a normal start and shows it. Unseen, it quits after fifteen
 minutes with no call.
 
+On Linux the shim first repairs the app's environment from the desktop session (display, Wayland socket, runtime dir, bus, Xauthority; only what is missing or dead, `sessionEnv`), because Claude Desktop's extension process lacks them, and starts the app under `systemd-run --user --scope` when available, so the AppImage's FUSE runtime does not share Claude Desktop's cgroup scope.
+
 Claude does the DM's prep and none of the play. Its tools make, rename, move, change and delete
 scenes, places, roads, the world map's backdrop, fights, bestiary monsters and gallery pictures, and
 add to or replace notes at every level the Notes window holds. `mcpEntries.js` (rules in

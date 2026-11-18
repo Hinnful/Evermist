@@ -313,19 +313,62 @@ function postOnce(tool, args) {
   });
 }
 
+const DBUS_TRANSPORT = /^(unix:(abstract|tmpdir|dir|runtime)=|tcp:|nonce-tcp:|launchd:|systemd:|autolaunch:)/;
+
+// ⚠ ON LINUX CLAUDE'S APP STARTS THIS SERVER WITHOUT THE DESKTOP SESSION'S DISPLAY AND BUS, and Electron
+// quits at once without a display. A missing or dead value is taken from the session's runtime folder.
+function sessionEnv(env, runDir, x11Dir = '/tmp/.X11-unix') {
+  const out = { ...env };
+  const there = p => !!p && fs.existsSync(p);
+  const first = (dir, re) => { try { return fs.readdirSync(dir).sort().find(f => re.test(f)); } catch { return undefined; } };
+  if (!there(out.XDG_RUNTIME_DIR) && there(runDir)) out.XDG_RUNTIME_DIR = runDir;
+  const run = out.XDG_RUNTIME_DIR;
+  if (!out.WAYLAND_DISPLAY || !there(path.resolve(run || '/', out.WAYLAND_DISPLAY))) {
+    const w = run && first(run, /^wayland-\d+$/);
+    if (w) out.WAYLAND_DISPLAY = w; else delete out.WAYLAND_DISPLAY;
+  }
+  const local = /^:(\d+)(\.\d+)?$/.exec(out.DISPLAY || '');
+  if (!out.DISPLAY || (local && !there(path.join(x11Dir, 'X' + local[1])))) {
+    const x = first(x11Dir, /^X\d+$/);
+    if (x) out.DISPLAY = ':' + x.slice(1); else delete out.DISPLAY;
+  }
+  if (!there(out.XAUTHORITY)) {
+    const a = run && first(run, /^xauth_/);
+    if (a) out.XAUTHORITY = path.join(run, a); else delete out.XAUTHORITY;
+  }
+  const bus = out.DBUS_SESSION_BUS_ADDRESS || '';
+  const busPath = /^unix:path=([^,;]+)/.exec(bus);
+  if (!(busPath ? there(busPath[1]) : DBUS_TRANSPORT.test(bus)) && run && there(path.join(run, 'bus'))) {
+    out.DBUS_SESSION_BUS_ADDRESS = 'unix:path=' + path.join(run, 'bus');
+  }
+  return out;
+}
+
+// ⚠ A COPY STARTED HERE SITS IN CLAUDE'S OWN SCOPE AND DIES WHEN THAT SCOPE STOPS, and a menu launch hands
+// this copy the DM's window. systemd-run gives it a scope of its own while the user's systemd runs.
+function ownScope(argv, env, runDir) {
+  const dirs = [...String(env.PATH || '').split(':').filter(Boolean), '/usr/bin', '/bin'];
+  const bin = dirs.map(d => path.join(d, 'systemd-run')).find(p => fs.existsSync(p));
+  if (!bin || !fs.existsSync(path.join(runDir, 'systemd', 'private'))) return argv;
+  return [bin, '--user', '--scope', '--quiet', '--', ...argv];
+}
+
 // Evermist with no window, from the command EVERMIST_LAUNCH names. A second start is harmless: the app
 // keeps one copy per library and the extra one quits.
 function startApp() {
   let cmd;
   try { cmd = JSON.parse(process.env.EVERMIST_LAUNCH || 'null'); } catch { cmd = null; }
   if (!Array.isArray(cmd) || !cmd.length) return false;
-  const env = { ...process.env };
+  const linux = process.platform === 'linux';
+  const runDir = linux ? '/run/user/' + process.getuid() : '';
+  const env = linux ? sessionEnv(process.env, runDir) : { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
+  const argv = linux ? ownScope([...cmd, '--background'], env, runDir) : [...cmd, '--background'];
   // What the app prints while it starts, beside its address file, so a start that fails says why.
   let out = 'ignore';
   try { out = fs.openSync(path.join(path.dirname(process.env.EVERMIST_MCP || ''), 'mcp-start.log'), 'w'); } catch { /* no log */ }
   try {
-    const child = spawn(cmd[0], [...cmd.slice(1), '--background'], { detached: true, stdio: ['ignore', out, out], windowsHide: true, env });
+    const child = spawn(argv[0], argv.slice(1), { detached: true, stdio: ['ignore', out, out], windowsHide: true, env });
     child.on('error', err => { try { fs.writeSync(out, 'start failed: ' + err.message + '\n'); } catch { /* no log */ } });
     child.unref();
     return true;
@@ -402,4 +445,4 @@ function serveStdio() {
 // is not the main module there, and a server that waits for that never answers. Only Evermist's main
 // process requires it for the tool list.
 if (process.type !== 'browser') serveStdio();
-module.exports = { TOOLS };
+module.exports = { TOOLS, sessionEnv, ownScope };

@@ -171,6 +171,56 @@ describe('mcpShim', () => {
   });
 });
 
+describe('mcpShim session env', () => {
+  // Loaded as Evermist's main process loads it, or it serves this test's stdin and the run never ends.
+  process.type = 'browser';
+  const { sessionEnv, ownScope } = require('../electron/mcpShim.js');
+  delete process.type;
+  // A fake desktop session: the runtime folder with its sockets, and the X11 socket folder.
+  const run = path.join(dir, 'run-user');
+  const x11 = path.join(dir, 'x11');
+  fs.mkdirSync(run, { recursive: true });
+  fs.mkdirSync(x11, { recursive: true });
+  for (const f of ['wayland-0', 'wayland-0.lock', 'bus', 'xauth_Ab12']) fs.writeFileSync(path.join(run, f), '');
+  fs.writeFileSync(path.join(x11, 'X0'), '');
+  const session = {
+    XDG_RUNTIME_DIR: run, WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0',
+    XAUTHORITY: path.join(run, 'xauth_Ab12'), DBUS_SESSION_BUS_ADDRESS: 'unix:path=' + path.join(run, 'bus'),
+  };
+
+  it('fills a display, bus and runtime folder Claude\'s app left out', () => {
+    const env = sessionEnv({ HOME: '/home/dm' }, run, x11);
+    assert.deepEqual(env, { HOME: '/home/dm', ...session });
+  });
+
+  it('replaces values that point nowhere or do not parse', () => {
+    const env = sessionEnv({ XDG_RUNTIME_DIR: path.join(dir, 'gone'), WAYLAND_DISPLAY: 'wayland-9', DISPLAY: ':7',
+      XAUTHORITY: path.join(dir, 'gone-auth'), DBUS_SESSION_BUS_ADDRESS: 'disabled:' }, run, x11);
+    assert.deepEqual(env, session);
+  });
+
+  it('keeps a session that already works', () => {
+    const own = { ...session, DISPLAY: 'remote:0', DBUS_SESSION_BUS_ADDRESS: 'unix:abstract=/tmp/dbus-x' };
+    assert.deepEqual(sessionEnv(own, path.join(dir, 'other'), x11), own);
+  });
+
+  it('drops a dead display it has nothing to replace with', () => {
+    const env = sessionEnv({ WAYLAND_DISPLAY: 'wayland-9', DISPLAY: ':7' }, path.join(dir, 'gone'), path.join(dir, 'gone-x11'));
+    assert.deepEqual(env, {});
+  });
+
+  it('starts the app in a scope of its own while the user\'s systemd runs', () => {
+    const bin = path.join(dir, 'bin');
+    fs.mkdirSync(bin, { recursive: true });
+    fs.writeFileSync(path.join(bin, 'systemd-run'), '');
+    fs.mkdirSync(path.join(run, 'systemd'), { recursive: true });
+    fs.writeFileSync(path.join(run, 'systemd', 'private'), '');
+    const argv = ['/apps/Evermist.AppImage', '--background'];
+    assert.deepEqual(ownScope(argv, { PATH: bin }, run), [path.join(bin, 'systemd-run'), '--user', '--scope', '--quiet', '--', ...argv]);
+    assert.deepEqual(ownScope(argv, { PATH: bin }, path.join(dir, 'gone')), argv);
+  });
+});
+
 describe('mcpShim under a launcher', () => {
   it('answers when another script loads it, as Claude\'s built-in Node does', async () => {
     const launcher = path.join(dir, 'launcher.js');
