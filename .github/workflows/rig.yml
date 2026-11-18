@@ -19,7 +19,7 @@ jobs:
         include:
           # NEVER dist/Evermist.exe - see the rig skill.
           - { label: Windows, os: windows-latest, build: '--win dir', exe: 'dist/win-unpacked/Evermist.exe', run: '', set: blockers }
-          - { label: Mac, os: macos-latest, build: '--mac dir --universal', exe: 'dist/mac-universal/Evermist.app/Contents/MacOS/Evermist', run: '', set: blockers }
+          # No Mac leg: macOS runners queued for hours and held every release.
           # xvfb at the Windows runner's screen size, so every geometry check reads the same. The runner
           # has no GPU, so the app draws at 5fps under software GL: launch is all Linux can answer.
           - { label: Linux, os: ubuntu-latest, build: '--linux dir', exe: 'dist/linux-unpacked/evermist', run: 'xvfb-run -a -s "-screen 0 1024x768x24"', set: launch }

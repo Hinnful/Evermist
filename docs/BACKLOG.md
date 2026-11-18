@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 6 open items; IDs run to 294."
+description: "Open work only. 7 open items; IDs run to 295."
 metadata: 
   node_type: memory
   type: project
@@ -141,6 +141,13 @@ joins the effects"). Each joins one at a time, follows the
 Edge squares grid rule and one colour per material (`docs/decisions/map-effects.md`), and fits thin and small shapes.
 **Needs prototype looks for the DM to pick from, one effect per round.**
 **Play · Player**
+
+### 295. Bring back the Mac checks in the release gate
+Filed 2026-11-18, with 5.14.6. macOS runners sat queued for hours and held an urgent release, so 5.14.6 took every Mac
+leg out: the installer build (`gate.yml`), the rig's blocker set (`rig.yml`) and the update proofs
+(`update-proofs.yml`). 5.14.6 ships no Mac installer and no `latest-mac.yml`, so a Mac copy is not offered it. Put the
+three legs back, and the Mac lines in `release.yml`'s gate comments, once Mac runners pick up jobs again. **Waits on GitHub's macOS runners.**
+**Upkeep · DM only**
 
 
 ---

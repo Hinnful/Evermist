@@ -28,9 +28,26 @@ const sceneTrash = (() => {
     return _dbP;
   }
 
+  // ⚠ AN `evermist-trash` MADE BEFORE IT HELD `tracks` stays without it, since version 1 never upgrades again; its
+  // tracks live in `evermist-trash-tracks`. A version bump instead locks the previous release out of its Trash.
+  let _tracksP = null;
+  function _tracksDb() {
+    if (!_tracksP) {
+      _tracksP = _db().then(db => (db.objectStoreNames.contains(TRACKS) ? db : new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME + '-tracks', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore(TRACKS, { keyPath: 'id' });
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+        req.onblocked = () => reject(new Error('IndexedDB blocked'));
+      })));
+      _tracksP.catch(() => { _tracksP = null; });
+    }
+    return _tracksP;
+  }
+
   // Resolves once the transaction commits, so a put that resolved is on disk before the scene goes.
   async function _tx(mode, fn, store = STORE) {
-    const db = await _db();
+    const db = await (store === TRACKS ? _tracksDb() : _db());
     return new Promise((resolve, reject) => {
       const tx = db.transaction(store, mode);
       let out;

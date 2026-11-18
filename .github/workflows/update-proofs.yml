@@ -26,15 +26,7 @@ jobs:
             old: --win nsis
             script: tools/win-update-proof.js
             run: ''
-          # The Mac updates outside electron-updater (electron/macUpdate.js). The zip users
-          # receive is universal; the older build is only something to walk back to, so the
-          # runner's own arch is enough.
-          - label: Mac
-            os: macos-latest
-            new: --mac zip --universal
-            old: --mac zip --arm64
-            script: tools/mac-update-proof.js
-            run: ''
+          # No Mac leg: macOS runners queued for hours and held every release.
           - label: Linux
             os: ubuntu-latest
             new: --linux AppImage

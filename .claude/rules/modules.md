@@ -88,7 +88,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/scenes.js` | Fog persistence + scene fade helpers |
 | `scenes/sceneList.js` | The list of scenes the app holds: loaded at startup, its thumbnails, the open scene's name in the dock |
 | `scenes/trashPlan.js` | Pure Recently deleted kernel: days left, which entries are due, the road ends a map held and which come back on Restore. Tested |
-| `scenes/sceneTrash.js` | `evermist-trash`: a deleted map's whole record kept 30 days, its file moved to `userData/trash`, Restore with its road ends, the purge and the start-up reconcile; a deleted music track's entry, its file in `userData/trash/music`; `evermist-trash-more`: a deleted picture whole and a hidden built-in sound |
+| `scenes/sceneTrash.js` | `evermist-trash`: a deleted map's whole record kept 30 days, its file moved to `userData/trash`, Restore with its road ends, the purge and the start-up reconcile; a deleted music track's entry (in `evermist-trash-tracks` where an old `evermist-trash` lacks the store), its file in `userData/trash/music`; `evermist-trash-more`: a deleted picture whole and a hidden built-in sound |
 | `scenes/sceneDelete.js` | The DM's delete and its undo toast, then the map into `sceneTrash.js` |
 | `scenes/mapImport.js` | Import: accepted kinds, the batch loop, video maps to disk |
 | `scenes/sceneSwitch.js` | `switchScene` and each of its steps |
