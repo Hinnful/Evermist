@@ -773,7 +773,11 @@ and doors in percent, effects and floor-plan counts, from the window's live stat
 
 A scene is made from a map file or a folder of them. Main finds the files (`mapScan.js`, searching
 Downloads, Desktop, Documents and Pictures two folders deep) and reads their bytes, and the window runs
-the quiet import that the world map's Add uses. The scene is never opened and never sent to the TV.
+the quiet import that the world map's Add uses. The scene is never opened and never sent to the TV. `copy_scene` copies a stored map with its own copy of the file (`getVideoFilePath`, then `saveVideoFile` under the
+new id) and the record built by `mcpSceneCopy` (`mcpMapFilePlan.js`). Both replies state the pixel size and warn about
+an animated map past 4K. `shrink_map` (`mcpShrink.js`) re-encodes a closed animated map with `convertVideoForImport`,
+writes the result beside the old file as `.import`, saves the record rescaled by `mcpRescaleScene`, then settles the
+file into place and asks `syncIndex.sceneFileReplaced` to hash the map again; it records no undo step.
 
 Every change records how to put it back before it returns, in a history of the last 30 steps held
 in memory (`mcpHistory.js`). `undo_last_change` reverts the newest. Each change shows the undo toast
@@ -784,7 +788,7 @@ the yes too: delete_scene, delete_place, delete_fight and delete_picture delete 
 `confirmed: true`, and without it answer with what would go (`mcpWouldDelete` in `mcpPlan.js`). Settings
 shows these rules under Claude's Connect, and the guide's `claude` topic states them.
 
-Claude's map tools draw, edit, delete, merge, cut and split rooms and add or remove doors; set room fog,
+Claude's map tools draw, edit, delete, merge, cut and split rooms (a room may also come from a point on a floor-plan map, `mcpRoomFromPoint`, with closers stored on the plan as portals) and add or remove doors; set room fog,
 reveal or hide a rectangle or circle or the whole map, and set the fog theme by name (an old extension still sending preset, tint or fogColor is told to press Connect to Claude again); load a .dd2vtt floor
 plan (asking before it replaces rooms or lights), module text or a PDF, and link rooms to entries one by one;
 merge an Evermist export zip (asking first with the plan, and refused when it would replace an existing animated
@@ -1049,6 +1053,11 @@ forward again through the Restart button, and checks that each swapped copy open
 Only if all of that passes does `main` move. The pipeline fast-forwards it onto the exact commit
 the gate drove, which is why the merge is never a squash or a rebase: those mint a new commit, and
 `main` would then carry a tree nothing ever tested. The pull request closes as merged on its own.
+
+Before it moves, `tools/check-gate-jobs.js` reads the run attempt's own job list through the API and
+refuses unless every job except land, publish and cleanup finished with conclusion success. A whole
+called workflow may be skipped only when the version check said it was not needed. The `land` job's
+`if:` tests each result for `success` (or `skipped` when not needed), never "not failure".
 
 The last job then creates the tag, creates the release page, and attaches the installers. So a
 failure anywhere leaves nothing behind: no tag, no release, no download, and nothing on `main`

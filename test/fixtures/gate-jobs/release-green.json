@@ -1,0 +1,77 @@
+[
+ {
+  "conclusion": "success",
+  "name": "Check version, branch and notes",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Size guards",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Unit tests and lint",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Prove updates / Mac",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Prove updates / Linux",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Prove updates / Windows",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Linux",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Mac",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Windows",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Build installer (Mac)",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Build installer (Linux)",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Gate / Build installer (Windows)",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Move main to this commit",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Publish the release",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Delete the release branch",
+  "status": "completed"
+ }
+]

@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hash-video-file', sceneId),
   deleteVideoFile: (sceneId) =>
     ipcRenderer.invoke('delete-video-file', sceneId),
+  saveVideoPending: (sceneId, arrayBuffer, mimeType) =>
+    ipcRenderer.invoke('save-video-pending', sceneId, arrayBuffer, mimeType),
   trashMapFile: (sceneId) => ipcRenderer.invoke('trash-map-file', sceneId),
   untrashMapFile: (sceneId) => ipcRenderer.invoke('untrash-map-file', sceneId),
   purgeTrashFile: (sceneId) => ipcRenderer.invoke('purge-trash-file', sceneId),

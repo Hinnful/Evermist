@@ -64,6 +64,15 @@ ipcMain.handle('save-video-blob', async (event, sceneId, arrayBuffer, mimeType) 
   return destPath;
 });
 
+// A replacement file beside the map's own, as {id}{ext}.import: settle-import-video puts it in place once the
+// scene's new record is saved, so the old file stays until then.
+ipcMain.handle('save-video-pending', async (_event, sceneId, arrayBuffer, mimeType) => {
+  if (!isSafeId(sceneId)) throw new Error(`Invalid sceneId: ${sceneId}`);
+  const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
+  await fs.promises.writeFile(path.join(mapsDir, sceneId + ext + '.import'), Buffer.from(arrayBuffer));
+  return ext;
+});
+
 ipcMain.handle('get-video-file-path', async (_event, sceneId) => {
   if (!isSafeId(sceneId)) return null;
   for (const ext of ['.webm', '.mp4']) {

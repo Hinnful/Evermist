@@ -13,12 +13,12 @@ async function _mcpRoomsGrid(scene) {
 
 // One room tool's call: the map found, `change(d, scene)` run on its rooms, the step recorded. `change` returns a
 // refusal's text, or { label, text } for the step and the reply.
-async function _mcpRoomsEdit(args, what, change) {
+async function _mcpRoomsEdit(args, what, change, parts = ['rooms']) {
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const s = found.scene;
   let said = null;
-  const edit = await mcpEditMap(s, what, ['rooms'], async d => {
+  const edit = await mcpEditMap(s, what, parts, async d => {
     const r = await change(d, s);
     if (typeof r === 'string') return r;
     said = r;
@@ -55,16 +55,22 @@ async function _mcpCreateRoom(args0) {
   const nt = await _mcpRoomNotes(args0);
   if (nt.no) return nt.no;
   const args = nt.args;
+  const fromPlan = args.at !== undefined;
+  if (fromPlan === (args.outline !== undefined)) return _mcpNo('Give outline (the corners) or at (a point inside a room of the floor plan), one of the two.');
   const r = await _mcpRoomsEdit(args, 'drawing a room on it', async (d, s) => {
-    const out = mcpRoomOutline(args.outline, d.mapWidth, d.mapHeight);
+    const out = fromPlan ? mcpRoomFromPoint(d.floorPlan, args.at, args.close, d.mapWidth, d.mapHeight) : mcpRoomOutline(args.outline, d.mapWidth, d.mapHeight);
     if (out.error) return 'Not done: ' + out.error;
+    if (out.plan) d.floorPlan = out.plan;
     const id = d.nextPolygonId++;
     const room = mcpRoomNew(id, out.verts, args.room, args.notes, mode, t('Room {n}', { n: id }));
+    if (out.holes && out.holes.length) room.holes = out.holes;
     const at = mcpRoomInsert(d.polygons, room, (await _mcpRoomsGrid(s)).cellSize);
     const shifted = at < d.polygons.length ? ' Every room after it now has an index one higher.' : '';
+    const plan = fromPlan ? ' It follows the floor plan\'s walls: ' + out.verts.length + ' corners' + (out.holes.length ? ', ' + out.holes.length + ' hole' + (out.holes.length === 1 ? '' : 's') : '') + '.'
+      + (out.closed ? ' The ' + out.closed + ' closing line' + (out.closed === 1 ? ' stays' : 's stay') + ' on the map\'s floor plan, so the next room from a point needs only its own.' : '') : '';
     return { label: 'drew the room "' + room.name + '"',
-      text: 'Drew the room "' + room.name + '" (' + mcpSeeFog(mode) + ', index ' + at + ').' + shifted };
-  });
+      text: 'Drew the room "' + room.name + '" (' + mcpSeeFog(mode) + ', index ' + at + ').' + plan + shifted };
+  }, fromPlan ? ['rooms', 'plan'] : ['rooms']);
   if (nt.say && !r.isError) r.text += nt.say;
   return r;
 }

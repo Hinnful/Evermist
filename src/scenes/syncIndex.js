@@ -89,6 +89,17 @@ const syncIndex = (() => {
     return _later(_sceneWork(rec));
   }
 
+  // A map whose file was put in place after its record saved: hashed again from the start, so the old file's hash,
+  // taken while it was still there, cannot stand for the new one.
+  function sceneFileReplaced(id) {
+    if (!_on) return null;
+    return _later(async () => {
+      await del('index', 'scene:' + id);
+      const rec = await sceneStore.loadScene(id);
+      if (rec) await _sceneWork(rec)();
+    });
+  }
+
   // A deleted map: its entry goes, and one this computer synced before becomes a deletion record at this moment. A
   // deletion already standing (another computer's, applied here) keeps its time; a restored map's is renewed.
   function sceneDeleted(id) {
@@ -197,7 +208,7 @@ const syncIndex = (() => {
     return true;
   }
 
-  return { init, reconcile, sceneSaved, sceneDeleted, picSaved, picDeleted, backdropChanged, localChanged,
+  return { init, reconcile, sceneSaved, sceneFileReplaced, sceneDeleted, picSaved, picDeleted, backdropChanged, localChanged,
     entries: () => all('index'), goneRecords: () => all('gone'), isOn: () => _on,
     // For sync.js: the writes finished, a callback after each change, and the stores it keeps its own marks in.
     idle: () => _chain, onChange: fn => { _listener = fn; }, sha: _sha, raw: { get, all, put, del } };

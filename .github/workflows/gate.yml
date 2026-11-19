@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - { label: Windows, os: windows-latest, flag: --win, meta: dist/latest.yml, name: dist-windows }
-          # No Mac leg: macOS runners queued for hours and held every release.
+          - { label: Mac, os: macos-latest, flag: --mac, meta: dist/latest-mac.yml, name: dist-macos }
           - { label: Linux, os: ubuntu-latest, flag: --linux, meta: dist/latest-linux.yml, name: dist-linux }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30

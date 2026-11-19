@@ -234,6 +234,8 @@ It is also a one-way door by design. Evermist replaces what it stores and keeps 
 because the master archive is the Dungeon Alchemist project the map was exported from, and
 duplicating a 100MB clip to hedge would double the cost the feature exists to cut. Anything that
 reads as "Evermist lost my map quality" has to be traceable to a switch someone threw.
+**Amended 2026-11-19 (5.14.7):** the AI assistant's `shrink_map` shrinks a map already in the library, only on the
+DM's yes and just as permanently, so it is still a switch someone threw.
 
 ### Music is a mid-session control, and it passes the physical-object test · `SETTLED` (scope call)
 The scope line above argues against mid-session *authoring*. Picking a track is not authoring. The deciding test settles it: no physical object at the table plays

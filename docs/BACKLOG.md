@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 295."
+description: "Open work only. 9 open items; IDs run to 298."
 metadata: 
   node_type: memory
   type: project
@@ -142,12 +142,22 @@ Edge squares grid rule and one colour per material (`docs/decisions/map-effects.
 **Needs prototype looks for the DM to pick from, one effect per round.**
 **Play · Player**
 
-### 295. Bring back the Mac checks in the release gate
-Filed 2026-11-18, with 5.14.6. macOS runners sat queued for hours and held an urgent release, so 5.14.6 took every Mac
-leg out: the installer build (`gate.yml`), the rig's blocker set (`rig.yml`) and the update proofs
-(`update-proofs.yml`). 5.14.6 ships no Mac installer and no `latest-mac.yml`, so a Mac copy is not offered it. Put the
-three legs back, and the Mac lines in `release.yml`'s gate comments, once Mac runners pick up jobs again. **Waits on GitHub's macOS runners.**
-**Upkeep · DM only**
+### 296. Monsters at the fight table are awkward to handle
+Filed 2026-11-19. The fight table lost a proper interface for its monsters. Deleting a monster and opening its stat
+block both take far too much effort now. The monster rows need simplifying or a rework. **Waits on the DM's call; needs
+mockups.**
+**Play · DM only**
+
+### 297. Drawing and editing rooms is awkward
+Filed 2026-11-19. The room drawing and editing tools were neglected. To Straighten a room the DM must deselect it, pick
+another tool, press Straighten, then select the room again. The first room that was not a rectangle showed how hard
+editing gets once a room moves away from a plain square. **Needs a UX pass.**
+**Prep · DM only**
+
+### 298. Layer forward and back on rooms
+Filed 2026-11-19. Rooms gained two buttons, Bring to front and Send to back. The DM is not convinced they earn their
+place. **Waits on the DM's call.**
+**Polish · DM only**
 
 
 ---

@@ -3,9 +3,9 @@
 // the open-fight refusal for them, and how a bestiary monster is found, replaced, copied and put back. No DOM. Tested.
 
 const MCC = (typeof module !== 'undefined' && module.exports) ? require('../combat/combatPlan.js')
-  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid };
+  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid, combatFirstNum, combatRowHpState, combatBlankBlock };
 
-const MCP_ROW_FIELDS = ['name', 'hp', 'ac', 'init'];
+const MCP_ROW_FIELDS = ['name', 'hp', 'maxHp', 'ac', 'init'];
 const _key = s => String(s || '').trim().toLowerCase();
 
 // The fight open at the table takes no row details; only adding monsters and raising a count are allowed there.
@@ -13,8 +13,9 @@ function mcpRowsRefusal(args) {
   return Array.isArray(args && args.rows) && args.rows.length ? 'changing a row\'s details' : null;
 }
 
-// Row details applied to copies of `rows`. Each edit is { row: "Goblin 2", name?, hp?, ac?, init? }, the row
-// picked by its shown name. AC and a name also go into the row's own stat block, as typing them in the table does.
+// Row details applied to copies of `rows`. Each edit is { row: "Goblin 2", name?, hp?, maxHp?, ac?, init? }, the row
+// picked by its shown name. AC, max HP and a name go into the row's own stat block, as typing them in the table does;
+// `hp` is the table's damage and healing after that max.
 // Returns { rows, changed, errors }; an edit with a problem is skipped and named in `errors`.
 function mcpRowEdits(rows, edits) {
   const list = (rows || []).map(r => JSON.parse(JSON.stringify(r)));
@@ -24,11 +25,12 @@ function mcpRowEdits(rows, edits) {
     const hits = list.filter(r => _key(r.name) === _key(shown));
     if (hits.length !== 1) { out.errors.push(hits.length ? 'More than one row is called "' + shown + '".' : 'No row is called "' + shown + '".'); continue; }
     const fields = MCP_ROW_FIELDS.filter(f => e[f] !== undefined);
-    if (!fields.length) { out.errors.push('"' + shown + '": no detail to set (name, hp, ac or init).'); continue; }
+    if (!fields.length) { out.errors.push('"' + shown + '": no detail to set (name, hp, maxHp, ac or init).'); continue; }
     const r = hits[0], bad = rowFieldProblem(e, list, r);
     if (bad) { out.errors.push('"' + shown + '": ' + bad); continue; }
     for (const f of fields) {
       const v = String(e[f]).trim();
+      if (f === 'maxHp') { out.changed = _setRowMax(r, v) || out.changed; continue; }
       if (r[f] === v) continue;
       r[f] = v;
       if (f === 'ac' && r.sb) r.sb.ac = MCC.combatSetFirstNum(r.sb.ac, v);
@@ -40,6 +42,15 @@ function mcpRowEdits(rows, edits) {
   return out;
 }
 
+// A fight's own max for one row, kept in its stat-block copy so the bestiary entry stays as it is.
+function _setRowMax(r, v) {
+  if (!r.sb) r.sb = MCC.combatSnapshot(MCC.combatBlankBlock('', MCC.combatBaseName(r.name)));
+  if (MCC.combatFirstNum(r.sb.hp) === v) return false;
+  r.sb.hp = MCC.combatSetFirstNum(r.sb.hp, v);
+  r.sbChanged = true;
+  return true;
+}
+
 function rowFieldProblem(e, list, row) {
   if (e.name !== undefined) {
     const n = String(e.name).trim();
@@ -48,8 +59,26 @@ function rowFieldProblem(e, list, row) {
   }
   if (e.ac !== undefined && !/^\d{0,3}$/.test(String(e.ac).trim())) return 'AC is a whole number.';
   if (e.init !== undefined && !/^-?\d{0,3}$/.test(String(e.init).trim())) return 'initiative is a whole number.';
-  if (e.hp !== undefined && String(e.hp).length > 60) return 'HP is too long.';
+  if (e.maxHp !== undefined && !/^[1-9]\d{0,4}$/.test(String(e.maxHp).trim())) return 'maxHp is a whole number above 0.';
+  if (e.hp !== undefined) return hpProblem(String(e.hp));
   return null;
+}
+
+// hp is damage taken and healing since the fight began, as the table's box takes it: "-12", "+5", "-9 -12", or empty
+// for full HP. A bare number would read as nothing the table can add up.
+function hpProblem(hp) {
+  if (hp.length > 60) return 'hp is too long.';
+  const s = hp.replace(/\s+/g, '');
+  if (!s || /^[+-]\d+([+-]\d+)*$/.test(s)) return null;
+  if (/^\d+$/.test(s)) return 'hp "' + hp.trim() + '" was not set: hp is damage and healing, not max HP. Send damage as "-' + s + '" or healing as "+' + s + '"; to change the row\'s max HP, send maxHp: ' + s + '.';
+  return 'hp "' + hp.trim() + '" was not set: hp is damage and healing in the table\'s form, such as "-12", "+5" or "-9 -12", or empty for full HP.';
+}
+
+// One row as read_fight reports it: max HP from its stat-block copy, current HP after the damage line, and that line.
+function mcpFightRowRead(r) {
+  const max = MCC.combatFirstNum(r.sb && r.sb.hp), value = MCC.combatRowHpState(max, r.hp).value;
+  return { name: r.name, side: r.side || 'enemy', ac: r.ac || MCC.combatFirstNum(r.sb && r.sb.ac) || null,
+    maxHp: max ? Number(max) : null, hp: Number.isFinite(value) ? value : null, damage: String(r.hp || '').trim() || null };
 }
 
 // One bestiary monster by name, narrowed by source when two share a name: { entry } or { error }.
@@ -113,5 +142,5 @@ function mcpCombatUndoImport(now, snap) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { mcpCombatUndoImport, MCP_ROW_FIELDS, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpWouldDeleteMonster };
+  module.exports = { mcpCombatUndoImport, MCP_ROW_FIELDS, mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpWouldDeleteMonster };
 }

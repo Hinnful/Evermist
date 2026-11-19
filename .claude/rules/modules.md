@@ -235,11 +235,13 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpShared.js` | What every Claude tool group reads: reply shapes, name lookups, a scene's record |
 | `mcp/mcpHistory.js` | Claude's own undo: the last 30 steps, and the toast naming each |
 | `mcp/mcpMapPlan.js` | Pure rules for Claude changing a map: the fields each part names, the copy before a change, a stored record read and written in the open map's shape. Tested |
+| `mcp/mcpMapFilePlan.js` | Pure rules for Claude's tools that touch a map's file: the size line and 4K warning, a copied map's record, a shrunk map's record rescaled. Tested |
 | `mcp/mcpMapEdit.js` | `mcpEditMap`: every Claude change to a map, live when the DM has it open, in the store when closed, refused on the TV, in a column or mid-gesture |
 | `mcp/mcpFogPlan.js` | Pure rules for Claude's fog tools: a room's fog word, rooms found by name, a rectangle or circle in percent as fog pixels clipped at the map's edge, a fog theme by its name. Tested |
 | `mcp/mcpFog.js` | Claude's fog tools: a room's fog, a rectangle or circle revealed or hidden, the whole map, the fog theme |
 | `mcp/mcpMeta.js` | Claude's guide and undo_last_change tools |
-| `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, rename, move, change and delete a scene |
+| `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, copy, rename, move, change and delete a scene |
+| `mcp/mcpShrink.js` | Claude's shrink_map: an animated map re-encoded smaller, everything on it rescaled, the file swapped after the save |
 | `mcp/mcpNotes.js` | Claude's notes tools |
 | `mcp/mcpEntriesPlan.js` | Pure rules for Claude's faction and lore tools: an entry found by name or nesting path, the refusal to make a second one, the delete question, and "@{Name}" resolved to the stored mention and read back. Tested |
 | `mcp/mcpEntries.js` | Claude's Notes-window tools: list, create, edit and delete factions and lore (and a blank Bestiary entry), where an entry appears, and the link and read-back every notes write goes through |
@@ -330,5 +332,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js → combat/combatSort.js → combat/initiativeTv.js →
-mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpSoundsPlan.js → mcp/mcpSounds.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapFilePlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpShrink.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpSoundsPlan.js → mcp/mcpSounds.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

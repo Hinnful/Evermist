@@ -1,0 +1,47 @@
+[
+ {
+  "conclusion": "success",
+  "name": "Check version, branch and notes",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Unit tests and lint",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Size guards",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Move main to this commit",
+  "status": "completed"
+ },
+ {
+  "conclusion": "skipped",
+  "name": "Prove updates",
+  "status": "completed"
+ },
+ {
+  "conclusion": "skipped",
+  "name": "Gate",
+  "status": "completed"
+ },
+ {
+  "conclusion": "skipped",
+  "name": "Gate",
+  "status": "completed"
+ },
+ {
+  "conclusion": "success",
+  "name": "Delete the release branch",
+  "status": "completed"
+ },
+ {
+  "conclusion": "skipped",
+  "name": "Publish the release",
+  "status": "completed"
+ }
+]

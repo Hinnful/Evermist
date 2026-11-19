@@ -1,10 +1,11 @@
 'use strict';
 // mcpRoomsPlan.js — pure rules behind Claude's room tools: percent points turned into map pixels, an outline or a
-// cutting line checked, a room found by name and index, and an outline replaced with its doors carried. No DOM. Tested.
+// cutting line checked, a room found by name and index, an outline replaced with its doors carried, and a room read off
+// the floor plan from a point inside it. No DOM. Tested.
 
 const MR = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'))
-  : { restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex };
+  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'), require('../rooms/vttPlan.js'))
+  : { restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex, pointInRing, vttDerivePlan, vttProjectToSegment, vttSignedArea };
 
 // read_scene rounds a point to 0.1%, so a wall read back and sent again sits within half of that.
 const MCP_ROOM_MATCH_PCT = 0.06;
@@ -135,7 +136,68 @@ function mcpRoomDoorMiss(distPx, mapW, cell) {
     + _mrR2(distPx / cell) + ' grid squares). Give a point on the wall itself.';
 }
 
+// How far, in grid squares, a closer's end may sit from the plan's walls before it is refused.
+const MCP_CLOSE_SNAP = 0.75;
+
+// A closer's end moved onto the plan: the nearest wall corner within reach, else the nearest point on a wall. Grid squares.
+function _mrSnap(q, plan) {
+  const lines = (plan.line_of_sight || []).concat((plan.portals || []).map(p => p && p.bounds)).filter(Array.isArray);
+  let best = null, bd = Infinity;
+  for (const l of lines) for (const n of l) { const d = Math.hypot(n.x - q.x, n.y - q.y); if (d < bd) { bd = d; best = { x: n.x, y: n.y }; } }
+  if (bd <= MCP_CLOSE_SNAP) return { at: best };
+  for (const l of lines) for (let i = 0; i + 1 < l.length; i++) {
+    const pr = MR.vttProjectToSegment(q, l[i], l[i + 1]);
+    if (pr.dist < bd) { bd = pr.dist; best = { x: l[i].x + pr.t * (l[i + 1].x - l[i].x), y: l[i].y + pr.t * (l[i + 1].y - l[i].y) }; }
+  }
+  return bd <= MCP_CLOSE_SNAP ? { at: best } : { miss: bd };
+}
+
+const _mrArea = r => Math.abs(MR.vttSignedArea(r));
+const _mrIn = (p, r) => MR.pointInRing(p.x, p.y, r);
+const _mrMid = r => { const xs = r.map(v => v.x), ys = r.map(v => v.y); return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }; };
+// One ring from two derivations: a doorless loop is a room only in the derivation that keeps them.
+const _mrSame = (a, b) => { const m = _mrMid(a), n = _mrMid(b); return Math.abs(_mrArea(a) - _mrArea(b)) < 1 && Math.hypot(m.x - n.x, m.y - n.y) < 1; };
+
+// The room under `at` read off a stored floor plan (text). `close` is short lines across openings, each two percent
+// points, snapped onto the walls and added to the plan as closers, so the plan's own face walk (vttPlan.js) closes the
+// room. Answers { verts, holes, plan, closed } in map pixels, `plan` the text with the closers when any were added, or
+// { error }. Every closed wall loop inside the room becomes a hole.
+function mcpRoomFromPoint(planText, at, close, mapW, mapH) {
+  let plan = null;
+  try { plan = JSON.parse(planText); } catch (_) { plan = null; }
+  const res = plan && plan.resolution, ppg = Number(res && res.pixels_per_grid);
+  if (!(ppg > 0)) return { error: 'this map has no floor plan stored with it, so at cannot find a room. Give outline instead.' };
+  const ox = Number(res.map_origin && res.map_origin.x) || 0, oy = Number(res.map_origin && res.map_origin.y) || 0;
+  const k = mapW / ((Number(res.map_size && res.map_size.x) * ppg) || mapW);
+  const grid = p => ({ x: p.x / k / ppg + ox, y: p.y / k / ppg + oy });
+  const pt = mcpRoomPoint(at, mapW, mapH);
+  if (!pt) return { error: 'at must be [x, y] with both from 0 to 100 (percent of the map).' };
+  const lines = close === undefined ? [] : close;
+  if (!Array.isArray(lines)) return { error: 'close must be a list of lines, each two points [x, y] in percent of the map.' };
+  const added = [];
+  for (let i = 0; i < lines.length; i++) {
+    const ends = Array.isArray(lines[i]) && lines[i].length === 2 ? lines[i].map(q => mcpRoomPoint(q, mapW, mapH)) : [null];
+    if (ends.some(q => !q)) return { error: 'close line ' + (i + 1) + ' is not two points [x, y] in percent of the map.' };
+    const snapped = ends.map(q => _mrSnap(grid(q), plan));
+    const miss = snapped.findIndex(q => !q.at);
+    if (miss >= 0) return { error: 'end ' + (miss + 1) + ' of close line ' + (i + 1) + ' is ' + _mrR2(snapped[miss].miss) + ' grid squares from the nearest wall; each end must be within ' + MCP_CLOSE_SNAP + ' of a square of one. view_scene shows the walls.' };
+    const [a, b] = snapped.map(q => q.at);
+    if (Math.hypot(a.x - b.x, a.y - b.y) < 0.05) return { error: 'both ends of close line ' + (i + 1) + ' land on the same spot of a wall.' };
+    added.push({ position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, bounds: [a, b], evermistCloser: true });
+  }
+  const p2 = Object.assign({}, plan, { portals: (plan.portals || []).concat(added) });
+  const d = MR.vttDerivePlan(p2), all = MR.vttDerivePlan(p2, { keepDoorless: true });
+  const P = { x: pt.x / k, y: pt.y / k };
+  const face = d.rooms.filter(r => _mrIn(P, r)).sort((x, y) => _mrArea(x) - _mrArea(y))[0];
+  if (!face) return { error: 'no closed floor area of the plan holds that point. Close each opening around it with close: a short line across it, both ends on its walls.' };
+  const solid = all.rooms.filter(r => !d.rooms.some(q => _mrSame(q, r)));
+  const loops = solid.concat(d.boundaries).filter(h => _mrArea(h) < _mrArea(face) && !_mrIn(P, h) && h.every(v => _mrIn(v, face) || face.some(f => Math.hypot(f.x - v.x, f.y - v.y) < 0.5)));
+  const holes = loops.filter(h => !loops.some(o => o !== h && _mrArea(o) > _mrArea(h) && h.every(v => _mrIn(v, o))));
+  const px = r => r.map(v => ({ x: _mrR2(v.x * k), y: _mrR2(v.y * k) }));
+  return { verts: px(face), holes: holes.map(px), plan: added.length ? JSON.stringify(p2) : null, closed: added.length };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { MCP_ROOM_MATCH_PCT, mcpRoomPoint, mcpRoomOutline, mcpRoomLine, mcpRoomFog, mcpRoomFind,
-    mcpRoomNew, mcpRoomInsert, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss };
+    mcpRoomNew, mcpRoomInsert, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss, mcpRoomFromPoint, MCP_CLOSE_SNAP };
 }

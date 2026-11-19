@@ -18,7 +18,7 @@ const REPLY_MS = 20000;
 const SLOW_MS = 300000;   // a PDF book is read, a folder of maps imported
 // ⚠ A TOOL THAT READS FILES BELONGS HERE. Past REPLY_MS Claude is told it failed while the work goes on, and its retry
 // does it twice.
-const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop', 'view_scene', 'load_module_text', 'import_maps_zip',
+const SLOW = new Set(['import_monsters', 'create_scene', 'copy_scene', 'shrink_map', 'set_backdrop', 'view_scene', 'load_module_text', 'import_maps_zip',
   'load_floor_plan', 'add_picture', 'add_music', 'add_music_from_youtube']);
 const MAX_BODY = 1024 * 1024;
 const pending = new Map();

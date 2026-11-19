@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
-const { mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpCombatUndoImport } = require('../src/mcp/mcpCombatPlan.js');
+const { mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpCombatUndoImport } = require('../src/mcp/mcpCombatPlan.js');
 
 const rows = () => [
   { id: 1, init: '', name: 'Goblin', hp: '', ac: '15', conds: [], side: 'enemy', sb: { name: 'Goblin', ac: '15 (leather)' } },
@@ -20,10 +20,58 @@ describe('mcpRowsRefusal', () => {
   });
 });
 
+describe('mcpRowEdits: HP', () => {
+  const withMax = () => rows().map(r => Object.assign(r, { sb: Object.assign(r.sb, { hp: '22 (5d8)' }) }));
+  it('refuses a bare number in hp and says to send damage or maxHp instead', () => {
+    const r = mcpRowEdits(withMax(), [{ row: 'Goblin', hp: '37' }]);
+    assert.equal(r.changed, false);
+    assert.equal(r.rows[0].hp, '');
+    assert.match(r.errors[0], /not max HP/);
+    assert.match(r.errors[0], /"-37"/);
+    assert.match(r.errors[0], /maxHp: 37/);
+  });
+  it('refuses hp that is no sum, and takes damage, healing and empty', () => {
+    assert.match(mcpRowEdits(withMax(), [{ row: 'Goblin', hp: 'half' }]).errors[0], /"-12", "\+5"/);
+    assert.equal(mcpRowEdits(withMax(), [{ row: 'Goblin', hp: '- 9 - 12' }]).rows[0].hp, '- 9 - 12');
+    assert.equal(mcpRowEdits(withMax(), [{ row: 'Goblin', hp: '+5' }]).rows[0].hp, '+5');
+  });
+  it('puts maxHp into the row\'s own stat block and leaves current HP full', () => {
+    const src = withMax(), r = mcpRowEdits(src, [{ row: 'Goblin 2', maxHp: 37 }]);
+    assert.equal(r.changed, true);
+    assert.equal(r.rows[1].sb.hp, '37 (5d8)');
+    assert.equal(r.rows[1].sbChanged, true);
+    assert.equal(r.rows[1].hp, '');
+    assert.deepEqual([mcpFightRowRead(r.rows[1]).maxHp, mcpFightRowRead(r.rows[1]).hp], [37, 37]);
+    assert.equal(src[1].sb.hp, '22 (5d8)');
+    assert.equal(r.rows[0].sb.hp, '22 (5d8)');
+  });
+  it('gives a row without a stat block one for its max', () => {
+    const r = mcpRowEdits([{ id: 1, name: 'Bandit 2', hp: '', conds: [] }], [{ row: 'Bandit 2', maxHp: '11' }]);
+    assert.equal(r.rows[0].sb.hp, '11');
+    assert.equal(r.rows[0].sb.name, 'Bandit');
+  });
+  it('refuses a max that is not a whole number above 0', () => {
+    assert.match(mcpRowEdits(withMax(), [{ row: 'Goblin', maxHp: 0 }]).errors[0], /maxHp/);
+    assert.match(mcpRowEdits(withMax(), [{ row: 'Goblin', maxHp: '3d6' }]).errors[0], /maxHp/);
+  });
+});
+
+describe('mcpFightRowRead', () => {
+  it('reports max HP and current HP apart, with the damage line', () => {
+    const r = { name: 'Ogre', side: 'enemy', ac: '', hp: '-9 -12', sb: { hp: '59 (7d10+21)', ac: '11 (hide)' } };
+    assert.deepEqual(mcpFightRowRead(r), { name: 'Ogre', side: 'enemy', ac: '11', maxHp: 59, hp: 38, damage: '-9 -12' });
+  });
+  it('reads full HP when nothing is typed and null when there is no max', () => {
+    assert.equal(mcpFightRowRead({ name: 'Ogre', hp: '', sb: { hp: '59' } }).hp, 59);
+    const bare = mcpFightRowRead({ name: 'Rat', hp: '' });
+    assert.deepEqual([bare.maxHp, bare.hp, bare.damage], [null, null, null]);
+  });
+});
+
 describe('mcpRowEdits', () => {
   it('sets a row picked by its shown name and leaves the input alone', () => {
-    const src = rows(), r = mcpRowEdits(src, [{ row: 'goblin 2', hp: '12', init: '-1' }]);
-    assert.equal(r.rows[1].hp, '12');
+    const src = rows(), r = mcpRowEdits(src, [{ row: 'goblin 2', hp: '-12', init: '-1' }]);
+    assert.equal(r.rows[1].hp, '-12');
     assert.equal(r.rows[1].init, '-1');
     assert.equal(src[1].hp, '');
     assert.equal(r.changed, true);

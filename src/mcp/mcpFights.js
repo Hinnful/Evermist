@@ -46,7 +46,7 @@ function _mcpReadFight(args) {
   if (found.error) return _mcpNo(found.error);
   const f = found.fight;
   return _mcpOk({ name: f.name, openAtTheTable: f.id === cbState.openId,
-    monsters: combatFightRows(cbState, f).map(r => ({ name: r.name, side: r.side || 'enemy', ac: r.ac || null, hp: r.hp || null })) });
+    monsters: combatFightRows(cbState, f).map(mcpFightRowRead) });
 }
 
 function _mcpEditFight(args) {

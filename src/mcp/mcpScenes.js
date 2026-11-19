@@ -88,7 +88,58 @@ async function _mcpCreateScene(args) {
   const left = [...read.skipped.map(s => '"' + s.name + '" ' + s.reason), ...done.failures];
   const crowded = spots.length < ids.length ? ' The group had no free spot for ' + (ids.length - spots.length) + ' of them; the DM can drag them into position.' : '';
   return mcpDone('created ' + names.join(', '), async () => { mcpRefuseRemovingOpen(ids, 'undoing its creation'); await _mcpRemoveScenes(ids, false); worldSnapshotPut(snap); },
-    'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : ''));
+    'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : '') + (await _mcpSizes(ids)));
+}
+
+// What each new map's size is, with the warning for an animated map past 4K.
+async function _mcpSizes(ids) {
+  const on = typeof compressBox === 'function' && !!compressBox();
+  const out = [];
+  for (const id of ids) {
+    const rec = await sceneStore.loadScene(id);
+    if (rec) out.push((ids.length > 1 ? ' "' + rec.name + '": ' : ' ') + mcpSizeNote(rec, on).text);
+  }
+  return out.join('');
+}
+
+// ⚠ A COPY HAS ITS OWN FILE. Deleting a map deletes its video by the map's id, so a shared path would take the
+// other map's picture with it.
+async function _mcpCopyScene(args) {
+  const found = _mcpScene(args);
+  if (found.error) return _mcpNo(found.error);
+  const s = found.scene;
+  const place = args.toPlace === undefined ? { name: sanitizeGroupName(s.group) } : _mcpPlaceArg(args.toPlace);
+  if (place.error) return _mcpNo(place.error);
+  const name = String(args.newName || '').replace(/\s+/g, ' ').trim() || s.name + ' copy';
+  if (mcpFindScenes(allScenes, name, place.name || undefined).some(x => sanitizeGroupName(x.group) === place.name)) return _mcpNo('A map called "' + name + '" is already in ' + (place.name ? 'the group "' + place.name + '"' : 'no group') + '. Give another newName.');
+  const at = _mcpHolder(s.id);
+  if (at === 'here') await doAutoSave();
+  else if (at) await flushPaneScene(at);
+  const src = await sceneStore.loadScene(s.id);
+  if (!src) return _mcpNo('The map "' + s.name + '" is no longer in the library.');
+  const id = crypto.randomUUID();
+  let mapPath;
+  if (src.mapPath) {
+    const from = window.electronAPI && await window.electronAPI.getVideoFilePath(s.id);
+    if (!from) return _mcpNo('Nothing was copied: the animated map file of "' + s.name + '" is not on this computer yet. If sync is still bringing it, try again later.');
+    const mime = /\.mp4$/i.test(from) ? 'video/mp4' : 'video/webm';
+    try { await window.electronAPI.saveVideoFile(from, id, mime); } catch (err) { return _mcpNo('Nothing was copied: the map file could not be copied (' + (err && err.message) + ').'); }
+    mapPath = 'maps/' + id + (mime === 'video/mp4' ? '.mp4' : '.webm');
+  }
+  const snap = worldSnapshotTake();
+  const spot = _mcpSpot(place.name, new Set()) || (s.worldPos ? { x: s.worldPos.x + 40, y: s.worldPos.y + 40 } : { x: 0, y: 0 });
+  const maxOrder = allScenes.length ? Math.max(...allScenes.map(x => x.sortOrder ?? 0)) : -1;
+  const rec = mcpSceneCopy(src, { id, name, group: place.name, worldPos: spot, sortOrder: maxOrder + 1, now: Date.now(), mapPath });
+  try { await sceneStore.saveScene(rec); } catch (err) {
+    if (mapPath) await window.electronAPI.deleteVideoFile(id).catch(() => {});
+    return _mcpNo('Nothing was copied: the new map could not be saved (' + (err && err.message) + ').');
+  }
+  allScenes.push({ id, name, group: place.name, thumbnail: rec.thumbnail, sortOrder: rec.sortOrder, createdAt: rec.createdAt, mapType: rec.mapType, worldPos: spot });
+  worldAssignAll();
+  sceneListChanged();
+  const rooms = (rec.polygons || []).length;
+  return mcpDone('copied the map "' + s.name + '"', async () => { mcpRefuseRemovingOpen([id], 'undoing the copy'); await _mcpRemoveScenes([id], false); worldSnapshotPut(snap); },
+    'Copied the map "' + s.name + '" as "' + name + '"' + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + ', with its own ' + (mapPath ? 'video file' : 'picture') + ', ' + rooms + ' rooms, its grid, fog, effects, lights and notes. ' + mcpSizeNote(rec, false).text);
 }
 
 async function _mcpRename(args) {
@@ -172,5 +223,5 @@ async function _mcpDeleteScene(args) {
   }, 'Moved the map "' + s.name + '" with its map, fog and rooms to the Trash in Settings, where the DM can restore it for 30 days.');
 }
 
-const MCP_SCENES_TOOLS = { find_map_files: _mcpFind, create_scene: _mcpCreateScene, rename_scene: _mcpRename,
+const MCP_SCENES_TOOLS = { find_map_files: _mcpFind, create_scene: _mcpCreateScene, copy_scene: _mcpCopyScene, rename_scene: _mcpRename,
   move_scene: _mcpMove, set_scene: _mcpSetScene, delete_scene: _mcpDeleteScene };

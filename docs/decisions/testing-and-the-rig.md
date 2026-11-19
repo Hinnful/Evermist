@@ -548,3 +548,7 @@ Lint's `no-redeclare` is off for cross-file globals, so a later copy of a functi
 
 ### Moving the 31 variables only their own folder writes into `state.js` · `REJECTED` (2026-11-15)
 They are one subsystem's internals; in `state.js` they would invite other subsystems to write them, which the rule exists to prevent.
+
+### Land reads the run's job list, and the Mac legs are back in the gate · `SETTLED` (2026-11-19)
+Release 5.14.5's Mac rig leg was never picked up by a runner and was cancelled after 15 minutes. The called workflow folded its matrix legs into one result that was neither failure nor cancelled, so the old `land` condition passed and `main` moved with the Mac rig unrun (`publish` was skipped, so nothing went public). `land` now runs `tools/check-gate-jobs.js`, which refuses unless every job other than land, publish and cleanup is completed with conclusion success, and its `if:` uses positive checks with `!cancelled()`. Proven on 5.14.5's real job list (refused) and on green runs (passed). The Mac legs of `gate.yml`, `rig.yml` and `update-proofs.yml`, removed in 5.14.6 while macOS runners queued for hours, are back as before; a runner outage holds a release again, and a leg that never starts now blocks.
+**Rejected:** a positive `needs.<call>.result == 'success'` alone, and an aggregating job inside `rig.yml`/`gate.yml`: both read the same aggregate result of a matrix or called workflow, which can show success while a leg died. Not observed: the exact value that aggregate held on 5.14.5.
