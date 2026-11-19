@@ -2,14 +2,15 @@
 
 // room-layers-rollback.js - A MAP WITH REORDERED ROOMS OPENS THE SAME ON THE PREVIOUS RELEASE (spec room-layers, DoD 11).
 //
-// One profile. This build brings a revealed closet in front of the hidden hall around it and saves; the previous
+// One profile. On a map holding a hidden hall, the DM draws a revealed closet inside it, which this build places in
+// front of the hall (5.12.0 only ever appended a new room), and saves; the previous
 // release, 5.12.0, extracted under ~/.cache/evermist-rig/prev/, then opens the same library. A run against any other
 // previous release fails on its version line, since the trip it checks is back to 5.12.0.
 //
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
 //   0.  The previous release under the cache is 5.12.0.
-//  11.  Here the closet, brought to front, is clear and the hall around it fogged. On 5.12.0 the map opens with the
+//  11.  Here the closet, placed in front, is clear and the hall around it fogged. On 5.12.0 the map opens with the
 //       closet still in front, clear, and the hall still fogged.
 
 const fs = require('fs');
@@ -23,7 +24,6 @@ const q = JSON.stringify;
 const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
 const ROOMS = [
   { id: 1, uid: 'uH', name: 'Зал', mode: 'shroud', cornerRadius: 0, vertices: box(100, 100, 1100, 1100) },
-  { id: 2, uid: 'uC', name: 'Чулан', mode: 'reveal', cornerRadius: 0, vertices: box(400, 400, 600, 600) },
 ];
 
 const look = async (dm, id) => {
@@ -40,19 +40,20 @@ module.exports = async function roomLayersRollback(rig) {
   const id = await dm.evaluate(`(async () => {
     const f = await __bk.noiseFile('Слои', 2400, 1600, 5, 0.85);
     const r = await addMapsToLibrary([f], { x: 0, y: 400 }, true);
-    await __bk.editScene(r.ids[0], s => { s.polygons = ${q(ROOMS)}; s.nextPolygonId = 3; });
+    await __bk.editScene(r.ids[0], s => { s.polygons = ${q(ROOMS)}; s.nextPolygonId = 2; });
     return r.ids[0];
   })()`, 240000);
 
   let here = null;
   await lib.step(rig, '11 here', async () => {
     await look(dm, id);
-    await dm.evaluate(`(() => { if (worldMapOpen) worldMapHide(); setPlaceMode('rooms'); setShape('select');
-      selectedPolygonId = polygons.find(p => p.name === 'Чулан').id; document.querySelector('#room-fog .rf-front').click(); return 0; })()`);
+    await dm.evaluate(`(() => { if (worldMapOpen) worldMapHide(); setPlaceMode('rooms'); setPaintDirection('reveal');
+      setShape('rect'); __rigDrag(400, 400, 600, 600); setShape('select');
+      const c = polygons.find(p => p.name !== 'Зал'); if (c) c.name = 'Чулан'; return 0; })()`);
     await dm.evaluate('doAutoSave()', 60000);
     here = await look(dm, id);
     rig.check(q(here.order) === q(['Чулан', 'Зал']) && here.closet < 128 && here.hall > 200,
-      '11 setup: brought to front, the closet should be clear in the fogged hall here: ' + q(here));
+      '11 setup: drawn inside the hall, the closet should be in front and clear in the fogged hall here: ' + q(here));
   });
   if (!here) return;
 

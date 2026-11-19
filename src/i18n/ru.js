@@ -89,8 +89,6 @@ const RU = {
   'Half - explored, but the party is not there now (T cycles)': 'Полумгла - исследована, но группы там сейчас нет (T переключает)',
   'Hidden - the players do not see this room (T cycles)': 'Скрыта - игроки не видят эту комнату (T переключает)',
   'Add a door - then click a wall': 'Добавить дверь - затем щёлкните по стене',
-  'Bring to front': 'На передний план',
-  'Send to back': 'На задний план',
   'Click the wall where the door goes. Click a door to remove it. Esc when done.': 'Щёлкните по стене, где будет дверь. Щелчок по двери убирает её. Esc - готово.',
   "Players' view - this is what the TV shows": 'Вид игроков - так выглядит экран ТВ',
   'Sources': 'Источники',

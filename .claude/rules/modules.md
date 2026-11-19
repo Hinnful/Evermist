@@ -180,7 +180,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldMapMenu.js` | The right-click menu on the world map: a scene (with Restore previous picture while sync keeps one), a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
 | `rooms/roomCard.js` | The selected room's fields, in the Notes window |
-| `rooms/roomSwitcher.js` | The selected room's clouds, door, Bring to front and Send to back, on the map above it |
+| `rooms/roomSwitcher.js` | The selected room's clouds and door, on the map above it |
 | `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Notes window |
 | `gallery/galleryPlan.js` | Pure gallery kernel: picture size, names, the migration list, the backup list, what a scene's rooms still hold. Tested |
 | `gallery/pictureDecode.js` | A file turned into a gallery picture: shrunk, or kept whole if animated or SVG |

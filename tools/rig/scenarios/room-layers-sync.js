@@ -7,10 +7,12 @@
 //
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
-//   8a. Import: laptop A moved "Сбоку" in front of the hall and drew "Чулан" inside it, a day after the copy B holds.
-//       B imports A's file: "Сбоку" is in front of the hall and "Чулан" sits above the hall, placed as a drawn room is.
-//   8b. Sync: Send to back on A reaches B; Bring to front on B reaches A, with a room Claude added on B inside the
-//       hall placed above the hall on both.
+//   8a. Import: laptop A holds "Сбоку" in front of the hall (an order an earlier release let the DM set) and drew
+//       "Чулан" inside it, a day after the copy B holds. B imports A's file: "Сбоку" is in front of the hall and
+//       "Чулан" sits above the hall, placed as a drawn room is.
+//   8b. Sync: the DM on A draws "Альков" around the closet and inside the hall; it lands between them, and B gets it
+//       there. The DM on B draws "Проход" between the closet and "Альков", and Claude adds a room on B inside the hall
+//       alone, placed just above the hall; A gets both at those layers.
 
 const fs = require('fs');
 const path = require('path');
@@ -27,10 +29,11 @@ const SIDE = room(2, 'uS', 'Сбоку', box(1500, 100, 1900, 500));
 const CLOSET = room(3, 'uC', 'Чулан', box(400, 400, 600, 600));
 
 const names = (dm, id) => dm.evaluate(`sceneStore.loadScene(${q(id)}).then(r => r ? r.polygons.map(p => p.name) : null)`, 20000);
-// The selected room's popup button, pressed on the open map.
-const layer = (dm, name, btn) => dm.evaluate(`(() => { if (worldMapOpen) worldMapHide(); setPlaceMode('rooms'); setShape('select');
-  selectedPolygonId = polygons.find(p => p.name === ${q(name)}).id; document.querySelector('#room-fog .${btn}').click();
-  return polygons.map(p => p.name); })()`);
+// A room drawn by hand with the Rectangle on the open map, then named, so the order reads by name.
+const draw = (dm, name, x0, y0, x1, y1) => dm.evaluate(`(() => { if (worldMapOpen) worldMapHide(); setPlaceMode('rooms');
+  setShape('rect'); const n = polygons.length; __rigDrag(${x0}, ${y0}, ${x1}, ${y1}); setShape('select');
+  if (polygons.length !== n + 1) return null;
+  polygons.reduce((a, p) => (p.id > a.id ? p : a)).name = ${q(name)}; return polygons.map(p => p.name); })()`);
 const open = async (dm, id) => {
   await dm.evaluate(`switchScene(${q(id)})`, 60000);
   await lib.settle(dm, `!!currentScene && currentScene.id === ${q(id)} && fogCoverT === 0`, 60000);
@@ -88,18 +91,20 @@ module.exports = async function roomLayersSync(rig) {
   await lib.step(rig, '8b: sync', async () => {
     rig.check(!!(await pulled(dmB, ['Сбоку', 'Чулан', 'Зал'])), '8b setup: B did not get the map in its order: ' + q(await names(dmB, L)));
     await open(dmA, L);
-    rig.check(q(await layer(dmA, 'Чулан', 'rf-back')) === q(['Сбоку', 'Зал', 'Чулан']), '8b: Send to back on A did not move the closet last');
+    const onA = ['Сбоку', 'Чулан', 'Альков', 'Зал'];
+    rig.check(q(await draw(dmA, 'Альков', 300, 300, 700, 700)) === q(onA), '8b: the room drawn on A did not land between the closet and the hall: ' + q(await names(dmA, L)));
     await push(dmA);
-    rig.check(!!(await pulled(dmB, ['Сбоку', 'Зал', 'Чулан'])), '8b: Send to back on A did not reach B: ' + q(await names(dmB, L)));
+    rig.check(!!(await pulled(dmB, onA)), '8b: the room drawn on A did not reach B at its layer: ' + q(await names(dmB, L)));
 
     await open(dmB, L);
-    rig.check(q(await layer(dmB, 'Чулан', 'rf-front')) === q(['Чулан', 'Сбоку', 'Зал']), '8b: Bring to front on B did not move the closet first');
+    const onB = ['Сбоку', 'Чулан', 'Проход', 'Альков', 'Зал'];
+    rig.check(q(await draw(dmB, 'Проход', 350, 350, 650, 650)) === q(onB), '8b: the room drawn on B did not land between the closet and Альков');
     await push(dmB);
     const out = await dmB.evaluate(`MCP_ROOMS_TOOLS.create_room({ name: 'Слои', room: 'Ниша', fog: 'hidden',
       outline: [[${800 / 24}, ${800 / 16}], [${1000 / 24}, ${800 / 16}], [${1000 / 24}, ${1000 / 16}], [${800 / 24}, ${1000 / 16}]] })`, 30000);
-    rig.check(!out.isError && /index 3\)/.test(out.text), '8b: Claude\'s room on B did not go above the hall at index 3: ' + out.text);
+    rig.check(!out.isError && /index 5\)/.test(out.text), '8b: Claude\'s room on B did not go just above the hall, room 5 of 6: ' + out.text);
     await dmB.evaluate('syncEngine.now()', 60000);
-    const want = ['Чулан', 'Сбоку', 'Ниша', 'Зал'];
+    const want = ['Сбоку', 'Чулан', 'Проход', 'Альков', 'Ниша', 'Зал'];
     rig.check(!!(await pulled(dmA, want)), '8b: A holds ' + q(await names(dmA, L)) + ', not ' + q(want));
   });
 };

@@ -1418,12 +1418,14 @@ Chromium's media pipeline. So the main process reads each file's bytes over IPC 
 decodes them into an `AudioBuffer` once. That leaves no `file://` source for Web Audio to taint,
 which was the reason music rejected it, and any number of copies can play at once.
 
-### Rooms are layered by what they contain · `SETTLED` (2026-11-12)
+### Rooms are layered by what they contain · `SETTLED` (2026-11-12; Bring to front / Send to back REMOVED 2026-11-19)
 A new room goes below the rooms it contains and above those that contain it or that it only partly overlaps, so a room drawn
-inside a hidden hall can be revealed. Bring to front / Send to back on the room's popup fix old maps; no automatic re-layering.
+inside a hidden hall can be revealed. Bring to front / Send to back on the room's popup were meant to fix old maps; no
+automatic re-layering. 2026-11-19: both buttons removed, rejected on product grounds, they did not earn their place on the
+popup and placement layering covers new rooms. An old map layered wrongly before this has no UI to fix its order, accepted.
 Layer order travels through sync and import as a stamped scene part. A click picks the smallest room under the pointer and a
 second still click cycles outward; this reverses "rooms keep top-most" (Campaign menus entry) for rooms. Effects keep their
-own order. CLAUDE.md's "never reorder `polygons`" became "only placement, Bring to front and Send to back".
+own order. CLAUDE.md's "never reorder `polygons`" became "only a new room's placement reorders `polygons`".
 
 ### Thirty built-in CC0 sounds, and the DM adds none · `REOPENED` (2026-11-11, superseded by "The DM adds their own sounds")
 A curated set in six groups of five ships inside the app, as Freesound HQ previews of sounds

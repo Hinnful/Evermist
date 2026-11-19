@@ -132,7 +132,7 @@ error goes through it; no `alert()` ships.
 
 ## Rooms are polygons
 
-1. **Only a new room's placement, Bring to front and Send to back reorder `polygons`.**
+1. **Only a new room's placement reorders `polygons`.**
    `rebuildFogFromPolygons` walks it in reverse, so index 0 wins the fog. Anything else
    sorts a copy or carries its own field.
 2. **Never normalize a polygon from a fixed key list.** Backfilling a field must be an

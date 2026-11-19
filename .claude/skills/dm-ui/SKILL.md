@@ -233,8 +233,7 @@ wears the colour of the room outline it will draw. Reveal all and Hide all wear 
   while a repair is lit. Select shows no row.
 - **A selected room carries its own popup, on the map just above it**: the same three clouds in a
   well (a click sets that room's fog at once; `T` still cycles it), a divider, the door as a
-  bare button, then Bring to front and Send to back (stacked-squares glyphs, names in tooltips; they move the room in the
-  layer order, undoable). It is hidden while the room is dragged, in the players' view and on the world map,
+  bare button. It is hidden while the room is dragged, in the players' view and on the world map,
   and `drawCursor` is what places it. The door button arms Door; Esc or Select ends it and the
   room stays selected.
 - **The old trio (`#ctx-rooms`) and its ids are the hidden back end.** Pressed with Select in hand

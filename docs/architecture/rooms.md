@@ -65,7 +65,7 @@ the tool in hand wears. Neither setting
 is saved, both are off when the app starts, and both keep their state across a mode switch.
 
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
-index 0 wins wherever rooms overlap. Three things choose a position, and nothing else moves a
+index 0 wins wherever rooms overlap. Two things choose a position, and nothing else moves a
 room in the list:
 
 - **A new room is placed by what contains what** (`layerInsertIndex`, `roomOps.js`): below every
@@ -76,8 +76,6 @@ room in the list:
   Drawing, paste, duplicate, an Alt-drag copy (on its drop), Claude's `create_room` and a room
   arriving through sync or Import all go through it. A repair's extra pieces sit right after
   their parent instead, at its layer.
-- **Bring to front and Send to back** on the selected room's popup move it to index 0 or the end.
-  The move is undoable, saved, and sent to the TV with no crossfade.
 - **Sync and Import carry the order** as a scene part, `order`, timed only when rooms both saves
   hold change places. The newer time's relative order wins for rooms both copies hold; on a tie
   the local order stays.
