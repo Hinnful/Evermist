@@ -48,9 +48,10 @@ function _srWant(id) {
   _srReadOne(id, gen);
 }
 
-// Every room, named or not, in list order: the Notes tree's rooms. Effects and lights are not rooms.
+// Every room, named or not, in list order: the Notes tree's rooms. Effects and lights are not rooms, and a room's
+// pieces are listed as the room.
 function _srRoomList(polys) {
-  return polys.filter(p => p && !p.material && !p.light).map(p => ({ id: p.id, uid: p.uid || '', name: p.name || '', desc: p.desc || '' }));
+  return roomHeads(polys).filter(p => p && !p.material && !p.light).map(p => ({ id: p.id, uid: p.uid || '', name: p.name || '', desc: p.desc || '' }));
 }
 
 // A scene's rooms for the Notes tree: the open map live, a stored one from the read, null until it is read.
@@ -64,7 +65,7 @@ function searchRoomsOf(id) {
 function _srFromRecord(rec) {
   return {
     notes: String((rec && rec.notes) || ''),
-    rooms: ((rec && rec.polygons) || []).filter(p => p && (p.name || p.desc)).map(p => ({ id: p.id, name: p.name || '', desc: p.desc || '' })),
+    rooms: roomHeads((rec && rec.polygons) || []).filter(p => p && (p.name || p.desc)).map(p => ({ id: p.id, name: p.name || '', desc: p.desc || '' })),
     all: _srRoomList((rec && rec.polygons) || []),
   };
 }

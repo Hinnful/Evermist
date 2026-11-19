@@ -102,7 +102,9 @@ function paneScope() {
 
 function selectPane(id) {
   if (!panes[id] || panesSelected === id) return;
+  const left = panesSelected;
   panesSelected = id;
+  paneEditRowLeave(left);
   refreshPaneSelection();
   paneAdoptSelectedSettings();
   // The one minimap follows the selection, so it takes over the newly selected column's view.
@@ -280,6 +282,7 @@ async function _exitPanes(keepSceneId) {
     panes[id].camera = null;
   }
   paneRoomsClear();
+  paneEditRowForget();
   syncSize();
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
   // The map comes back out of the store, which is where the column has been saving it all along.
@@ -361,6 +364,7 @@ function initPanes() {
     }
     if (msg.type === 'pane-gallery-down') { galleryTakeDown(); return; }
     if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.scene); return; }
+    if (msg.type === 'pane-edit-row') { paneEditRowReported(msg.pane, msg.row); return; }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); notesPanelFollow(); return; }
     if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
     // M from inside a column. The column's frame gives up focus, or the world map's keys stay in it.
@@ -435,6 +439,7 @@ function loadSceneIntoSelectedPane(sceneId) {
   panes[panesSelected].sceneId = sceneId;
   panes[panesSelected].mapW = 0;
   panes[panesSelected].mapH = 0;
+  paneEditRowForget(panesSelected);
   sendToPane({ type: 'pane-load-scene', sceneId });
   return true;
 }

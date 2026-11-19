@@ -40,6 +40,7 @@ const PANE_CONTROLS = {
   'pane-door-size':       m => _paneField(m.id, m.value, 'change'),
 
   'pane-room-edit':   m => paneApplyRoomEdit(m),
+  'pane-edit-row':    m => paneApplyEditRow(m),
   'pane-scene-notes': m => paneApplySceneNotes(m),
   'pane-room-patch':  m => paneApplyRoomPatch(m),
   'pane-room-uid':    m => paneApplyRoomUid(m),

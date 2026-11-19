@@ -228,7 +228,8 @@ function drawCursor(screenX, screenY) {
   // list the placement mode names can be SELECTED. The other is DIMMED, so it stops offering
   // handles it would refuse.
   const roomsLive = placeMode === 'rooms', fxLive = placeMode === 'effects';
-  const extras = new Set(pickedExtras());
+  // Every other record of a picked room draws held: the other picks and the main's own pieces.
+  const extras = new Set(roomPickRecords(activeShapeList(), pickedIds()).filter(s => s.id !== selectedPolygonId));
   for (const poly of polygons) {
     const isSel = roomsLive && poly.id === selectedPolygonId;
     drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1, !roomsLive, extras.has(poly));

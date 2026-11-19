@@ -65,7 +65,7 @@ async function _mcpCreateRoom(args0) {
     const room = mcpRoomNew(id, out.verts, args.room, args.notes, mode, t('Room {n}', { n: id }));
     if (out.holes && out.holes.length) room.holes = out.holes;
     const at = mcpRoomInsert(d.polygons, room, (await _mcpRoomsGrid(s)).cellSize);
-    const shifted = at < d.polygons.length ? ' Every room after it now has an index one higher.' : '';
+    const shifted = at < roomHeads(d.polygons).length ? ' Every room after it now has an index one higher.' : '';
     const plan = fromPlan ? ' It follows the floor plan\'s walls: ' + out.verts.length + ' corners' + (out.holes.length ? ', ' + out.holes.length + ' hole' + (out.holes.length === 1 ? '' : 's') : '') + '.'
       + (out.closed ? ' The ' + out.closed + ' closing line' + (out.closed === 1 ? ' stays' : 's stay') + ' on the map\'s floor plan, so the next room from a point needs only its own.' : '') : '';
     return { label: 'drew the room "' + room.name + '"',
@@ -109,7 +109,8 @@ async function _mcpDeleteRoom(args) {
     const f = mcpRoomFind(d.polygons, args.room, args.index, s.name);
     if (f.error) return 'Not done: ' + f.error;
     if (args.confirmed !== true) { asked = mcpRoomWouldDelete(f.room); return asked; }
-    d.polygons.splice(f.index, 1);
+    const gone = new Set(piecesOf(d.polygons, f.room));
+    d.polygons = d.polygons.filter(p => !gone.has(p));
     return { label: 'deleted the room "' + (f.room.name || '') + '"', text: 'Deleted the room "' + (f.room.name || '') + '" with its notes and doors.' };
   });
   return asked ? _mcpOk(asked) : r;
@@ -129,18 +130,21 @@ function _mcpRoomsNamed(d, s, list) {
   return { rooms: [...at].sort((a, b) => a - b).map(i => d.polygons[i]) };
 }
 
+// Rooms that do not touch become one room of separate pieces, as the DM's Merge does (pickedBooleanPlan).
 async function _mcpMergeRooms(args) {
   return _mcpRoomsEdit(args, 'merging its rooms', async (d, s) => {
     const named = _mcpRoomsNamed(d, s, args.rooms);
     if (named.error) return 'Not done: ' + named.error;
-    const hits = named.rooms;
-    const out = joinShapes(hits, hits[0], await _mcpRoomsMinArea(s));
+    const hits = named.rooms, rooms = hits.map(h => piecesOf(d.polygons, h)), recs = [].concat(...rooms);
+    const out = joinShapes(recs, recs[0], await _mcpRoomsMinArea(s));
     if (out.reason) return out.reason;
-    if (out.pieces.length !== 1) return 'Not done: those rooms do not touch or overlap, so they cannot become one room. Move an outline with edit_room until they meet.';
     const names = hits.map(h => '"' + (h.name || '') + '"').join(', ');
-    const lost = _mcpRoomsPlan(d, [{ shapes: hits, pieces: out.pieces }], mostHiddenMode(hits.map(h => h.mode)));
+    const mode = mostHiddenMode(recs.map(h => h.mode)), uid = ensureRoomUid(hits[0]);
+    const lost = _mcpRoomsPlan(d, pickedBooleanPlan(d.polygons, recs, rooms[0].length, out), mode);
+    const head = d.polygons.find(p => p.uid === uid && !isLivePiece(d.polygons, p));
+    const n = head ? piecesOf(d.polygons, head).length : 1;
     return { label: 'merged the rooms ' + names, text: 'Merged the rooms ' + names + ' into one room, "' + (hits[0].name || '') + '", '
-      + mcpSeeFog(hits[0].mode) + '. The others\' notes went with them.' + _mcpDoorsGone(lost) };
+      + mcpSeeFog(mode) + (n > 1 ? ', made of ' + n + ' separate pieces' : '') + '. The others\' notes went with them.' + _mcpDoorsGone(lost) };
   });
 }
 
@@ -150,14 +154,18 @@ async function _mcpCutRoom(args) {
     if (f.error) return 'Not done: ' + f.error;
     const shape = mcpRoomOutline(args.outline, d.mapWidth, d.mapHeight);
     if (shape.error) return 'Not done: ' + shape.error;
-    if (!shapesOverlap(f.room, shape.verts)) return 'Not done: the shape does not overlap the room "' + (f.room.name || '') + '".';
-    const out = trimShapes([f.room], shape.verts, await _mcpRoomsMinArea(s));
+    const hit = piecesOf(d.polygons, f.room).filter(p => shapesOverlap(p, shape.verts));
+    if (!hit.length) return 'Not done: the shape does not overlap the room "' + (f.room.name || '') + '".';
+    const out = trimShapes(hit, shape.verts, await _mcpRoomsMinArea(s));
     if (out.reason) return out.reason;
-    if (!out.groups[0].length) return 'Not done: the shape covers the whole room "' + (f.room.name || '') + '". Use delete_room to remove it.';
-    const n = out.groups[0].length;
-    const lost = _mcpRoomsPlan(d, [{ shapes: [f.room], pieces: out.groups[0] }], null);
-    return { label: 'cut a shape out of the room "' + (f.room.name || '') + '"', text: 'Cut the shape out of the room "' + (f.room.name || '') + '"'
-      + (n > 1 ? ', which fell into ' + n + ' rooms; the new ones have plain names.' : '.') + _mcpDoorsGone(lost) };
+    const had = piecesOf(d.polygons, f.room).length;
+    if (had === hit.length && out.groups.every(g => !g.length)) return 'Not done: the shape covers the whole room "' + (f.room.name || '') + '". Use delete_room to remove it.';
+    const uid = ensureRoomUid(f.room), name = f.room.name || '';
+    const lost = _mcpRoomsPlan(d, hit.map((p, i) => ({ shapes: [p], pieces: out.groups[i], kind: 'link' })), null);
+    const head = d.polygons.find(p => p.uid === uid && !isLivePiece(d.polygons, p));
+    const n = head ? piecesOf(d.polygons, head).length : 0;
+    return { label: 'cut a shape out of the room "' + name + '"', text: 'Cut the shape out of the room "' + name + '"'
+      + (n > 1 ? ', which is now one room of ' + n + ' separate pieces.' : '.') + _mcpDoorsGone(lost) };
   });
 }
 
@@ -167,14 +175,21 @@ async function _mcpSplitRoom(args) {
     if (f.error) return 'Not done: ' + f.error;
     const line = mcpRoomLine(args.line, d.mapWidth, d.mapHeight);
     if (line.error) return 'Not done: ' + line.error;
-    if (!ringPathCrossings(cutRings(f.room)[0], line.path).length) return 'Not done: the line does not cross the room "' + (f.room.name || '') + '"\'s walls.';
-    const out = cutRing(f.room, line.path, await _mcpRoomsMinArea(s));
-    if (out.reason) return out.reason;
+    const crossed = piecesOf(d.polygons, f.room).filter(p => ringPathCrossings(cutRings(p)[0], line.path).length);
+    if (!crossed.length) return 'Not done: the line does not cross the room "' + (f.room.name || '') + '"\'s walls.';
+    const minArea = await _mcpRoomsMinArea(s), plan = [];
+    for (const p of crossed) {
+      const out = cutRing(p, line.path, minArea);
+      if (out.reason) return out.reason;
+      plan.push({ shapes: [p], pieces: out.pieces, kind: 'split' });
+    }
+    const name = f.room.name || '', was = new Set(piecesOf(d.polygons, f.room));
     const had = new Set(d.polygons.map(p => p.id));
-    const lost = _mcpRoomsPlan(d, [{ shapes: [f.room], pieces: out.pieces }], null);
-    const made = d.polygons.filter(p => !had.has(p.id)).map(p => '"' + p.name + '"');
-    return { label: 'split the room "' + (f.room.name || '') + '"', text: 'Split the room "' + (f.room.name || '') + '"'
-      + (made.length ? '; the other part is the new room ' + made.join(', ') + ', with the same fog.' : '; the other part was too small to keep.') + _mcpDoorsGone(lost) };
+    const lost = _mcpRoomsPlan(d, plan, null);
+    // Every part and every other piece of the room is now a room of its own; the largest kept the name.
+    const made = d.polygons.filter(p => (!had.has(p.id) || was.has(p)) && p.name !== name).map(p => '"' + p.name + '"');
+    return { label: 'split the room "' + name + '"', text: 'Split the room "' + name + '"'
+      + (made.length ? '; its largest part keeps the name, and the other part' + (made.length === 1 ? ' is the new room ' : 's are the new rooms ') + made.join(', ') + ', with the same fog.' : '; the other part was too small to keep.') + _mcpDoorsGone(lost) };
   });
 }
 

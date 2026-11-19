@@ -3,8 +3,8 @@
 // the record a copied map gets, and a shrunk map's record with everything on it moved to the new size. No DOM. Tested.
 
 const MF = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../scenes/mapConvert.js'), require('../notes/mentionPlan.js'))
-  : { fitInsideBox, mpRemap };
+  ? Object.assign({}, require('../scenes/mapConvert.js'), require('../notes/mentionPlan.js'), require('../shapes/roomPieces.js'))
+  : { fitInsideBox, mpRemap, renewRoomUids };
 
 const MCP_4K = { w: 3840, h: 2160 };
 
@@ -28,7 +28,8 @@ function mcpSceneCopy(src, o) {
   if (o.mapPath) { c.mapPath = o.mapPath; delete c.mapBlob; }
   const ids = { [src.id]: o.id }, remap = t => MF.mpRemap(t, ids, null, Infinity).text;
   if (typeof c.notes === 'string') c.notes = remap(c.notes);
-  if (Array.isArray(c.polygons)) c.polygons = c.polygons.map(p => (typeof p.desc === 'string' ? Object.assign({}, p, { desc: remap(p.desc) }) : p));
+  if (Array.isArray(c.polygons)) c.polygons = MF.renewRoomUids(c.polygons.map(p => (typeof p.desc === 'string' ? Object.assign({}, p, { desc: remap(p.desc) }) : Object.assign({}, p))));
+  if (Array.isArray(c.effects)) c.effects = MF.renewRoomUids(c.effects.map(e => Object.assign({}, e)));
   return c;
 }
 

@@ -107,8 +107,8 @@ function _mcpSeeRooms(ctx, polys, crop, out, size) {
       ctx.beginPath();
       for (const ring of rings) { ring.forEach((v, i) => (i ? ctx.lineTo(X(v.x), Y(v.y)) : ctx.moveTo(X(v.x), Y(v.y)))); ctx.closePath(); }
     }, lw);
-    if (!p.name) continue;
-    const c = mcpSeeAnchor(outer), x = X(c.x), y = Y(c.y);
+    if (!p.name || isLivePiece(polys, p)) continue;
+    const c = mcpSeeAnchor(largestPiece(piecesOf(polys, p)).vertices), x = X(c.x), y = Y(c.y);
     if (x >= 0 && y >= 0 && x <= out.w && y <= out.h) plates.push({ text: p.name, x, y });
   }
   for (const t of plates) _mcpSeePlate(ctx, t.text, t.x, t.y - size * 0.7, size, 'center');
@@ -171,7 +171,7 @@ async function _mcpViewScene(args) {
     if (!blob) out = mcpSeeShrink(out, 0.75);
   }
   if (!blob) return _mcpNo('The picture stayed too large to send. Ask for a smaller area.');
-  const polys = (rec.polygons || []).filter(p => (p.vertices || []).length >= 3);
+  const polys = roomHeads(rec.polygons || []).filter(p => (p.vertices || []).length >= 3);
   const text = mcpSeeViewText({ name: s.name, mapW: rec.mapWidth, mapH: rec.mapHeight, area, px, out, step: view.step,
     roomCount: polys.length, rooms: polys.map(p => p.name) });
   return { text, image: { data: await _mcpSeeBase64(blob), mimeType: 'image/jpeg' } };

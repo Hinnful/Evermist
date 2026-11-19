@@ -40,8 +40,9 @@ async function _mcpCreateEffect(args) {
     if (r.error) return r.error;
     const id = d.nextEffectId++;
     // A uid now: a closed map's write assigns none, and two laptops' effect 3 would then match as one.
-    index = d.effects.push({ id, uid: esRandomUid(), vertices: r.vertices, ...(r.holes ? { holes: r.holes } : {}), material: mat.material,
+    d.effects.push({ id, uid: esRandomUid(), vertices: r.vertices, ...(r.holes ? { holes: r.holes } : {}), material: mat.material,
       cornerRadius: 0, name: mcpFxName(mat.material) + ' ' + id });
+    index = roomHeads(d.effects).length;
   });
   if (edit.no) return edit.no;
   return mcpDone('added a ' + mcpFxName(mat.material) + ' effect to the map "' + s.name + '"', edit.undo,
@@ -58,9 +59,9 @@ async function _mcpEditEffect(args) {
   const s = found.scene;
   let label = '';
   const edit = await mcpEditMap(s, 'changing its effects', ['effects'], async d => {
-    const pick = mcpPickOne(d.effects, args.effect, 'effect');
+    const heads = roomHeads(d.effects), pick = mcpPickOne(heads, args.effect, 'effect');
     if (pick.error) return pick.error;
-    const e = d.effects[pick.i];
+    const e = heads[pick.i];
     label = _mcpFxLabel(e, pick.i);
     if (reshape) {
       const r = await _mcpFxShapeOf(s, args, d);
@@ -69,7 +70,8 @@ async function _mcpEditEffect(args) {
       for (const k of ['holes', 'cornerRadii', 'handles', 'preset']) delete e[k];
       Object.assign(e, { vertices: r.vertices, cornerRadius: 0 }, r.holes ? { holes: r.holes } : {});
     }
-    if (mat) e.material = mat.material;
+    // A material reaches every piece of the effect.
+    if (mat) for (const p of piecesOf(d.effects, e)) p.material = mat.material;
   });
   if (edit.no) return edit.no;
   const what = [mat && 'made it ' + mcpFxName(mat.material), reshape && 'gave it a new shape'].filter(Boolean).join(' and ');
@@ -84,11 +86,12 @@ async function _mcpDeleteOne(args, part, noun) {
   const s = found.scene, key = part === 'effects' ? 'effects' : 'lightShapes';
   let label = '', would = null;
   const edit = await mcpEditMap(s, 'deleting its ' + noun + 's', [part], d => {
-    const pick = mcpPickOne(d[key], args[noun], noun);
+    const list = noun === 'effect' ? roomHeads(d[key]) : d[key], pick = mcpPickOne(list, args[noun], noun);
     if (pick.error) return pick.error;
-    label = noun === 'effect' ? _mcpFxLabel(d[key][pick.i], pick.i) : 'the light ' + (pick.i + 1);
+    label = noun === 'effect' ? _mcpFxLabel(list[pick.i], pick.i) : 'the light ' + (pick.i + 1);
     if (args.confirmed !== true) { would = mcpFxWouldDelete(label, s.name); return would; }
-    d[key].splice(pick.i, 1);
+    const gone = new Set(noun === 'effect' ? piecesOf(d[key], list[pick.i]) : [list[pick.i]]);
+    d[key] = d[key].filter(x => !gone.has(x));
   });
   if (would) return _mcpOk(would);
   if (edit.no) return edit.no;

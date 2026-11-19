@@ -33,7 +33,7 @@ async function _mcpLoadFloorPlan(args) {
     const grid = size == null ? d.gridConfig : { ...d.gridConfig, cellSize: size };
     const rooms = planPolygons(derived, d.mapWidth, grid);
     const lights = planLightShapes(plan, d.mapWidth, d.nextEffectId);
-    c = { name: s.name, roomsNow: d.polygons.length, lightsNow: d.lightShapes.length, rooms: rooms.length,
+    c = { name: s.name, roomsNow: roomHeads(d.polygons).length, lightsNow: d.lightShapes.length, rooms: rooms.length,
       doors: rooms.reduce((n, p) => n + (p.doors || []).length, 0), lights: lights.length };
     if ((c.roomsNow || (c.lights && c.lightsNow)) && args.confirmed !== true) { would = mcpPlanWould(c); return would; }
     d.floorPlan = plan;

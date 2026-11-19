@@ -10,6 +10,8 @@ const MCP_SEE_QUALITY = [0.85, 0.75, 0.65, 0.55, 0.45, 0.35];
 const MCP_SEE_MIN_SPAN = 1;
 const MCP_SEE_STEPS = [0.1, 0.2, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50];
 
+const _MSP = (typeof module !== 'undefined' && module.exports) ? require('../shapes/roomPieces.js') : { roomHeads, piecesOf };
+
 const mcpSeeR1 = n => Math.round(n * 10) / 10;
 const _msR2 = n => Math.round(n * 100) / 100;
 
@@ -130,17 +132,32 @@ function mcpSeePlanCounts(text) {
 }
 
 // Everything read_scene tells, from `i`: { name, group, mapW, mapH, mapType, onTv, gridConfig, polygons, effects, lightShapes,
-// lightsHidden, floorPlan }. Rooms, effects and lights carry the index (from 1) Claude's tools find them by.
+// lightsHidden, floorPlan }. Rooms, effects and lights carry the index (from 1) Claude's tools find them by; a room or
+// effect of several pieces is listed once, its other pieces under `pieces`.
 function mcpSeeRead(i) {
   const W = i.mapW, H = i.mapH;
-  const rooms = (i.polygons || []).map((p, k) => {
+  const shape = p => {
     const [outer, ...holes] = _msRings(p);
-    const room = { index: k + 1, name: p.name || null, notes: p.desc || '', fog: mcpSeeFog(p.mode), outline: mcpSeeRing(outer, W, H) };
-    if (holes.length) room.holes = holes.map(h => mcpSeeRing(h, W, H));
-    room.doors = (p.doors || []).map(d => mcpSeeDoorAt(p, d)).filter(Boolean).map(pt => [mcpSeeR1(pt.x / W * 100), mcpSeeR1(pt.y / H * 100)]);
+    const out = { outline: mcpSeeRing(outer, W, H) };
+    if (holes.length) out.holes = holes.map(h => mcpSeeRing(h, W, H));
+    out.doors = (p.doors || []).map(d => mcpSeeDoorAt(p, d)).filter(Boolean).map(pt => [mcpSeeR1(pt.x / W * 100), mcpSeeR1(pt.y / H * 100)]);
+    return out;
+  };
+  const pieces = (list, p) => _MSP.piecesOf(list, p).slice(1);
+  const polys = i.polygons || [];
+  const rooms = _MSP.roomHeads(polys).map((p, k) => {
+    const room = { index: k + 1, name: p.name || null, notes: p.desc || '', fog: mcpSeeFog(p.mode), ...shape(p) };
+    const more = pieces(polys, p);
+    if (more.length) room.pieces = more.map(shape);
     return room;
   });
-  const effects = (i.effects || []).map((e, k) => ({ index: k + 1, name: e.name || null, material: e.material || null, outline: mcpSeeRing(e.vertices, W, H) }));
+  const fx = i.effects || [];
+  const effects = _MSP.roomHeads(fx).map((e, k) => {
+    const out = { index: k + 1, name: e.name || null, material: e.material || null, outline: mcpSeeRing(e.vertices, W, H) };
+    const more = pieces(fx, e);
+    if (more.length) out.pieces = more.map(m => ({ outline: mcpSeeRing(m.vertices, W, H) }));
+    return out;
+  });
   const lights = (i.lightShapes || []).filter(l => l && Array.isArray(l.vertices)).map((l, k) => {
     const out = { index: k + 1, outline: mcpSeeRing(l.vertices, W, H) };
     if (l.holes && l.holes.length) out.holes = l.holes.map(h => mcpSeeRing(h, W, H));

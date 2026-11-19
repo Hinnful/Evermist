@@ -178,18 +178,23 @@ function mergeShapes(main, others, minArea, tol) {
 // ─── Booleans on picked shapes ───────────────────────────────────────────────
 // The first pick is the main: Cut out takes the others from it, Intersect keeps what every one covers,
 // Exclude keeps what an odd number of them cover. An empty `pieces` is the caller's to refuse.
+// Each operand is a record, or a room of pieces as an array of records, read as one multipolygon.
+function toGeom(x) {
+  return Array.isArray(x) && x.length && x[0] && x[0].vertices ? x.map(toRings).filter(r => r.length) : toRings(x);
+}
+
 function cutOutShapes(main, others, minArea) {
-  const r = runClip(() => clip.difference(toRings(main), ...others.map(toRings)));
+  const r = runClip(() => clip.difference(toGeom(main), ...others.map(toGeom)));
   return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
 }
 
 function intersectShapes(shapes, minArea) {
-  const r = runClip(() => clip.intersection(...shapes.map(toRings)));
+  const r = runClip(() => clip.intersection(...shapes.map(toGeom)));
   return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
 }
 
 function excludeShapes(shapes, minArea) {
-  const r = runClip(() => clip.xor(...shapes.map(toRings)));
+  const r = runClip(() => clip.xor(...shapes.map(toGeom)));
   return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
 }
 

@@ -37,7 +37,7 @@ async function _mcpSetRoomFog(args) {
     const hit = mcpFogFindRooms(d.polygons, args.rooms);
     if (hit.error) return hit.error;
     for (const i of hit.index) d.polygons[i].mode = mode;
-    said = hit.index.map(i => '"' + d.polygons[i].name + '"').join(', ');
+    said = hit.named.map(n => '"' + n + '"').join(', ');
   });
   if (edit.no) return edit.no;
   return mcpDone('set the fog of ' + said + ' in the map "' + s.name + '"', edit.undo,

@@ -543,7 +543,7 @@ function mtCardRoom() {
     return { room: foreign ? rooms.find(r => r.id === foreign.id) || null : col, names: rooms.map(r => r.name) };
   }
   if (typeof polygons === 'undefined' || !Array.isArray(polygons)) return { room: null, names: [] };
-  return { room: polygons.find(p => p.id === selectedPolygonId) || null, names: polygons.map(p => (p.name != null ? p.name : '')) };
+  return { room: roomHeadById(polygons, selectedPolygonId), names: roomHeads(polygons).map(p => (p.name != null ? p.name : '')) };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

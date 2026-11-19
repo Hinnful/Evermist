@@ -4,8 +4,8 @@
 
 const MM = (typeof module !== 'undefined' && module.exports)
   ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'),
-     Object.assign({}, require('../fog/fogGeometry.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'), require('../render/timeOfDayPlan.js'), require('../fog/themes/fogThemes.js')))
-  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, esWithUids, weatherNormalize, timeOfDayNormalize, fogThemeNormalize };
+     Object.assign({}, require('../fog/fogGeometry.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'), require('../render/timeOfDayPlan.js'), require('../fog/themes/fogThemes.js'), require('../shapes/roomPieces.js')))
+  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, esWithUids, weatherNormalize, timeOfDayNormalize, fogThemeNormalize, reconcileRoomPieces };
 
 // The fields a change may touch, per part. Lights share their id space with effects, so both carry nextEffectId.
 const MCP_MAP_PARTS = {
@@ -42,9 +42,9 @@ function mcpMapSnapshot(data, keys) {
 function mcpMapRecordRead(rec, keys, defaults) {
   const out = {};
   const has = k => keys.includes(k);
-  if (has('polygons')) out.polygons = (rec.polygons || []).map(p => MM.decodeShapeFromSave(MM.copyShapeRings(structuredClone(p))));
+  if (has('polygons')) out.polygons = MM.reconcileRoomPieces((rec.polygons || []).map(p => MM.decodeShapeFromSave(MM.copyShapeRings(structuredClone(p)))));
   if (has('nextPolygonId')) out.nextPolygonId = rec.nextPolygonId || 1;
-  if (has('effects')) out.effects = structuredClone(rec.effects || []);
+  if (has('effects')) out.effects = MM.reconcileRoomPieces(structuredClone(rec.effects || []));
   if (has('nextEffectId')) out.nextEffectId = rec.nextEffectId || 1;
   if (has('lightShapes')) out.lightShapes = structuredClone((rec.lightShapes || []).filter(l => l && Array.isArray(l.vertices)));
   if (has('lightsHidden')) out.lightsHidden = !!rec.lightsHidden;

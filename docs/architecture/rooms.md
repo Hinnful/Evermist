@@ -112,17 +112,28 @@ because a room's outline *is* the fog stencil.
 gold. Several effects picked put the same "1" plate at the main's top centre. With several picked the popup's fog and T set all
 to the main's next fog, a drag moves all, Delete deletes all, Ctrl+C and Ctrl+X copy all, and Ctrl+V pastes all at the pointer as
 they sat, the first pasted as the main; one undo step each. A double-click
-or Enter opens the edit row on the single map: Select, Pen, Bend, Split, Merge, Cut out, Intersect, Exclude, Snap, Straight
+or Enter opens the edit row on the single map and in a selected two-map column (the column reports `pane-edit-row`, the DM window draws it and sends each click back, `editRowPane.js`; switching column, leaving two maps or loading another map takes it down): Select, Pen, Bend, Split, Merge, Cut out, Intersect, Exclude, Snap, Straight
 walls and Done. The booleans work on the picked shapes (also Alt+Shift+U/S/I/E), the others' notes are appended, and a result
 with nothing left is refused. Merge first welds a corner within a tenth of a cell (never under 2px) onto another picked
-shape's wall, and refuses when the union is still more than one piece; doors, curves and radii are matched back against the
+shape's wall, and joins pieces that do not touch into one room of pieces; doors, curves and radii are matched back against the
 welded shapes, so a wall ending at a welded corner keeps them. Split on the picked cuts only them until a line splits, Esc or
 the pick changes. Done, Enter, Esc and a press on empty map close the row keeping every pick, and the next Esc or press there
 empties the selection; Enter with a button or field focused is that control's. V puts the row's Select in hand. Pen draws a
 piece from wall to wall that joins the room, its ends snapping to a wall within 20 screen px. While a Pen piece or a Polygon
 is drawn into the open edit, Delete takes its last point, Enter joins it once it has three, and Esc drops it first. A still
 click with several picked narrows to the clicked room and never also cycles to the next larger one. Shift while dragging a corner keeps it
-horizontal or vertical. The Campaign map and the two-map columns keep one selection and no row.
+horizontal or vertical. The Campaign map keeps one selection and no row.
+
+**A room of pieces.** A room can hold several separate pieces with one name, notes and fog. A piece is an ordinary record in
+`polygons` (or `effects`) with `pieceOf`, the uid of the room's first record (the head), linked by uid because sync and Import
+renumber ids; the head holds name, notes and links, and when it goes the largest surviving piece takes them and its uid. On load
+a link to a missing record, a piece or itself counts as none, a room's pieces take the most hidden fog, an effect's pieces take
+the head's material and a piece's own notes move below the room's. Cut out, Exclude, Intersect and Merge leave one room of
+pieces; a Pen piece drawn apart in an open edit joins it; Split makes every part and every other piece a room of its own, the
+largest keeping name, notes and uid, and a line crossing no piece changes nothing. One label sits on the largest piece, a click on
+any piece picks the room, drag, Delete, copy and fog act on every piece, and Edit works on one piece, moving to a clicked sibling.
+An effect with pieces reads "By hand" and cannot become a light; lights, floor-plan rooms and the Campaign's groups have none
+(`roomPieces.js`). Claude's tools show a room once with its pieces, count rooms only, and `delete_room` removes every piece.
 
 **A repair keeps the curves, the corner rounding and the doors on the walls that survive it.** All
 three are stored by position in the corner list, and a repair renumbers every position, so each one

@@ -6,16 +6,16 @@
 function _rpEl(id) { return document.getElementById(id); }
 
 // Resolves against whichever list the placement mode names, since that is where the selection
-// came from. One helper therefore serves a room and an effect.
+// came from. One helper therefore serves a room and an effect. A piece answers its room's head, which holds the fields.
 function _rpFindPoly(id) {
-  return id == null ? null : activeShapeList().find(s => s.id === id) || null;
+  return id == null ? null : roomHeadById(activeShapeList(), id);
 }
 
 // ⚠ THE CARD'S OWN FIELDS RESOLVE AGAINST `polygons`, NOT the active list. The card holds a ROOM,
 // and what closes it on a live edit is the placement mode changing — at which point the active
 // list is the OTHER one. Ids are numbered per list, so the name would land on an effect.
 function _rpFindRoom(id) {
-  return id == null ? null : polygons.find(p => p.id === id) || null;
+  return id == null ? null : roomHeadById(polygons, id);
 }
 
 // A room defaults to "Room 4", an effect to "Fire 4". `material` is the discriminator

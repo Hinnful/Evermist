@@ -9,8 +9,8 @@ function splitPickedDisarm() { cutOnlyIds = null; }
 
 // The Split line limited to the picked shapes; its pieces end picked and edit closes. Step 3's button calls it.
 function splitPickedArm() {
-  const ids = pickedIds();
-  if (!ids.length || worldMapOpen || isPane) return false;
+  const ids = pickedRoomIds();
+  if (!ids.length || worldMapOpen) return false;
   cutOnlyIds = ids;
   setShape('cut');
   return true;
@@ -20,7 +20,7 @@ function splitPickedArm() {
 function cutMouseDown(mapX, mapY) {
   const pos = snapVertex(mapX, mapY);
   if (!activePolygon || !activePolygon.cut) {
-    if (cutOnlyIds && cutOnlyIds.join() !== pickedIds().join()) cutOnlyIds = null;
+    if (cutOnlyIds && cutOnlyIds.join() !== pickedRoomIds().join()) cutOnlyIds = null;
     const only = cutOnlyIds;
     activePolygon = { vertices: [pos], mode: tool, cut: true, only };
   } else activePolygon.vertices.push(pos);
@@ -41,7 +41,7 @@ function commitCutPath() {
     if (!ringPathCrossings(cutRings(poly)[0], path).length) continue;
     const out = cutRing(poly, path, minArea);
     if (out.reason) { refuseShapeOp(out.reason); return; }
-    plan.push({ shapes: [poly], pieces: out.pieces });
+    plan.push({ shapes: [poly], pieces: out.pieces, kind: 'split' });
   }
   if (!plan.length) { refuseShapeOp(REASON_CUT); return; }
   pushUndo();
@@ -49,11 +49,13 @@ function commitCutPath() {
   applyShapePlan(plan, null);
   commitShapeOpFog(null);
   if (only) {
-    const pieces = plan.map(g => g.shapes[0].id).concat(activeShapeList().filter(s => !before.has(s.id)).map(s => s.id));
+    const now = new Set(activeShapeList().map(s => s.id));
+    const pieces = onePickPerRoom(activeShapeList(), only.filter(id => now.has(id)).concat([...now].filter(id => !before.has(id))));
     selectedPolygonId = pieces[0];
     extraPickedIds = pieces.slice(1);
     pickSetReset();
     setShape('select');   // puts the Split limit down with the tool
+    reportPaneTool();
   }
   drawCursor(lastScreenX, lastScreenY);
 }

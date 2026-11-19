@@ -53,9 +53,9 @@ function clearShapeSelection() {
   leaveShapeEditMode();
 }
 
-// The extra picks that still resolve in the list in hand. None on the Campaign or in a column.
+// The extra picks that still resolve in the list in hand. None on the Campaign.
 function pickedExtras() {
-  if (!extraPickedIds.length || selectedPolygonId == null || worldMapOpen || isPane) return [];
+  if (!extraPickedIds.length || selectedPolygonId == null || worldMapOpen) return [];
   const list = activeShapeList();
   return extraPickedIds.map(id => id !== selectedPolygonId && list.find(s => s.id === id)).filter(Boolean);
 }
@@ -72,11 +72,12 @@ let editBeforeExtras = false;
 // several-picked row that belonged to a pick long gone.
 function pickSetReset() { editBeforeExtras = false; editRowForgetPicks(); }
 
-// Shift+click on another shape: in the pick or out of it. The edit row shows while several are picked.
+// Shift+click on another room: in the pick or out of it, one id per room. The edit row shows while several are picked.
 function togglePickedExtra(id) {
   const ids = pickedExtras().map(s => s.id);
+  const next = toggleRoomPick(activeShapeList(), selectedPolygonId, ids, id);
+  if (!next) return;
   if (!ids.length) { editBeforeExtras = shapeEditMode; leaveShapeEditMode(); }
-  const next = ids.indexOf(id) >= 0 ? ids.filter(x => x !== id) : ids.concat(id);
   if (next.length) { extraPickedIds = next; editRowShowPicks(); } else dropPickedExtras();
   drawCursor(lastScreenX, lastScreenY);
   scheduleRender();
@@ -195,7 +196,7 @@ function selectMouseDown(raw, e) {
     }
   }
 
-  const shiftPick = !!(e && e.shiftKey) && !worldMapOpen && !isPane && selectedPolygonId != null;
+  const shiftPick = !!(e && e.shiftKey) && !worldMapOpen && selectedPolygonId != null;
   // With several picked a still click narrows the pick (selectMouseUp) and never cycles.
   const sel = !shiftPick && !shapeEditMode && !pickedExtras().length && lastClickAt && Math.hypot(raw.x - lastClickAt.x, raw.y - lastClickAt.y) * zoom < 4 ? findActiveShape() : null;
   cycleOnUp = placeMode === 'rooms' && !worldMapOpen && !!sel && pointInShape(raw.x, raw.y, sel);
@@ -210,10 +211,12 @@ function selectMouseDown(raw, e) {
     return;
   }
   if (hit) {
-    const extras = pickedExtras();
-    const inPick = hit.id === selectedPolygonId || extras.indexOf(hit) >= 0;
+    const extras = pickedExtras(), list = activeShapeList();
+    const inPick = worldMapOpen ? hit.id === selectedPolygonId : roomInPick(list, pickedIds(), hit);
     if (!inPick) { selectedPolygonId = hit.id; extraPickedIds = []; pickSetReset(); leaveShapeEditMode(); }
     else if (shapeEditMode) { selectedVertexIndex = -1; selectedHoleIndex = -1; }
+    // The clicked piece of the main's room carries the popup and the edit.
+    if (inPick && !worldMapOpen && sameRoom(list, hit, findActiveShape())) selectedPolygonId = hit.id;
     const many = inPick && extras.length > 0;
     const copyRings = s => polyRings(s).map(r => r.map(v => ({ x: v.x, y: v.y })));
     armDragUndo();
@@ -221,8 +224,9 @@ function selectMouseDown(raw, e) {
     copyOnDrag = !!(e && e.altKey) && !many;
     dragStartMapX = raw.x;
     dragStartMapY = raw.y;
-    dragOrigVerts = copyRings(findActiveShape());
-    dragOrigExtras = many ? extras.map(s => ({ s, rings: copyRings(s) })) : null;
+    const main = findActiveShape(), others = pickedRoomIds().filter(id => id !== main.id).map(id => list.find(s => s.id === id));
+    dragOrigVerts = copyRings(main);
+    dragOrigExtras = others.length ? others.map(s => ({ s, rings: copyRings(s) })) : null;
     dragPickId = many ? hit.id : null;
   } else {
     clearShapeSelection();
@@ -294,7 +298,7 @@ function selectMouseMove(pos, screenX, screenY, e) {
     let poly = findActiveShape();
     if (poly && dragOrigVerts) {
       pushDragUndo();
-      if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(); poly = findActiveShape(); dragCopyId = poly && poly.id; }
+      if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(dragOrigExtras); poly = findActiveShape(); dragCopyId = poly && poly.id; }
       const shift = rings => rings.map(r => r.map(v => ({ x: v.x + dx, y: v.y + dy })));
       const moved = shift(dragOrigVerts);
       poly.vertices = moved[0];
@@ -559,17 +563,18 @@ function deleteShapesById(ids) {
   scheduleAutoSync();
 }
 
-function deleteSelectedPolygon() { deleteShapesById(pickedIds()); }
+function deleteSelectedPolygon() { deleteShapesById(pickedRoomIds()); }
 
 // By id, because the room card's fog pill names the room it acts on. ⚠ Never refresh the whole
 // card here: a rebuild steals focus from the name and description fields mid-edit.
 // ⚠ Fog states belong to rooms, so this and the T-key cycle refuse in Effects mode.
 function setPolygonMode(id, mode) { setPolygonsMode([id], mode); }
 
-// Several picked rooms take one fog in one undo step.
+// Several picked rooms take one fog in one undo step, every piece of each.
 function setPolygonsMode(ids, mode) {
   if (placeMode !== 'rooms') return;
-  const change = polygons.filter(p => ids.indexOf(p.id) >= 0 && p.mode !== mode);
+  const all = roomRecordIds(polygons, ids);
+  const change = polygons.filter(p => all.indexOf(p.id) >= 0 && p.mode !== mode);
   if (!change.length) return;
   pushUndo();
   for (const p of change) p.mode = mode;

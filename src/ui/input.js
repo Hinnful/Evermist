@@ -275,9 +275,15 @@ function initInput() {
     if (worldMapOpen) return;
     // Ahead of the shape shortcuts: while calibration holds the map, Escape means leave it.
     if (gridCalArmed && e.code === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
+    // Two maps: while the selected column's edit is open, its keys go to that column (editRowPane.js).
+    if (e.code !== 'Escape' && paneEditRowKey(e)) { e.preventDefault(); return; }
     // Figma's boolean keys on the picked, by the physical key so a Russian layout works. ⚠ RETURNS, so
     // KeyS never sends the map to the TV and KeyE never toggles Effects.
-    if (e.altKey && e.shiftKey && EDIT_ALT_SHIFT[e.code]) { e.preventDefault(); booleanOnPicked(EDIT_ALT_SHIFT[e.code]); return; }
+    if (e.altKey && e.shiftKey && EDIT_ALT_SHIFT[e.code]) {
+      e.preventDefault();
+      if (!paneEditRowSend('op', { op: EDIT_ALT_SHIFT[e.code] })) booleanOnPicked(EDIT_ALT_SHIFT[e.code]);
+      return;
+    }
     // ⚠ RETURNS WHATEVER THE KEY WAS, or Ctrl+C picks the Cone and Ctrl+R the Rectangle.
     if (e.ctrlKey || e.metaKey) {
       // With two maps the history is the selected column's; the DM window has none of its own.
@@ -339,10 +345,11 @@ function initInput() {
         if (legendVisible) { toggleLegend(); break; }
         if (galleryTakeDown()) break;
         if (dropPreset()) break;
+        if (paneEditRowKey(e)) { e.preventDefault(); break; }
         // Door is a tool the room's switcher armed, and Esc ends it before it drops the room.
         if (shape === 'door') { setShape('select'); break; }
         // A Split on the picked ends whole, line and limit, so no later line cuts past the pick.
-        if (shape === 'cut' && cutOnlyIds) { setShape('select'); break; }
+        if (shape === 'cut' && cutOnlyIds) { setShape('select'); reportPaneTool(); break; }
         if (activePolygon) {
           activePolygon = null;
           drawCursor(null, null);

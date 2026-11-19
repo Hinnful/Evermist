@@ -90,6 +90,7 @@ describe('layerInsertIndex', () => {
 global.t = (s, v) => String(s).replace(/\{(\w+)\}/g, (_, k) => v[k]);
 global.EFFECT_MATERIALS = {};
 global.restoreGroupDetail = require('../src/shapes/shapeDetail.js').restoreGroupDetail;
+Object.assign(global, require('../src/shapes/roomPieces.js'));
 const { cutRing, trimShapes, joinShapes } = require('../src/shapes/roomOps.js');
 const { shapePlanApplied } = require('../src/shapes/shapeCommit.js');
 

@@ -314,8 +314,8 @@ One box from any view: Ctrl+F (not while a text field has focus), the bar's last
   centre, Cone, Line, Wall along the length from the origin, the width kept), one undo step a change. Any reshape (hand edit,
   box, repair, boolean, Claude's `edit_effect`) deletes `preset`, and an outline that no longer matches it reads the same:
   "By hand" in the size field, greyed. With several effects picked the main wears the room's "1" plate at its top centre.
-- **The edit row** (`editRow.js`): while a room's or an effect's edit is open on the single map (never in a column or on the
-  Campaign), the row wears a blue frame and holds a well of Select (the bar's arrow), Pen and Bend, the pick in the blue tint
+- **The edit row** (`editRow.js`): while a room's or an effect's edit is open on the single map or in the selected two-map column
+  (`editRowPane.js`; never on the Campaign), the row wears a blue frame and holds a well of Select (the bar's arrow), Pen and Bend, the pick in the blue tint
   and a held Ctrl lighting Bend; a divider; Split, Merge, Cut out, Intersect, Exclude, the four greyed with "pick one more:
   Shift+click" until a second shape is picked; a divider; Snap and Straight walls; a divider; Done, solid blue. Done, Enter, Esc
   and a press on empty map close the row keeping every pick, and the next Esc or press deselects. Enter with a button or

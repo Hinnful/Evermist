@@ -43,7 +43,7 @@ function _hfCentralRoom() {
 
 // What the map shows now: the brushed area read at open, and the rooms' fog modes live.
 function _hfFacts() {
-  const rooms = polygons.filter(p => !p.material && !p.light);
+  const rooms = roomHeads(polygons).filter(p => !p.material && !p.light);
   return { revealed: _hfBrushed || rooms.some(p => p.mode !== 'shroud'), rooms: rooms.length,
     shroudRooms: rooms.filter(p => p.mode === 'shroud').length, tvLive: _tvLive() };
 }

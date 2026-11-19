@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 9 open items; IDs run to 300."
+description: "Open work only. 8 open items; IDs run to 301."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.16.0**: a room can be made of separate parts, and a two-map column has the edit row. **5.15.0**: rooms and effects get their own edit row. **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -148,17 +148,11 @@ block both take far too much effort now. The monster rows need simplifying or a 
 mockups.**
 **Play · DM only**
 
-### 299. The edit row in two-map mode
-Filed 2026-11-19, deferred from 297 (5.15.0). A room in a two-map column still edits the old way: double-click, corner
-drags and Ctrl bend, with no edit row, no Pen, no booleans and no several picked. A column has no row today, so the
-row needs messages from the column to the DM window and back. **Patch-sized; no open decision.**
-**Prep · DM only**
-
-### 300. A room made of separate pieces
-Filed 2026-11-19 from 297's testing. A piece drawn into an open room that does not touch it, and a Merge of rooms that
-do not touch, are refused, because a room holds one outline with holes. Figma keeps such shapes as one with several
-islands; the DM wants that in the long run. Touches the room record, fog, labels, doors and every repair, and a new
-persisted shape must load on the previous release. **Needs a design pass first.**
+### 301. Edit every part of a room at once, as Figma does
+Filed 2026-11-19 from 300. A double-click on a room of several parts opens corners on its clicked part only; a click on another
+part moves the edit there. The DM wants it exactly as Figma: the edit shows every part's corners at once, and any corner drags
+with no extra click. Reverses the departure from Figma recorded in "A room can be made of separate pieces"
+(`docs/decisions/ui-and-control-panel.md`). **Patch-sized; no open decision.**
 **Prep · DM only**
 
 ---

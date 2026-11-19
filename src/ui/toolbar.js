@@ -157,8 +157,11 @@ function setPickedMaterial(m) {
   if (isPlayer || (m !== 'light' && !EFFECT_MATERIALS[m]) || placeMode !== 'effects' || selectedPolygonId == null) return;
   const e = effects.find(x => x.id === selectedPolygonId), l = !e && lightShapes.find(x => x.id === selectedPolygonId);
   if ((!e && !l) || (e && e.material === m) || (l && m === 'light')) return;
+  // An effect of several pieces changes on every piece, and never turns into a light.
+  const room = e ? piecesOf(effects, e) : [];
+  if (e && m === 'light' && room.length > 1) return;
   pushUndo();
-  if (e && m !== 'light') e.material = m;
+  if (e && m !== 'light') for (const p of room) p.material = m;
   else if (e) {
     effects = effects.filter(x => x !== e);
     lightShapes.push(shapeAsLight(e));
@@ -460,7 +463,8 @@ function initToolbar() {
   initRoomSwitcher();   // the selected room's own clouds and door → roomSwitcher.js
   initPlayersView();    // hold H: the map as the TV shows it → playersView.js
   initRepairKeys();     // Shift, Alt and Ctrl while a shape is drawn → repairKeys.js
-  if (!isPane) { initFogBar(); initEffectsRow(); initEditRow(); initEffectPopup(); }   // the bar and its row, which a column does not show
+  if (!isPane) { initFogBar(); initEffectsRow(); initEffectPopup(); }   // the bar and its row, which a column does not show
+  initEditRow();   // a column holds the edit's keys and reports its row (editRowPane.js)
   initEffectsTool();   // the Effects switch
   initEffectsBarFire();   // the bar burns in Effects mode (returns at once in a column)
 

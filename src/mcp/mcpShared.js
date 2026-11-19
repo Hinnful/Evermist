@@ -42,7 +42,7 @@ function _mcpHolder(id) {
 }
 
 function _mcpRooms(polys) {
-  return (polys || []).filter(p => p.name || p.desc).map(p => ({ name: p.name || null, notes: p.desc || '' }));
+  return roomHeads(polys || []).filter(p => p.name || p.desc).map(p => ({ name: p.name || null, notes: p.desc || '' }));
 }
 
 async function _mcpSceneRecord(id) {
@@ -51,7 +51,8 @@ async function _mcpSceneRecord(id) {
   if (at) await flushPaneScene(at);
   const rec = (await sceneStore.loadScene(id)) || {};
   // A held room is stored as shroud with its real mode beside it (fogGeometry.js); read it as the open map holds it.
-  if (rec.polygons) rec.polygons = rec.polygons.map(decodeShapeFromSave);
+  if (rec.polygons) rec.polygons = reconcileRoomPieces(rec.polygons.map(decodeShapeFromSave));
+  if (rec.effects) reconcileRoomPieces(rec.effects);
   return rec;
 }
 

@@ -137,7 +137,7 @@ async function _mcpCopyScene(args) {
   allScenes.push({ id, name, group: place.name, thumbnail: rec.thumbnail, sortOrder: rec.sortOrder, createdAt: rec.createdAt, mapType: rec.mapType, worldPos: spot });
   worldAssignAll();
   sceneListChanged();
-  const rooms = (rec.polygons || []).length;
+  const rooms = roomHeads(rec.polygons || []).length;
   return mcpDone('copied the map "' + s.name + '"', async () => { mcpRefuseRemovingOpen([id], 'undoing the copy'); await _mcpRemoveScenes([id], false); worldSnapshotPut(snap); },
     'Copied the map "' + s.name + '" as "' + name + '"' + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + ', with its own ' + (mapPath ? 'video file' : 'picture') + ', ' + rooms + ' rooms, its grid, fog, effects, lights and notes. ' + mcpSizeNote(rec, false).text);
 }
@@ -214,7 +214,7 @@ async function _mcpDeleteScene(args) {
   if (pinned) return pinned;
   const rec = await sceneStore.loadScene(s.id);
   if (!rec) return _mcpNo('The map "' + s.name + '" is no longer in the library.');
-  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('scene', { name: s.name, rooms: (rec.polygons || []).length }));
+  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('scene', { name: s.name, rooms: roomHeads(rec.polygons || []).length }));
   const snap = worldSnapshotTake();
   await _mcpRemoveScenes([s.id], true);
   return mcpDone('deleted the map "' + s.name + '"', async () => {

@@ -49,7 +49,12 @@ describe('mcpWeatherId', () => {
 describe('mcpFogFindRooms', () => {
   const polys = [{ name: 'Crypt' }, { name: 'Hall' }, { name: 'hall' }, {}];
   it('finds rooms by name, ignoring case and edge spaces, each once', () => {
-    assert.deepEqual(mcpFogFindRooms(polys, [' crypt ', 'CRYPT']), { index: [0] });
+    assert.deepEqual(mcpFogFindRooms(polys, [' crypt ', 'CRYPT']), { index: [0], named: ['Crypt'] });
+  });
+  it('finds a room of pieces by its head and answers every piece, never a piece by its own name', () => {
+    const room = [{ uid: 'h', name: 'Hall' }, { name: 'Crypt' }, { pieceOf: 'h', name: 'Room 9' }];
+    assert.deepEqual(mcpFogFindRooms(room, ['hall']), { index: [0, 2], named: ['Hall'] });
+    assert.match(mcpFogFindRooms(room, ['Room 9']).error, /No room is called/);
   });
   it('refuses a missing name, a shared name and an empty list', () => {
     assert.match(mcpFogFindRooms(polys, ['Vault']).error, /No room is called "Vault"/);

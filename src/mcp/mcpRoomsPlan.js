@@ -4,8 +4,8 @@
 // the floor plan from a point inside it. No DOM. Tested.
 
 const MR = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'), require('../rooms/vttPlan.js'))
-  : { restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex, pointInRing, vttDerivePlan, vttProjectToSegment, vttSignedArea };
+  ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'), require('../rooms/vttPlan.js'), require('../shapes/roomPieces.js'))
+  : { roomHeads, restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex, pointInRing, vttDerivePlan, vttProjectToSegment, vttSignedArea };
 
 // read_scene rounds a point to 0.1%, so a wall read back and sent again sits within half of that.
 const MCP_ROOM_MATCH_PCT = 0.06;
@@ -72,8 +72,14 @@ const _mrName = s => String(s || '').trim().toLowerCase();
 
 // The room a call names: { index, room } or { error }. The call's index is the room's place in read_scene's rooms list,
 // from 1, and picks one of several sharing a name, or a room with none; the `index` returned is its array position.
+// Rooms are numbered without their pieces, as read_scene lists them; `index` is the room's head in `polys`.
 function mcpRoomFind(polys, name, index, mapName) {
-  const list = polys || [];
+  const all = polys || [], list = MR.roomHeads(all);
+  const found = f => (f.room ? { index: all.indexOf(f.room), room: f.room } : f);
+  return found(_mrFind(list, name, index, mapName));
+}
+
+function _mrFind(list, name, index, mapName) {
   const where = ' on the map "' + mapName + '"';
   if (index !== undefined && index !== null) {
     const i = Number(index) - 1;
@@ -103,7 +109,7 @@ function mcpRoomNew(id, verts, name, notes, mode, fallback) {
 function mcpRoomInsert(polys, room, cellSize) {
   const at = MR.layerInsertIndex(polys, room, cellSize);
   polys.splice(at, 0, room);
-  return at + 1;
+  return MR.roomHeads(polys).indexOf(room) + 1;
 }
 
 // A room's outer ring replaced: { piece, lost }, the piece in the shape applyPieceToShape takes. The same number of

@@ -1487,6 +1487,7 @@ A click shows the fog and Door popup alone; a double-click or Enter opens one ce
 Split, the booleans, Snap, Straight walls, Done). **Reverses** the row hanging over its tool with a pointer: every row is centred,
 no pointer. Straight walls persists (`evermist.straightWalls`) so it can be set while corners are edited. A column has no row
 and would need messages both ways, so it keeps today's double-click, corners and Ctrl bend; a patch may add it.
+**Reversed** (column half, 2026-11-19): see "A two-map column has the edit row".
 
 ### With an edit open, two presses on empty map clear everything · `SETTLED` (2026-11-19)
 The first press on empty map closes the edit and keeps every pick, the next empties the selection, so a double-click on empty
@@ -1494,8 +1495,8 @@ map ends with nothing picked (**replaces** "a double-click on empty map closes e
 puts the edit row's Select in hand. The Pen's ends snap to a wall within 20 screen px, with a marker on the wall point.
 While a room's edit is open, anything drawn joins that room: the Pen starts anywhere and finishes on a wall, its first point, a
 double-click or Enter (3+ points) (**reverses** wall-to-wall only); the bar's Room tools draw into the room and edit stays open;
-Shift also joins, Alt cuts out of that room only, Ctrl splits. A piece that would leave islands is refused: rooms with separate
-islands are not supported. Delete/Backspace while drawing removes the last point, never the room.
+Shift also joins, Alt cuts out of that room only, Ctrl splits. (The refusal of pieces that would leave islands is **reversed**
+by "A room can be made of separate pieces".) Delete/Backspace while drawing removes the last point, never the room.
 
 ### The armed shape wears the material's colour, and a right-click lists the shapes · `SETTLED` (2026-11-19)
 The armed shape in the Effects row wears the current material's colour again, as in 5.14.8 (a lit fog cloud wears its own); the
@@ -1514,3 +1515,28 @@ room's fog; Split's limit to the picked holds through a missed line. With severa
 The popup's palette holds every material plus Light and moves a shape between the light list and the effects list, keeping its
 id and outline, one undo step. The bar's band draws every material's own effect (a non-flame kind its one-pass shader)
 (**reverses** "Only a flame burns on the bar"). Both popups stay clear of the dock pane.
+
+### A two-map column has the edit row · `SETTLED` (2026-11-19)
+**Reverses** the column half of "The edit row opens on a double-click, and stays off two-map columns". A double-click or Enter in
+the selected column opens the row in the DM window, centred over the bar as on one map (Select/Pen/Bend, Split, the four booleans,
+Snap, Straight walls, Done); Shift+click picks several inside the column and Alt+Shift+U/S/I/E work. The column reports its row
+state up (`pane-edit-row`), the DM window draws it and sends each click back (`editRowPane.js`). Switching the selected column,
+leaving two maps or loading another map into the column takes the row down. Esc, Enter, Delete and Backspace pressed in the DM
+window while the column's edit is open go to that column; Esc only after the DM window's own Esc stack (legend, gallery picture,
+armed preset) is empty, and a focused button keeps its Enter.
+
+### A room can be made of separate pieces · `SETTLED` (2026-11-19)
+**Reverses** "A piece that would leave islands is refused" and Merge's refusal of rooms that do not touch. A room holds several
+pieces with one name, notes and fog, as Figma keeps islands in one shape. Cut out through the middle (Alt, the row's Alt
+cut, Cut out/Exclude/Intersect with 2+ picked) leaves one room of pieces; Merge of apart rooms makes one room, the first pick
+leading; a Pen piece or bar Room tool drawn in an open edit away from the room becomes a piece of it. Split is the way to
+separate: a Split crossing any piece makes every part and every other piece a room of its own, the largest keeping name, notes
+and uid; a line crossing no piece changes nothing. One label per room, on its largest piece; a click on any piece picks the room,
+and drag, Delete, copy/paste, Alt-drag copy and fog act on every piece.
+- **Departure from Figma, rejected:** Edit works on one piece at a time (Figma edits every part at once), a click on another
+  piece moving the open edit there. The DM rejected it; BACKLOG 301 removes it. Out of scope: floor-plan rooms, lights and the Campaign's groups.
+- Effects follow the rules; one with pieces reads "By hand", Size greyed, and cannot become a light. Merge of apart effects takes
+  the main's material. Lights have no pieces: Merge of apart lights and a Pen piece apart from one stay refused.
+- Stored as records with `pieceOf: <uid of the first record>`, linked by uid because sync and Import renumber ids; a head
+  without a uid gets one minted alone, never `esAssignUids` over the list (it keeps the first holder in list order).
+- Accepted loss on the previous release: pieces show as rooms of their own; a Split made there rejoins, a name typed there drops.

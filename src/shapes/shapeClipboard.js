@@ -97,6 +97,16 @@ function _clipMoved(clip, src, dx, dy) {
   return out;
 }
 
+// A copied room keeps its pieces: a head whose uid stayed with the original (_clipMoved) takes a new one, and its
+// copied pieces follow it.
+function _clipRelink(srcs, added) {
+  srcs.forEach((src, i) => {
+    if (!src.uid || added[i].uid || !added.some(a => a.pieceOf === src.uid)) return;
+    added[i].uid = esRandomUid();
+    for (const a of added) if (a.pieceOf === src.uid) a.pieceOf = added[i].uid;
+  });
+}
+
 function _clipRingMoved(ring, dx, dy) {
   return ring.map(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
 }
@@ -123,7 +133,7 @@ function _clipRead() {
                                .map(d => ({ ...d, edge: d.edge - from })),
     };
   }
-  const polys = [poly, ...pickedExtras()];
+  const polys = roomPickRecords(activeShapeList(), pickedIds());
   const shapes = polys.map(p => { const c = _clipDetach(copyShapeRings(p)); delete c.id; return c; });
   // The bytes ride along: a paste into another scene finds none of its own.
   return { list: listName, kind: 'shape', centre: _clipShapesCentre(polys), shapes,
@@ -188,16 +198,17 @@ function _clipDrop(clip, dx, dy, into) {
   }
   pushUndo();
   Object.assign(pictureBlobs, clip.pictures);
-  const added = clip.shapes.map(src => {
-    const shape = _clipMoved(clip, src, dx, dy);
+  const added = clip.shapes.map(src => _clipMoved(clip, src, dx, dy));
+  _clipRelink(clip.shapes, added);
+  for (const shape of added) {
     shape.id = takeShapeId(clip.list);
     pushShapeTo(clip.list, shape);
-    return shape;
-  });
+  }
   // Figma leaves a paste picked and ready to drag, the first as the main. Only the live list can hold the
   // selection, so an effect pasted from Rooms mode arrives unselected.
   if (clip.list === placeMode) {
-    selectedPolygonId = added[0].id; extraPickedIds = added.slice(1).map(s => s.id); pickSetReset();
+    const ids = onePickPerRoom(_clipList(clip.list), added.map(s => s.id));
+    selectedPolygonId = ids[0]; extraPickedIds = ids.slice(1); pickSetReset();
     leaveShapeEditMode();
   }
   _clipCommit(clip.list, added.some(s => s.mode === 'shroud'));
@@ -223,9 +234,10 @@ function cutSelectedShape() {
 
 // ─── Alt+drag ─────────────────────────────────────────────────────────────────
 
-// A copy laid over the selection, which then becomes the selection the drag moves.
+// A copy laid over the selection, which then becomes the selection the drag moves: the whole room, every piece. The
+// drag's `extras` ({ s, rings }, the room's other pieces) are turned onto their copies.
 // ⚠ NO UNDO OF ITS OWN: the drag pushed one, so one Ctrl+Z takes the copy and its move together.
-function dragCopyOfSelection() {
+function dragCopyOfSelection(extras) {
   if (worldMapOpen) return false;   // a place is not copied by dragging
   const clip = _clipRead();
   if (!clip) return false;
@@ -233,9 +245,12 @@ function dragCopyOfSelection() {
     selectedHoleIndex = clipAddHole(findActiveShape(), clip.ring, clip);
     return true;
   }
-  const shape = _clipMoved(clip, clip.shapes[0], 0, 0);
-  shape.id = takeShapeId(clip.list);
-  appendShapeTo(clip.list, shape);
+  const srcs = roomPickRecords(activeShapeList(), pickedIds());
+  const added = clip.shapes.map(src => _clipMoved(clip, src, 0, 0));
+  _clipRelink(clip.shapes, added);
+  for (const shape of added) { shape.id = takeShapeId(clip.list); appendShapeTo(clip.list, shape); }
+  for (const o of extras || []) { const k = srcs.indexOf(o.s); if (k >= 0) o.s = added[k]; }
+  const shape = added[0];
   selectedPolygonId = shape.id; extraPickedIds = []; pickSetReset();
   leaveShapeEditMode();
   return true;

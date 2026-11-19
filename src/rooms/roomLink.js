@@ -24,8 +24,8 @@ function paneReportRoom(room) {
 // What the DM window asks of this column's selected room. ⚠ Refused when the selection moved on
 // since the report, so an edit typed for one room never lands on the next.
 function paneApplyRoomEdit(m) {
-  const room = selectedPolygonId === m.id ? polygons.find(p => p.id === m.id) : null;
-  if (!room) return;
+  const room = roomHeadById(polygons, selectedPolygonId);
+  if (!room || room.id !== m.id) return;
   _rpFieldPid = room.id;
   if (m.op === 'name' || m.op === 'desc') {
     _rpEl(m.op === 'name' ? 'rp-name' : 'rp-desc').value = m.value;

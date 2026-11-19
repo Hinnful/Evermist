@@ -4,7 +4,8 @@
 // Shift+click picks one more); Snap and Straight walls (#fx-aids, shared with the other rows); Done.
 // Several picked show it too, with no shape's edit open. Done, Enter and Esc close it and keep every pick;
 // a press on empty map closes it keeping every pick, and the next press there deselects. A held Ctrl
-// lights Bend while it is down. A two-map column and the Campaign keep editing as they always did.
+// lights Bend while it is down. A two-map column runs it the same; editRowPane.js draws its row in the DM
+// window. The Campaign keeps editing as it always did.
 
 const ER_TOOLS = [
   ['select', 'Select - drag a corner or a wall. Double-click a wall to add a corner'],
@@ -27,7 +28,8 @@ let _erOpen = false, _erKey = '';
 let _erPicks = false;        // the row is up for several picked; a press on empty map takes it down
 
 function editRowOpen() {
-  if (selectedPolygonId == null || shape !== 'select' || worldMapOpen || isPane || panesActive || gridCalArmed ||
+  if (panesActive) return !!paneEditRow();   // the DM window over two maps holds none: the selected column's report
+  if (selectedPolygonId == null || shape !== 'select' || worldMapOpen || gridCalArmed ||
       !findActiveShape()) return false;
   return shapeEditMode || (_erPicks && pickedExtras().length > 0);
 }
@@ -47,23 +49,6 @@ function editToolNow() {
 function editRowBend() { return editRowOpen() && editToolNow() === 'bend'; }
 
 function initEditRow() {
-  const glyph = id => document.getElementById(id).querySelector('svg').outerHTML;
-  document.querySelectorAll('#er-well .mode-btn').forEach(b => {
-    const k = b.dataset.etool;
-    b.innerHTML = k === 'select' ? glyph('btn-select') : uiIcon(k, 18, 1.5);
-    b.title = t(ER_TOOLS.find(r => r[0] === k)[1]);
-    b.onclick = () => { b.blur(); _erPickTool(k); };
-  });
-  document.querySelectorAll('#edit-row .er-op').forEach(b => {
-    const row = ER_OPS.find(r => r[0] === b.dataset.op);
-    b.innerHTML = document.getElementById(row[1]) ? glyph(row[1]) : uiIcon(row[1], 17, 1.5);
-    b.title = t(row[2]);
-    b.onclick = () => { b.blur(); if (row[0] === 'split') splitPickedArm(); else booleanOnPicked(row[0]); };
-  });
-  const done = document.getElementById('btn-edit-done');
-  done.textContent = t('Done');
-  done.title = t('Done (Enter or Esc)');
-  done.onclick = () => { done.blur(); editRowClose(); };
   const ctrl = e => {
     if (!/^(Control|Meta)$/.test(e.key)) return;
     const held = e.type === 'keydown';
@@ -75,9 +60,32 @@ function initEditRow() {
   document.addEventListener('keyup', ctrl);
   // A key released in another window never reaches this one.
   window.addEventListener('blur', () => { if (editCtrlHeld) { editCtrlHeld = false; refreshEditRow(); } });
+  if (isPane) return;   // a column shows no row of its own
+  const glyph = id => document.getElementById(id).querySelector('svg').outerHTML;
+  document.querySelectorAll('#er-well .mode-btn').forEach(b => {
+    const k = b.dataset.etool;
+    b.innerHTML = k === 'select' ? glyph('btn-select') : uiIcon(k, 18, 1.5);
+    b.title = t(ER_TOOLS.find(r => r[0] === k)[1]);
+    b.onclick = () => { b.blur(); _erPickTool(k); };
+  });
+  document.querySelectorAll('#edit-row .er-op').forEach(b => {
+    const row = ER_OPS.find(r => r[0] === b.dataset.op);
+    b.innerHTML = document.getElementById(row[1]) ? glyph(row[1]) : uiIcon(row[1], 17, 1.5);
+    b.title = t(row[2]);
+    b.onclick = () => {
+      b.blur();
+      if (paneEditRowSend('op', { op: row[0] })) return;
+      if (row[0] === 'split') splitPickedArm(); else booleanOnPicked(row[0]);
+    };
+  });
+  const done = document.getElementById('btn-edit-done');
+  done.textContent = t('Done');
+  done.title = t('Done (Enter or Esc)');
+  done.onclick = () => { done.blur(); editRowClose(); };
 }
 
 function _erPickTool(k) {
+  if (paneEditRowSend('tool', { tool: k })) return;
   if (editToolNow() === 'select' && pickedExtras().length && k !== 'select') return;
   editTool = k;
   if (activePolygon && activePolygon.pen) activePolygon = null;
@@ -96,6 +104,7 @@ function editRowSelectKey() {
 // pick or of the picked count relights it.
 function refreshEditRow() {
   const open = editRowOpen();
+  paneReportEditRow(open);
   if (open !== _erOpen) {
     _erOpen = open;
     _erKey = '';
@@ -106,9 +115,10 @@ function refreshEditRow() {
     updateContextPanels();
   }
   if (!open) return;
-  const many = pickedExtras().length > 0;
+  const pane = paneEditRow();
+  const many = pane ? pane.many : pickedExtras().length > 0;
   if (many && editTool !== 'select') { editTool = 'select'; if (activePolygon && activePolygon.pen) activePolygon = null; }
-  const lit = editToolNow(), key = lit + '|' + many;
+  const lit = pane ? pane.tool : editToolNow(), key = lit + '|' + many;
   if (key === _erKey) return;
   _erKey = key;
   document.querySelectorAll('#er-well .mode-btn').forEach(b => {
@@ -124,6 +134,7 @@ function refreshEditRow() {
 }
 
 function editRowClose() {
+  if (paneEditRowSend('done')) return;
   if (activePolygon && activePolygon.pen) activePolygon = null;
   leaveShapeEditMode();
   pickSetReset();
@@ -134,7 +145,7 @@ function editRowClose() {
 // Enter: closes an open edit, or opens the picked shape's. True when it acted.
 function editRowEnter() {
   if (editRowOpen()) { editRowClose(); return true; }
-  if (selectedPolygonId == null || shape !== 'select' || worldMapOpen || isPane || panesActive || gridCalArmed) return false;
+  if (selectedPolygonId == null || shape !== 'select' || worldMapOpen || panesActive || gridCalArmed) return false;
   if (!findActiveShape()) return false;
   if (pickedExtras().length) _erPicks = true;
   else enterShapeEditMode(selectedPolygonId);

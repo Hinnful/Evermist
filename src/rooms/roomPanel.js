@@ -246,12 +246,14 @@ function drawRoomLabels() {
   // With several picked, the first wears a "1" where its name sat. ⚠ Ids are numbered per list, so only a room pick counts.
   const roomPick = !worldMapOpen;
   const mainPlate = roomPick && pickedExtras().length > 0;
-  for (const poly of polygons) {
-    const isMain = roomPick && poly.id === selectedPolygonId;
+  // One label a room, its head's name on its largest piece.
+  for (const [head, room] of roomGroups(polygons)) {
+    const isMain = roomPick && room.some(p => p.id === selectedPolygonId);
     if (isMain && !mainPlate) continue;         // its name is already in the card
+    const poly = room.length > 1 ? largestPiece(room) : head;
     if (!poly.vertices || poly.vertices.length < 3) continue;
 
-    const name = isMain ? '1' : poly.name != null ? poly.name : t('Room {n}', { n: poly.id });
+    const name = isMain ? '1' : head.name != null ? head.name : t('Room {n}', { n: head.id });
     if (!name) continue;
 
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so

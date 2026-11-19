@@ -23,7 +23,7 @@ function initEffectPopup() {
   el.querySelectorAll('#fxp-mat button').forEach(b => b.onclick = e => {
     e.stopPropagation();
     const rec = _fxpRec();
-    if (rec) toggleMaterialPalette(el, rec.light ? 'light' : rec.material);
+    if (rec) toggleMaterialPalette(el, rec.light ? 'light' : rec.material, _fxpPieces(rec));
   });
   const field = el.querySelector('.sz-field'), input = field.querySelector('.sz-in');
   input.onchange = () => {
@@ -56,7 +56,7 @@ function initEffectPopup() {
   const chev = field.querySelector('.sz-chev');
   chev.onclick = e => {
     e.stopPropagation();
-    const list = _fxpSizes(), p = effectPresetOf(_fxpRec());
+    const list = _fxpSizes(), p = _fxpPreset(_fxpRec());
     if (!list || _tbOpen === 'fxp-sizes') { _tbCloseList(); return; }
     const rows = list.slice().reverse().map(z => [String(z.s), presetSizeText(z.s, t, t.plural), '', false, '']);
     openBarList('fxp-sizes', chev, chev, rows, String(p.s), id => _fxpResize(Number(id)));
@@ -70,14 +70,19 @@ function _fxpRec() {
   return findActiveShape();
 }
 
+// True when the effect has more than one piece: it has no placed size, so it reads By hand.
+function _fxpPieces(rec) { return !!rec && !rec.light && piecesOf(activeShapeList(), rec).length > 1; }
+
+function _fxpPreset(rec) { return _fxpPieces(rec) ? null : effectPresetOf(rec); }
+
 // The sizes of the picked effect's shape, or null when it reads as By hand.
 function _fxpSizes() {
-  const p = effectPresetOf(_fxpRec());
+  const p = _fxpPreset(_fxpRec());
   return p ? EFFECT_PRESETS[p.kind] : null;
 }
 
 function _fxpStep(dir) {
-  const list = _fxpSizes(), p = effectPresetOf(_fxpRec());
+  const list = _fxpSizes(), p = _fxpPreset(_fxpRec());
   if (!list) return;
   const i = list.findIndex(z => z.s === p.s);
   _fxpResize(list[Math.max(0, Math.min(list.length - 1, i + dir))].s);
@@ -85,7 +90,7 @@ function _fxpStep(dir) {
 
 // One undo step: the outline rebuilt at size `s`, its corners' rounding kept (the count does not change).
 function _fxpResize(s) {
-  const rec = _fxpRec(), out = rec && presetResized(rec, s);
+  const rec = _fxpRec(), out = rec && _fxpPreset(rec) && presetResized(rec, s);
   if (!out || out.preset.s === Number(rec.preset.s)) { _fxpKey = ''; refreshEffectPopup(); return; }
   pushUndo();
   rec.vertices = out.vertices;
@@ -116,7 +121,7 @@ function refreshEffectPopup() {
     const sc = toScreen(v.x, v.y), c = viewToClient(sc.sx, sc.sy);
     l = Math.min(l, c.x); r = Math.max(r, c.x); top = Math.min(top, c.y); bottom = Math.max(bottom, c.y);
   }
-  const p = effectPresetOf(rec), mat = rec.light ? 'light' : String(rec.material);
+  const p = _fxpPreset(rec), mat = rec.light ? 'light' : String(rec.material);
   const key = [rec.id, mat, p ? p.s : 'hand', l, r, top, bottom, innerWidth, innerHeight, dockMapInset()].join('|');
   if (key === _fxpKey && el.style.display === 'flex') return;
   _fxpKey = key;

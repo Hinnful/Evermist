@@ -91,13 +91,15 @@ function refreshMaterialButton() {
 
 // The palette opens above whichever field asked: the row's, or a picked effect's or light's popup (`host`,
 // effectPopup.js), which ticks that shape's material, `on`, and sets that shape alone, Light included.
-function toggleMaterialPalette(host, on) {
+// `noLight` greys Light: an effect of several pieces cannot turn into one.
+function toggleMaterialPalette(host, on, noLight) {
   const pal = document.getElementById('mat-pal');
   const to = host || document.getElementById('context-row');
   if (!pal.hidden && pal.parentNode === to) { pal.hidden = true; return; }
   to.appendChild(pal);
   pal.dataset.picked = host ? '1' : '';
   pal.dataset.on = on || '';
+  pal.dataset.nolight = noLight ? '1' : '';
   pal.hidden = false;
   const find = pal.querySelector('#mat-find');
   find.value = '';
@@ -132,6 +134,7 @@ function _renderPalette() {
       b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
       b.lastChild.textContent = t(name);
       b.onclick = () => { if (pal.dataset.picked) setPickedMaterial(id); else setMaterial(id); pal.hidden = true; };
+      if (id === 'light' && pal.dataset.nolight) { b.disabled = true; b.title = t('An effect of several pieces cannot become a light'); }
       grid.appendChild(b);
     }
   }

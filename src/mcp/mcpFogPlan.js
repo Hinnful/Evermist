@@ -4,8 +4,8 @@
 // dropdown shows. No DOM. Tested.
 
 const MFP = (typeof module !== 'undefined' && module.exports)
-  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), Object.assign({}, require('../fog/themes/fogThemes.js'), require('../render/weatherPlan.js'), require('../render/timeOfDayPlan.js')))
-  : { FOG_THEMES, WEATHER_PRESETS, TIME_OF_DAY_LABELS };
+  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), Object.assign({}, require('../fog/themes/fogThemes.js'), require('../render/weatherPlan.js'), require('../render/timeOfDayPlan.js'), require('../shapes/roomPieces.js')))
+  : { FOG_THEMES, WEATHER_PRESETS, TIME_OF_DAY_LABELS, isLivePiece, piecesOf, roomHeadOf };
 
 // The words a call uses for a room's fog, as the app stores them (shroud, half, reveal).
 const MCP_FOG_ROOM_MODE = { hidden: 'shroud', half: 'half', revealed: 'reveal' };
@@ -42,15 +42,18 @@ function mcpTimeOfDayId(raw) {
 function mcpFogFindRooms(polys, names) {
   if (!Array.isArray(names) || !names.length) return { error: 'Give the names of the rooms in rooms.' };
   const key = n => String(n || '').trim().toLowerCase();
-  const index = [];
+  const index = [], named = [];
   for (const raw of names) {
     const q = key(raw);
-    const hits = q ? polys.map((p, i) => (key(p.name) === q ? i : -1)).filter(i => i >= 0) : [];
+    const hits = q ? polys.map((p, i) => (key(p.name) === q && !MFP.isLivePiece(polys, p) ? i : -1)).filter(i => i >= 0) : [];
     if (!hits.length) return { error: 'No room is called "' + raw + '". read_scene lists the rooms.' };
     if (hits.length > 1) return { error: 'More than one room is called "' + raw + '". Ask the DM to rename one in Evermist.' };
-    if (!index.includes(hits[0])) index.push(hits[0]);
+    if (named.includes(polys[hits[0]].name)) continue;
+    named.push(polys[hits[0]].name);
+    // A room of several pieces takes its fog on every piece.
+    for (const p of MFP.piecesOf(polys, polys[hits[0]])) index.push(polys.indexOf(p));
   }
-  return { index };
+  return { index, named };
 }
 
 const _isNum = v => typeof v === 'number' && Number.isFinite(v);
@@ -97,7 +100,8 @@ function mcpFogRoomsOverriding(polys, box, reveal) {
     const v = p.vertices || [];
     if (v.length < 3) continue;
     const xs = v.map(q => q.x), ys = v.map(q => q.y);
-    if (Math.min(...xs) < box.x1 && Math.max(...xs) > box.x0 && Math.min(...ys) < box.y1 && Math.max(...ys) > box.y0) names.push(p.name || '(unnamed room)');
+    const name = MFP.roomHeadOf(polys, p).name || '(unnamed room)';
+    if (Math.min(...xs) < box.x1 && Math.max(...xs) > box.x0 && Math.min(...ys) < box.y1 && Math.max(...ys) > box.y0 && !names.includes(name)) names.push(name);
   }
   return names;
 }
