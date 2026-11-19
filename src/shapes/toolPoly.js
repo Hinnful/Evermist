@@ -11,7 +11,7 @@ function toolPolyDown(raw, e) {
   let pos = snapVertex(raw.x, raw.y);
   if (!activePolygon) {
     activePolygon = { vertices: [pos], mode: tool };
-    clearShapeSelection();
+    if (!editedRoom()) clearShapeSelection();   // an open edit takes the shape (commitClosedShape)
   } else {
     // Grid snap first, then straighten — if the grid already landed the point on an
     // aligned coordinate, the axis snap is a no-op.

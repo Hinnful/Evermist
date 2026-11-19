@@ -61,6 +61,7 @@ refusal a rule-based rejection produces - the cost of letting one escape is spel
 wrapper in `roomOps.js`.
 
 ### Repairs act on what a shape overlaps, not on a selection · `SETTLED` (2026-09-02)
+**Reversed in part 2026-11-19 (5.15.0): picking several and pressing a boolean is back; see "Several picked, and the first pick leads" in decisions/ui-and-control-panel.md.** Drawing with Shift, Alt or Ctrl still repairs as described here. The "most hidden fog" call below is reversed too: a merge takes the first pick's fog.
 Figma's model - select two objects, press a boolean - was rejected because the app holds exactly
 one `selectedPolygonId` and building multi-select was the expensive half. Owlbear's model shipped
 instead: pick a mode, draw a shape, and it combines with every room it lands on. One drag joins
@@ -87,7 +88,7 @@ pieces flush.
 ### A wall curves through bezier handles, and the bend gesture sets them · `SETTLED` (2026-09-17)
 A wall is a cubic between its two anchors, and each anchor carries `{ix,iy,ox,oy}` — offsets to
 its incoming and outgoing control point, flat-indexed beside `cornerRadii`. Ctrl+drag a wall bends
-it and Ctrl+click straightens it, Figma's own gesture; no Bend tool went on the bar.
+it and Ctrl+click straightens it, Figma's own gesture; no Bend tool went on the bar - **reversed 2026-11-19 (5.15.0): Bend is a tool in the edit row; Ctrl still bends.**
 
 **A single bow number per edge was proposed and rejected the same day.** It gives a symmetric arc,
 and a bend has to lean toward where the wall was grabbed: the drag is shared between the two

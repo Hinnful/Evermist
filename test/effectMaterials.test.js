@@ -73,3 +73,18 @@ test('a material this release does not know, as the previous release reads ice, 
   assert.strictEqual(effectMaterial('poison'), EFFECT_MATERIALS.fire);
   assert.strictEqual(effectMaterial(undefined), EFFECT_MATERIALS.fire);
 });
+
+test('a shape crossing between effects and lights keeps its outline and stores as the list it lands in', () => {
+  const { shapeAsLight, shapeAsEffect } = require('../src/render/effectMaterials');
+  const verts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+  const holes = [[{ x: 2, y: 2 }, { x: 4, y: 2 }, { x: 4, y: 4 }]];
+  const fx = { id: 7, uid: 'u1', vertices: verts, holes, cornerRadius: 3, cornerRadii: [1, 2, 3], material: 'acid', name: 'Acid 7',
+               preset: { kind: 'square', s: 10 } };
+  const light = shapeAsLight(fx);
+  assert.deepStrictEqual(light, { id: 7, vertices: verts, holes, cornerRadius: 3, cornerRadii: [1, 2, 3],
+                                  preset: { kind: 'square', s: 10 }, light: true });
+  const back = shapeAsEffect(light, 'fire');
+  assert.deepStrictEqual(back, { id: 7, vertices: verts, holes, cornerRadius: 3, cornerRadii: [1, 2, 3],
+                                 preset: { kind: 'square', s: 10 }, material: 'fire', name: 'Fire 7' });
+  assert.strictEqual(shapeAsEffect({ id: 2, vertices: verts, light: true }, 'nonsense').material, 'fire');
+});

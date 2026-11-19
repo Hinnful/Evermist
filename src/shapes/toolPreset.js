@@ -75,18 +75,20 @@ function toolPresetFinish(pos, e) {
   const origin = presetPress;
   presetPress = null;
   const p = presetArmed;
-  const r = presetRings(p.kind, p.s, p.w, origin, _presetAngle(origin, pos, axisLock || e.shiftKey), presetPxPerFt());
+  const angle = _presetAngle(origin, pos, axisLock || e.shiftKey);
+  const r = presetRings(p.kind, p.s, p.w, origin, angle, presetPxPerFt());
   let placed = null;
   if (shapeOp === 'new') {
-    // The Light material places a light where any other places a fire.
-    placed = currentMaterial === 'light' ? addLightShape(r.vertices) : addEffect(r.vertices);
+    // The Light material places a light where any other places a fire. The size goes along, for the popup's Size.
+    const preset = { kind: p.kind, s: p.s, origin: { x: origin.x, y: origin.y }, angle, n: r.vertices.length };
+    placed = currentMaterial === 'light' ? addLightShape(r.vertices, preset) : addEffect(r.vertices, preset);
     if (r.holes) { setShapeHoles(placed, r.holes); shapeListChanged('effects'); }
   } else {
     // A Ring repairs with its band only, as its preview shows: the hole goes along as a record.
     commitClosedShape(r.holes ? { vertices: r.vertices, holes: r.holes } : r.vertices);
   }
   setShape('select');
-  if (placed) selectedPolygonId = placed.id;
+  if (placed) { selectedPolygonId = placed.id; extraPickedIds = []; }
   reportPaneTool();
   drawCursor(lastScreenX, lastScreenY);
 }

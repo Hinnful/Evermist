@@ -34,7 +34,7 @@ function pressFogTrio(dir) {
   const room = fogTrioRoom();
   if (!room) { setPaintDirection(dir); return; }
   if (paneRoomEdit('mode', { mode: dir })) return;
-  setPolygonMode(room.id, dir);
+  setPolygonsMode(pickedIds(), dir);
   refreshFogTrio();   // in place — setPolygonMode deliberately doesn't refresh
 }
 
@@ -57,8 +57,8 @@ function refreshPaintAvailability() {
 }
 
 // What a drawn shape does when no key is held: 'new' makes one, 'join' merges, 'trim' cuts out, 'split'
-// divides along its edge. ONE helper owns the value and the highlight. There is no 'new' button; the
-// lit repair icon is the way back (repairBar.js).
+// divides along its edge. ONE helper owns the value and the highlight. There is no 'new' button; Esc
+// and the world map's Shape list are the way back.
 function setShapeOp(op) {
   shapeOp = op;
   paneBroadcast('shape-op', { op });
@@ -68,7 +68,7 @@ function setShapeOp(op) {
   });
   refreshPaintAvailability();
   refreshShapeButton();     // on the world map an armed repair is what the Shape button wears
-  refreshRepairIcon();      // and on the scene bar the repair icon wears it
+  refreshFogBar();          // the row's clouds grey while a repair is armed
   updateContextPanels();    // and its options row shows while one is armed
   if (worldMapOpen) worldMapToolSync();   // an armed repair changes what the world map's next shape does
 }
@@ -129,8 +129,7 @@ function refreshModeTools() {
 
 // ─── Materials ────────────────────────────────────────────────────────────────
 // What the next effect is made of. Pick-exactly-one, so ONE helper owns the value and the
-// highlight. Picking one with an effect SELECTED edits that effect, and takes the full path -
-// undo, repaint, push, save - because it is a real edit to a stored shape.
+// highlight. It never touches a picked effect: that is its popup's (setPickedMaterial).
 //
 // ⚠ The buttons in #material-row are the back end: their glyph, name and data-material feed the one
 // material button and its palette (effectsRow.js), which is all the DM sees.
@@ -146,20 +145,29 @@ function setMaterial(m) {
   currentMaterial = m;
   if (typeof refreshMaterialButton === 'function') refreshMaterialButton();
   if (typeof refreshEffectsTool === 'function') refreshEffectsTool();   // the Effects button wears the material
-  if (paneForward('material', { material: m })) {
-    document.querySelectorAll('#material-row [data-material]').forEach(b =>
-      b.classList.toggle('active', b.dataset.material === m));
-    return;
-  }
+  paneForward('material', { material: m });
   document.querySelectorAll('#material-row [data-material]').forEach(b =>
     b.classList.toggle('active', b.dataset.material === m));
+}
 
-  if (m === 'light' || placeMode !== 'effects' || selectedPolygonId == null) return;
-  const e = effects.find(x => x.id === selectedPolygonId);
-  if (!e || e.material === m) return;
+// The picked shape's popup (effectPopup.js): that effect or light takes material `m`, a real edit to a stored shape with
+// the full path - undo, repaint, push, save. Light on an effect, or a material on a light, moves it to the other list
+// under the same id, so it stays picked. The next effect's material stays as it was.
+function setPickedMaterial(m) {
+  if (isPlayer || (m !== 'light' && !EFFECT_MATERIALS[m]) || placeMode !== 'effects' || selectedPolygonId == null) return;
+  const e = effects.find(x => x.id === selectedPolygonId), l = !e && lightShapes.find(x => x.id === selectedPolygonId);
+  if ((!e && !l) || (e && e.material === m) || (l && m === 'light')) return;
   pushUndo();
-  e.material = m;
-  effectsChanged();
+  if (e && m !== 'light') e.material = m;
+  else if (e) {
+    effects = effects.filter(x => x !== e);
+    lightShapes.push(shapeAsLight(e));
+    lightsHidden = false;   // as addLightShape: a light moved in while they are hidden would be invisible
+  } else {
+    lightShapes = lightShapes.filter(x => x !== l);
+    effects.push(shapeAsEffect(l, m));
+  }
+  shapeListChanged('effects');
   scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog edit does
   scheduleAutoSave();
 }
@@ -197,7 +205,8 @@ function initToolbar() {
   document.getElementById('btn-half').onclick   = () => pressFogTrio('half');
   document.getElementById('btn-shroud').onclick = () => pressFogTrio('shroud');
   document.getElementById('btn-brush').onclick  = () => { if (placeMode !== 'effects') setShape('brush'); };
-  document.getElementById('btn-select').onclick = () => setShape('select');
+  // In Effects mode the row has its own Select, and the bar's leaves the mode (effectsTool.js).
+  document.getElementById('btn-select').onclick = () => { if (placeMode === 'effects' && !worldMapOpen) effectsToolLeave(); else setShape('select'); };
   document.getElementById('btn-door').onclick    = () => setShape('door');
   // On the scene bar the hidden Split button arms Ctrl with the Polygon (repairKeys.js); the world map
   // keeps Split as a tool of its own.
@@ -222,9 +231,14 @@ function initToolbar() {
     this.classList.toggle('active', snapToGrid);
     paneBroadcast('snap', { on: snapToGrid });
   };
-  document.getElementById('btn-axislock').onclick = function() {
+  // Straight walls keeps its state across a restart; the previous release never reads the key.
+  const axisBtn = document.getElementById('btn-axislock');
+  try { axisLock = localStorage.getItem('evermist.straightWalls') === '1'; } catch (_) { /* storage off: starts off */ }
+  axisBtn.classList.toggle('active', axisLock);
+  axisBtn.onclick = function() {
     axisLock = !axisLock;
     this.classList.toggle('active', axisLock);
+    try { localStorage.setItem('evermist.straightWalls', axisLock ? '1' : '0'); } catch (_) { /* kept for this run only */ }
     paneBroadcast('axislock', { on: axisLock });
   };
 
@@ -446,7 +460,7 @@ function initToolbar() {
   initRoomSwitcher();   // the selected room's own clouds and door → roomSwitcher.js
   initPlayersView();    // hold H: the map as the TV shows it → playersView.js
   initRepairKeys();     // Shift, Alt and Ctrl while a shape is drawn → repairKeys.js
-  if (!isPane) { initFogBar(); initRepairBar(); initEffectsRow(); }   // the bar and its row, which a column does not show
+  if (!isPane) { initFogBar(); initEffectsRow(); initEditRow(); initEffectPopup(); }   // the bar and its row, which a column does not show
   initEffectsTool();   // the Effects switch
   initEffectsBarFire();   // the bar burns in Effects mode (returns at once in a column)
 

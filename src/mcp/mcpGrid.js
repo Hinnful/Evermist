@@ -65,8 +65,8 @@ async function _mcpEditEffect(args) {
     if (reshape) {
       const r = await _mcpFxShapeOf(s, args, d);
       if (r.error) return r.error;
-      // The old corners, curves and holes belong to the old outline.
-      for (const k of ['holes', 'cornerRadii', 'handles']) delete e[k];
+      // The old corners, curves, holes and placed size belong to the old outline.
+      for (const k of ['holes', 'cornerRadii', 'handles', 'preset']) delete e[k];
       Object.assign(e, { vertices: r.vertices, cornerRadius: 0 }, r.holes ? { holes: r.holes } : {});
     }
     if (mat) e.material = mat.material;

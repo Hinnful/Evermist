@@ -98,7 +98,7 @@ its own edge - on the reasoning that an icon OF fire is a drawing of the thing r
 thing. It drew a box, inside the button's own selected box, inside the row's pill. Three nested
 boxes, rejected twice. The button is now a plain SVG glyph like every other button on that bar.
 
-The glyph is a wide low flame on a ground line. A tall flame alone read as the same icon as the
+**Reversed 2026-11-19 (5.15.0): the fire glyph is F1, a plain teardrop flame with a light core and no ground line.** The glyph was a wide low flame on a ground line. A tall flame alone read as the same icon as the
 Rooms/Effects switch beside it, and both go blue at once in Effects mode; an angular crest read as
 a mountain range.
 
@@ -308,3 +308,10 @@ with two bubble rings inside (below reads as rain, side by side as eyes, outside
   puffs rising and sinking as lit domes, lumps with rings across them, opaque gooey dark murk, an evenly thin haze, separate puffs
   in thin gas, a thin rim showing the ground clearly, a lumpy edge and a wavering edge.
 - Rejected: a grid relight following a cloud's moving edge (prototyped, dropped); the static Edge squares stay.
+
+### A placed effect resizes from its current outline · `SETTLED` (2026-11-19)
+Records carry an additive `preset` (kind, size, origin, angle, vertex count) so a picked effect's popup can resize it. Size
+rescales from the shape's current outline, not the stored origin, so a moved or pasted effect resizes where it stands. Any
+reshape drops `preset`, and an outline that no longer matches it reads "By hand" with Size greyed; the vertex-count check
+catches an edit made by 5.14.8, which keeps the field. Booleans combine like with like (the first pick's material wins) and
+refuse a light. **Reversed** (2026-11-19): "turning light into fire and back" is built: the popup's palette moves a shape between the two lists, keeping id and outline, in one undo step. Booleans still refuse a light.

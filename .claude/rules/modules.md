@@ -43,13 +43,13 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
 | `rooms/vttHoles.js` | Pure kernel: the free-standing buildings a floor-plan room encloses, as its holes. Tested |
 | `fog/lightGeometry.js` | Pure light kernel: a plan's lights and the polygon each starts as. Tested |
-| `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel, and where a new room goes in the list. Tested |
+| `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel, Cut out/Intersect/Exclude on picked shapes, and where a new room goes in the list. Tested |
 | `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
-| `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
+| `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; the booleans on picked shapes; every refusal |
 | `shapes/toolPoly.js` | The Polygon tool: a vertex per click, and the two ways it closes |
-| `shapes/repairKeys.js` | Shift, Alt and Ctrl while a shape is drawn: Merge, Cut out, Split; the tag and the icon |
-| `shapes/presetGeometry.js` | Pure effect-preset kernel: sizes, outlines, labels. Tested |
+| `shapes/repairKeys.js` | Shift, Alt and Ctrl while a shape is drawn: Merge, Cut out, Split; the tag |
+| `shapes/presetGeometry.js` | Pure effect-preset kernel: sizes, outlines, labels, a placed preset read back and resized. Tested |
 | `shapes/toolPreset.js` | Effect presets: the cursor preview, the wheel and [ ], placing |
 | `shapes/toolShapes.js` | The drag-a-shape tools: rectangle, circle, cone |
 | `shapes/toolBrush.js` | The fog brush: the queued stroke and the pass that paints it |
@@ -58,19 +58,21 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/shapeMarkers.js` | The corner and hole-hatch markers a picked shape's chrome draws |
 | `shapes/toolPreview.js` | What a tool draws before it is committed |
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, the smallest room under a point, distance to a wall, where along it. Tested |
-| `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
+| `shapes/shapeSelect.js` | The selection: its levels, hit tests, hole and whole-shape drags, outline drawing |
+| `shapes/shapeEdit.js` | Hand edits on the open shape: corner, wall, bend and curve-handle drags, a corner added or deleted |
 | `shapes/openLine.js` | A picked road's chrome (an open line, no closing wall) and the curve-handle markers shared with the closed shapes |
 | `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
 | `shapes/cornerGeometry.js` | Pure corner-rounding kernel: the circle's place, the drag's radius. Tested |
 | `shapes/cornerRound.js` | The corner-rounding circles, their drag, label and number field |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
-| `shapes/shapeMenu.js` | The bar's chevron list: the Shape list, and the one component the repair and size lists use |
-| `ui/fogBar.js` | Reveal all and Hide all, the fog clouds in the tool's row, and the row's place over its tool |
-| `ui/repairBar.js` | The repair icon at the end of a shape's row, and its list |
+| `shapes/shapeMenu.js` | The bar's chevron list: the Shape list, and the one component the Effects shape and size lists use |
+| `ui/fogBar.js` | Reveal all and Hide all, and the fog clouds in the tool's row |
 | `ui/wheelPlan.js` | Pure wheel kernel: mouse, touchpad or pinch, the zoom a delta is worth, the size steps a scroll adds up to. Tested |
-| `ui/effectsRow.js` | Effects row: the shape well, the material button and palette, the size field |
+| `ui/effectsRow.js` | Effects row: the well of Select and the shape button with its list, the material button and palette, the size field |
 | `ui/effectsTool.js` | The Effects switch on the bar: the way in and out of Effects mode, its material glyph, the greyed Brush and Room |
 | `ui/effectsBarFire.js` | The bar burning while Effects mode is on: its own small canvas, the current material's passes, a fade |
+| `ui/effectPopup.js` | A picked effect's popup over it: material and size, By hand greyed |
+| `ui/editRow.js` | The edit row while a shape's edit is open: the Select, Pen and Bend well, Split and the booleans on the picked, Done; Enter, a held Ctrl, the press on empty map |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
@@ -313,13 +315,13 @@ fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/f
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →
-shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/openLine.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
+shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeEdit.js → shapes/openLine.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
 scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
 scenes/trashPlan.js → scenes/sceneTrash.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
 scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js → render/effectShaderKinds.js → render/effectKinds/darkness.js → render/effectKinds/fogCloud.js → render/effectKinds/poisonCloud.js → render/effectKinds/ice.js → render/effectKinds/web.js → render/effectKinds/grease.js →
-render/effects.js → render/weatherShader.js → render/timeOfDay.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
+render/effects.js → render/weatherShader.js → render/timeOfDay.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → ui/editRow.js → ui/effectPopup.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →

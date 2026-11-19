@@ -184,7 +184,7 @@ function restoreRing(index, ring, tol, full) {
     // ⚠ AN ANCHOR BELONGS TO TWO WALLS. The one ENDING a run is keyed to the next wall along, so
     // comparing wall objects alone keeps the last sample of every run and leaves a stray point.
     const same = (x) => !!x && (x.wall === at.wall ||
-                                (x.anchor && (x.flat === at.wall.fa || x.flat === at.wall.fb)));
+                                (x.anchor && x.wall.shape === at.wall.shape && (x.flat === at.wall.fa || x.flat === at.wall.fb)));
     if (same(prev) && same(next)) continue;         // mid-run scaffolding
     kept.push({ p: ring[i], at });
   }
@@ -209,19 +209,20 @@ function restoreRing(index, ring, tol, full) {
   const handles = kept.map(() => null);
   const spans = [];                                 // one per output wall, for the doors
 
+  // ⚠ A FLAT INDEX NAMES A CORNER OF ONE SHAPE: two merged shapes both have a corner 3, so a match on it checks the shape.
+  const endsAt = (x, w, flat) => x.anchor && x.wall.shape === w.shape && x.flat === flat;
   for (let i = 0; i < kept.length; i++) {
     const A = kept[i], B = kept[(i + 1) % kept.length];
     let wall = onWall(A.at, tol) ? A.at.wall : null;
     // Both ends must sit on the SAME source wall, or this output wall is new and stays straight.
-    let ends = onWall(B.at, tol) && (B.at.wall === wall ||
-                                     (B.at.anchor && wall && B.at.flat === wall.fb));
+    let ends = onWall(B.at, tol) && (B.at.wall === wall || (!!wall && endsAt(B.at, wall, wall.fb)));
     // ⚠ THE CLIPPER WINDS EVERY RING ONE WAY, so a room drawn the other way is walked BACKWARDS, fb to fa:
     // A sits on the wall's far end or along it, B on its start or along it.
     let rev = false;
     if (wall && !ends && onWall(B.at, tol)) {
       const w = B.at.wall;
-      const aOn = A.at.wall === w || (A.at.anchor && A.at.flat === w.fb);
-      if (aOn && (!B.at.anchor || B.at.flat === w.fa)) { wall = w; ends = true; rev = true; }
+      const aOn = A.at.wall === w || endsAt(A.at, w, w.fb);
+      if (aOn && (!B.at.anchor || endsAt(B.at, w, w.fa))) { wall = w; ends = true; rev = true; }
     }
     if (!wall || !ends) { spans.push(null); continue; }
     const t0 = A.at.anchor ? (rev ? 1 : 0) : A.at.t;

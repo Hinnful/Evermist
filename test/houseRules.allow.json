@@ -20,8 +20,7 @@
     "src/combat/combatTracker.js": 647,
     "src/fog/fog.js": 740,
     "src/fog/fogGeometry.js": 757,
-    "src/rooms/vttPlan.js": 621,
-    "src/shapes/shapeSelect.js": 888
+    "src/rooms/vttPlan.js": 621
   },
   "longLedgerEntries": [
     "A repair carries the curve, the radius and the door · `SETTLED` (2026-09-17)",

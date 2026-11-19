@@ -24,8 +24,11 @@ const UI_ICON_PATHS = {
   cloudOff: '<path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/><path d="M3.5 3.5l17 17"/>',
   cloudHalf: '<defs><clipPath id="@ID@"><path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/></clipPath></defs><g clip-path="url(#@ID@)" stroke-width="1.3"><path d="M4 16l8-8M7.5 19l10-10M12 20l8-8M2 12l6-6"/></g><path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/>',
   cloudSolid: '<path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z" fill="currentColor" fill-opacity=".65"/>',
-  // Two overlapping squares: Merge, Cut out and Split live behind it.
-  repair: '<rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5"/>',
+  // The edit row's own: Pen and Bend in its well, Intersect and Exclude beside Merge and Cut out.
+  pen: '<path d="M12 3.2l5.4 8.4-3.2 5.6H9.8l-3.2-5.6z"/><circle cx="12" cy="11.4" r="1.3" fill="currentColor" stroke="none"/><path d="M12 3.2v6.6M9.6 20.6h4.8"/>',
+  bend: '<path d="M4 18.5c2-8.5 14-8.5 16 0"/><circle cx="12" cy="12.1" r="1.5" fill="currentColor" stroke="none"/><path d="M6 8h12" opacity=".45"/>',
+  intersect: '<rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>',
+  exclude: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V9H9v6H5.5A1.5 1.5 0 0 1 4 13.5zM20 18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 9 18.5V15h6V9h3.5A1.5 1.5 0 0 1 20 10.5z" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="6" height="6" stroke-dasharray="2 2"/>',
   chev: '<path d="M7 10l5 5 5-5"/>',
   scrub: '<path d="M7 8l-4 4 4 4M17 8l4 4-4 4M3 12h18"/>',
   line: '<path d="M5 12h16"/><circle cx="3.6" cy="12" r="1.6" fill="currentColor" stroke="none"/>',

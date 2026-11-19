@@ -1,9 +1,9 @@
 'use strict';
 // fogBar.js — the fog on the bar: Reveal all and Hide all as two bare eyes, the fog mode as three
-// clouds that open the picked tool's row, and where that row sits. The clouds set what the Brush and the
-// next shape do to the fog and nothing else: a click with Select in hand never changes the tool and
-// never touches a room (a room's own clouds are roomSwitcher.js's). The old fog trio and its ids stay in
-// the page as the back end.
+// clouds that open the picked tool's row. Every row sits centred over the bar (#tools-wrapper) and
+// points at no tool. The clouds set what the Brush and the next shape do to the fog and nothing else:
+// a click with Select in hand never changes the tool and never touches a room (a room's own clouds
+// are roomSwitcher.js's). The old fog trio and its ids stay in the page as the back end.
 
 // Struck-out cloud reveals, striped cloud is Half, solid cloud hides. Half is shapes only.
 const FOG_CLOUDS = [
@@ -31,7 +31,6 @@ function initFogBar() {
   fogPreviewInit(reveal, hide);
   reveal.onclick = revealAllMap;
   hide.onclick = hideAllMap;
-  window.addEventListener('resize', placeContextRow);
   refreshFogBar();
 }
 
@@ -46,37 +45,4 @@ function refreshFogBar() {
     b.disabled = repair;
     if (d === 'half') b.style.display = shape === 'brush' ? 'none' : '';
   });
-}
-
-// The row hangs over the tool it belongs to, kept inside the window, with a pointer down to it:
-// the Brush for brush size, Room for everything a room shape takes, Effects for what an effect takes. The Door's fields have no tool under
-// them and sit centred with no pointer. The pointer never sits under a divider, so a row with one
-// near it slides sideways until the pointer is clear.
-function placeContextRow() {
-  const row = document.getElementById('context-row');
-  if (!row) return;
-  const anchor = shape === 'door' ? null : document.getElementById(shape === 'brush' ? 'btn-brush' : placeMode === 'effects' ? 'btn-effects' : 'btn-shape');
-  row.classList.toggle('no-caret', !anchor);
-  row.style.left = '0px';
-  row.style.setProperty('--fx-caret', '0px');
-  if (!anchor) return;
-  const r = row.getBoundingClientRect(), a = anchor.getBoundingClientRect();
-  if (!r.width || !a.width) return;
-  const z = r.width / row.offsetWidth || 1;   // measured, never a bare --ui-zoom
-  const want = (a.left + a.width / 2) - (r.left + r.width / 2);
-  // Inside the window, and never so far that the pointer leaves the row's own width.
-  const reach = r.width / 2 - 16;
-  const clamp = s => Math.max(12 - r.left, want - reach, Math.min(innerWidth - 12 - r.right, want + reach, s));
-  let shift = clamp(want);
-  const caretX = a.left + a.width / 2;   // the pointer points at the tool, wherever the row slides
-  const clear = 14 * z;
-  const divs = Array.from(row.querySelectorAll('.tb-mdiv')).filter(d => d.offsetParent)
-    .map(d => { const b = d.getBoundingClientRect(); return b.left + b.width / 2 - r.left; });
-  for (let pass = 0; pass < 3; pass++) {
-    const hit = divs.map(x => x + shift - (caretX - r.left)).find(dx => Math.abs(dx) < clear);
-    if (hit === undefined) break;
-    shift = clamp(shift + (hit >= 0 ? clear - hit : -(clear + hit)));
-  }
-  row.style.left = shift / z + 'px';
-  row.style.setProperty('--fx-caret', (want - shift) / z + 'px');
 }

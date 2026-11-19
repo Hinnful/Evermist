@@ -57,7 +57,7 @@ function segmentsIntersect(p1, p2, p3, p4) {
 // click itself; a dragging one gets start, move and finish, with the fog settled around it.
 // A new tool is a file plus a row here, and nothing in this file learns its name.
 const TOOLS = {
-  select: { down: (raw, e) => selectMouseDown(raw, e) },
+  select: { down: (raw, e) => editRowMouseDown(raw, e) || selectMouseDown(raw, e) },   // an open edit's Pen first (editRow.js)
   poly:   { down: (raw, e) => toolPolyDown(raw, e) },
   door:   { down: raw => doorMouseDown(raw.x, raw.y) },
   cut:    { down: raw => cutMouseDown(raw.x, raw.y) },
@@ -90,7 +90,7 @@ function toolMouseDown(raw, e) {
 }
 
 function toolMouseMove(pos, e, screenX, screenY) {
-  if (shape === 'select' && !selectDragging()) container.style.cursor = cursorFor(turnCursor(selectHoverCursor(pos, e), seatTurn));
+  if (shape === 'select' && !selectDragging()) container.style.cursor = cursorFor(turnCursor(editRowHoverCursor() || selectHoverCursor(pos, e), seatTurn));
   if (selectMouseMove(pos, screenX, screenY, e)) return;
 
   if (!isDrawing) return;

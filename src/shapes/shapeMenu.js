@@ -88,7 +88,7 @@ function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
     row.dataset.dd = id;
     row.disabled = off;
     if (off && shapeRows && SHAPE_FAMILY.indexOf(id.slice(4)) >= 0) row.title = t('Effects only');
-    row.innerHTML = '<span class="ck"></span><span class="ic"></span><span class="nm"></span><span class="ky"></span>';
+    row.innerHTML = '<span class="ck"></span><span class="ic"></span><span class="nm"></span><span class="ky" data-no-i18n></span>';
     row.querySelector('.ck').textContent = id === picked ? '✓' : '';
     row.querySelector('.ic').innerHTML = icon || '';
     row.querySelector('.nm').textContent = name;

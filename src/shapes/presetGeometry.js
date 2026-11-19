@@ -76,6 +76,57 @@ function presetForSize(kind, size) {
   return { kind: kind, s: best.s, w: best.w };
 }
 
+// ─── A placed preset, read back and resized ──────────────────────────────────
+// A placed effect carries `preset: { kind, s, origin, angle, n }`. The outline itself says where it stands
+// now and at what scale, so a moved effect resizes where it is and a later grid change leaves it alone.
+
+// Where the preset's origin sits on an outline: a square's, circle's or ring's centre, a cone's apex, the
+// middle of a line's or wall's starting end.
+function presetOriginOf(kind, verts) {
+  if (kind === 'cone') return { x: verts[0].x, y: verts[0].y };
+  if (kind === 'line' || kind === 'wall') return { x: (verts[0].x + verts[3].x) / 2, y: (verts[0].y + verts[3].y) / 2 };
+  let x = 0, y = 0;
+  for (const v of verts) { x += v.x; y += v.y; }
+  return { x: x / verts.length, y: y / verts.length };
+}
+
+function _presetReach(verts, o) {
+  let r = 0;
+  for (const v of verts) r = Math.max(r, Math.hypot(v.x - o.x, v.y - o.y));
+  return r;
+}
+
+// The preset an effect or light still is, or null when it reads as By hand: none stored, a vertex count that
+// no longer matches `n`, or an outline that is no longer the preset's (an edit by a build that kept the field).
+// Every value read from the record goes through Number().
+function effectPresetOf(rec) {
+  const p = rec && rec.preset;
+  if (!p || !EFFECT_PRESETS[p.kind] || !Array.isArray(rec.vertices) || rec.vertices.length !== Number(p.n)) return null;
+  const s = Number(p.s), angle = Number(p.angle) || 0;
+  const z = EFFECT_PRESETS[p.kind].find(x => x.s === s);
+  if (!z || rec.handles) return null;
+  const origin = presetOriginOf(p.kind, rec.vertices);
+  const unit = presetRings(p.kind, s, z.w, origin, angle, 1);
+  const pxPerFt = _presetReach(rec.vertices, origin) / _presetReach(unit.vertices, origin);
+  if (!(pxPerFt > 0)) return null;
+  const want = presetRings(p.kind, s, z.w, origin, angle, pxPerFt);
+  const tol = Math.max(0.5, pxPerFt * 0.05);
+  if (want.vertices.some((v, i) => Math.hypot(v.x - rec.vertices[i].x, v.y - rec.vertices[i].y) > tol)) return null;
+  return { kind: p.kind, s, angle, origin, pxPerFt };
+}
+
+// The outline at size `s` and the preset that goes with it, or null when the record is By hand or `s` is not
+// one of its shape's sizes. A square, circle or ring grows about its centre, a cone, line or wall along its
+// length from its origin; a line's, wall's and ring's width stays.
+function presetResized(rec, s) {
+  const p = effectPresetOf(rec);
+  const z = p && EFFECT_PRESETS[p.kind].find(x => x.s === s);
+  if (!z) return null;
+  const r = presetRings(p.kind, s, z.w, p.origin, p.angle, p.pxPerFt);
+  return { vertices: r.vertices, holes: r.holes || null,
+           preset: { kind: p.kind, s, origin: p.origin, angle: p.angle, n: r.vertices.length } };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetIndex, presetForSize };
+  module.exports = { effectPresetOf, presetResized, presetOriginOf, EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetIndex, presetForSize };
 }

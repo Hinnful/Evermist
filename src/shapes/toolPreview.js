@@ -62,8 +62,9 @@ function drawActivePolyPreview(screenX, screenY) {
     cursorCtx.setLineDash([]);
   }
 
-  // Close target: a gold ring around the first corner's own gold puck. A cut path never closes.
-  if (!cut && verts.length >= 3) {
+  // Close target: a gold ring around the first corner's own gold puck. A cut path never closes, nor
+  // does the Pen's, which ends on a wall.
+  if (!cut && !activePolygon.pen && verts.length >= 3) {
     const { sx, sy } = toScreen(verts[0].x, verts[0].y);
     cursorCtx.strokeStyle = POLY_EDGE_SELECTED;
     cursorCtx.lineWidth   = 1.5;

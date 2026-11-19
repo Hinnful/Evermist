@@ -27,6 +27,13 @@ function _clipCentre(poly, hole) {
   return b ? boxCentre(b) : null;
 }
 
+// Several shapes are aimed by the middle of the box round all of them, so they land as they sat.
+function _clipShapesCentre(polys) {
+  const pts = [].concat(...polys.map(p => boxOutlinePoints(p, -1) || []));
+  const b = boxFromPoints(pts);
+  return b ? boxCentre(b) : null;
+}
+
 // A hole's slice of the flat-indexed arrays, rebased to zero for laying down in another shape.
 // ⚠ EVERY ENTRY COPIED: a handle object shared with the clipboard lets one edit reach both.
 function _clipSlice(arr, from, count) {
@@ -82,8 +89,8 @@ function _clipShapeUnder(listName, x, y) {
 // Handles are OFFSETS, radii lengths and a door a fraction along its wall: all three ride a move.
 // ⚠ A COPY OF A ROOM STILL ON THE MAP DROPS ITS uid: placed in front of the original, it would keep the uid at the
 // next save and the original would reach the other computer as a new room. A cut's paste keeps it.
-function _clipMoved(clip, dx, dy) {
-  const out = _clipDetach(copyShapeRings(clip.shape));
+function _clipMoved(clip, src, dx, dy) {
+  const out = _clipDetach(copyShapeRings(src));
   if (_clipList(clip.list).some(s => s.uid && s.uid === out.uid)) delete out.uid;
   out.vertices = out.vertices.map(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
   if (out.holes) out.holes = out.holes.map(h => h.map(v => ({ ...v, x: v.x + dx, y: v.y + dy })));
@@ -96,7 +103,7 @@ function _clipRingMoved(ring, dx, dy) {
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
-// A hole is read whenever one is picked, at either of its two levels; otherwise the whole shape.
+// A hole is read whenever one is picked, at either of its two levels; otherwise every picked shape, the main first.
 function _clipRead() {
   const poly = findActiveShape();
   if (!poly) return null;
@@ -116,11 +123,11 @@ function _clipRead() {
                                .map(d => ({ ...d, edge: d.edge - from })),
     };
   }
-  const shape = _clipDetach(copyShapeRings(poly));
-  delete shape.id;
+  const polys = [poly, ...pickedExtras()];
+  const shapes = polys.map(p => { const c = _clipDetach(copyShapeRings(p)); delete c.id; return c; });
   // The bytes ride along: a paste into another scene finds none of its own.
-  return { list: listName, kind: 'shape', centre: _clipCentre(poly, -1), shape,
-           pictures: picturesReferenced([shape], pictureBlobs) };
+  return { list: listName, kind: 'shape', centre: _clipShapesCentre(polys), shapes,
+           pictures: picturesReferenced(shapes, pictureBlobs) };
 }
 
 function copySelectedShape() {
@@ -169,7 +176,7 @@ function _clipDrop(clip, dx, dy, into) {
     pushUndo();
     const hi = clipAddHole(poly, ring, clip);
     if (clip.list === placeMode) {
-      selectedPolygonId = poly.id;
+      selectedPolygonId = poly.id; extraPickedIds = []; pickSetReset();
       shapeEditMode = true;
       holeEditMode = false;
       selectedVertexIndex = -1;
@@ -179,18 +186,21 @@ function _clipDrop(clip, dx, dy, into) {
     drawCursor(lastScreenX, lastScreenY);
     return true;
   }
-  const shape = _clipMoved(clip, dx, dy);
   pushUndo();
   Object.assign(pictureBlobs, clip.pictures);
-  shape.id = takeShapeId(clip.list);
-  pushShapeTo(clip.list, shape);
-  // Figma leaves a paste selected and ready to drag. Only the live list can hold the selection,
-  // so an effect pasted from Rooms mode arrives unselected.
+  const added = clip.shapes.map(src => {
+    const shape = _clipMoved(clip, src, dx, dy);
+    shape.id = takeShapeId(clip.list);
+    pushShapeTo(clip.list, shape);
+    return shape;
+  });
+  // Figma leaves a paste picked and ready to drag, the first as the main. Only the live list can hold the
+  // selection, so an effect pasted from Rooms mode arrives unselected.
   if (clip.list === placeMode) {
-    selectedPolygonId = shape.id;
+    selectedPolygonId = added[0].id; extraPickedIds = added.slice(1).map(s => s.id); pickSetReset();
     leaveShapeEditMode();
   }
-  _clipCommit(clip.list, shape.mode === 'shroud');
+  _clipCommit(clip.list, added.some(s => s.mode === 'shroud'));
   drawCursor(lastScreenX, lastScreenY);
   return true;
 }
@@ -223,10 +233,10 @@ function dragCopyOfSelection() {
     selectedHoleIndex = clipAddHole(findActiveShape(), clip.ring, clip);
     return true;
   }
-  const shape = _clipMoved(clip, 0, 0);
+  const shape = _clipMoved(clip, clip.shapes[0], 0, 0);
   shape.id = takeShapeId(clip.list);
   appendShapeTo(clip.list, shape);
-  selectedPolygonId = shape.id;
+  selectedPolygonId = shape.id; extraPickedIds = []; pickSetReset();
   leaveShapeEditMode();
   return true;
 }

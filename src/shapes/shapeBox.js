@@ -232,6 +232,7 @@ function boxDragMove(poly, pos, shiftHeld) {
   // Refused frames write nothing, as in the hole drag.
   if (boxDragHole >= 0 && !boxDragHoleStuck && !holeStaysOnRoom(poly, next[0])) return;
   pushDragUndo();
+  delete poly.preset;   // scaled or turned by hand: an effect's placed size no longer holds
   if (boxDragHole < 0) {
     poly.vertices = next[0];
     setShapeHoles(poly, next.slice(1));

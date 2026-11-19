@@ -1,6 +1,6 @@
 'use strict';
 
-// roomOps.js — the pure kernel for "change a room's shape": Join, Trim, Split and Cut. Every entry
+// roomOps.js — the pure kernel for "change a room's shape": Join, Trim, Split, Cut and the picked booleans. Every entry
 // point answers with `pieces`/`groups` or a `reason` string, and never calls a dialog.
 
 // polygon-clipping 0.15.7: the vendored UMD build in the browser, the devDependency under Node.
@@ -118,6 +118,79 @@ function joinShapes(rooms, drawn, minArea) {
   const r = runClip(() => clip.union(toRings(drawn), ...rooms.map(toRings)));
   if (r.reason) return { reason: r.reason };
   return resultPieces(r.multi, minArea);
+}
+
+// ─── Weld ─────────────────────────────────────────────────────────────────────
+// Two rooms drawn by hand side by side leave a hairline between their walls, and a union of them is two pieces.
+// Merge welds first: a corner within a tenth of a cell (never under 2px) of another picked shape's wall moves onto it.
+function weldTolerance(gridSize) {
+  const g = Number(gridSize);
+  return Math.max(2, isFinite(g) && g > 0 ? g / 10 : 0);
+}
+
+function _closestOnRings(x, y, targets) {
+  let best = null, bestD = Infinity;
+  for (const ring of targets) {
+    for (let k = 0; k + 1 < ring.length; k++) {
+      const [ax, ay] = ring[k], [bx, by] = ring[k + 1];
+      const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
+      const t = len > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len)) : 0;
+      const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(x - px, y - py);
+      if (d < bestD) { bestD = d; best = [px, py]; }
+    }
+  }
+  return { pt: best, d: bestD };
+}
+
+// Corners only, on the shape itself: a welded record keeps its vertex counts, so its curves, radii and doors still
+// line up, and toRings flattens its curves from the moved corners. A bare point list welds as one ring.
+function _weldShape(src, targets, tol) {
+  const weld = verts => verts.map(v => {
+    const near = _closestOnRings(v.x, v.y, targets);
+    return near.pt && near.d > 0 && near.d <= tol ? { ...v, x: near.pt[0], y: near.pt[1] } : v;
+  });
+  if (Array.isArray(src)) return weld(src);
+  const out = { ...src, vertices: weld(src.vertices || []) };
+  if (src.holes) out.holes = src.holes.map(weld);
+  return out;
+}
+
+// Merge on the picked: the others onto the main's walls (each also onto those already welded), then the main's
+// corners onto the welded others', so a gap closes from both sides. The union may still be several pieces.
+// ⚠ `shapes` IS THE WELDED MAIN AND OTHERS: a welded corner is no longer the source's bit for bit, so the caller
+// matches the pieces' detail back against these (restoreGroupDetail), or every wall ending there loses its door and curve.
+function mergeShapes(main, others, minArea, tol) {
+  const mainRings = toRings(main);
+  const welded = [], weldedRings = [];
+  for (const o of others) {
+    const w = _weldShape(o, mainRings.concat(...weldedRings), tol);
+    welded.push(w);
+    weldedRings.push(toRings(w));
+  }
+  const mainWelded = _weldShape(main, [].concat(...weldedRings), tol);
+  const r = runClip(() => clip.union(toRings(mainWelded), ...weldedRings));
+  if (r.reason) return { reason: r.reason };
+  const out = resultPieces(r.multi, minArea);
+  if (out.pieces) out.shapes = [mainWelded, ...welded];
+  return out;
+}
+
+// ─── Booleans on picked shapes ───────────────────────────────────────────────
+// The first pick is the main: Cut out takes the others from it, Intersect keeps what every one covers,
+// Exclude keeps what an odd number of them cover. An empty `pieces` is the caller's to refuse.
+function cutOutShapes(main, others, minArea) {
+  const r = runClip(() => clip.difference(toRings(main), ...others.map(toRings)));
+  return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
+}
+
+function intersectShapes(shapes, minArea) {
+  const r = runClip(() => clip.intersection(...shapes.map(toRings)));
+  return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
+}
+
+function excludeShapes(shapes, minArea) {
+  const r = runClip(() => clip.xor(...shapes.map(toRings)));
+  return r.reason ? { reason: r.reason } : resultPieces(r.multi, minArea);
 }
 
 // Never the earliest contributor's: a join must not reveal TV ground shrouded a moment earlier.
@@ -354,7 +427,7 @@ function cutRing(src, path, minArea) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toRings, fromRings, ringToVerts, ringArea, resultPieces, shapesOverlap,
-    joinShapes, trimShapes, splitShapes, cutRings, cutRing, mostHiddenMode, roomOpMinArea, layerInsertIndex,
+    joinShapes, mergeShapes, weldTolerance, trimShapes, splitShapes, cutOutShapes, intersectShapes, excludeShapes, cutRings, cutRing, mostHiddenMode, roomOpMinArea, layerInsertIndex,
     crossSegments, ringPathCrossings, arcForward, dedupeRing,
     pointInRing, ringHomePiece, splitHoleAcrossPieces,
     ROOM_OP_MIN_AREA, REASON_FAILED, REASON_CUT,

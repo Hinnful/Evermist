@@ -180,10 +180,53 @@ function _rpLabelFont(px) {
   return k.weight + ' ' + px + 'px ' + k.family;
 }
 
+// One plate: sx is its left edge and sy its vertical centre, the glyphs one padX in. ctx is already upright.
+function _rpPlate(ctx, skin, pm, sx, sy, bw, text) {
+  const top = sy - pm.h / 2, r = pm.radius;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(sx, top, bw, pm.h, r); else ctx.rect(sx, top, bw, pm.h);
+  ctx.shadowColor = skin.shadowColor;
+  ctx.shadowBlur = skin.shadowBlur;
+  ctx.shadowOffsetY = skin.shadowY;
+  ctx.fillStyle = skin.bg;
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(sx + 0.5, top + 0.5, bw - 1, pm.h - 1, Math.max(0, r - 0.5));
+  else ctx.rect(sx + 0.5, top + 0.5, bw - 1, pm.h - 1);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = skin.line;
+  ctx.stroke();
+  ctx.fillStyle = skin.text;
+  ctx.fillText(text, sx + pm.padX, sy);
+}
+
+// Several effects picked: the main wears the room's "1" plate, centred inside its top, since an effect has no label.
+function _rpEffectMainPlate() {
+  if (!cursorCtx || worldMapOpen || !pickedExtras().length) return;
+  const poly = findActiveShape();
+  if (!poly || !poly.vertices || poly.vertices.length < 3) return;
+  const ctx = cursorCtx, skin = rpPlateSkin();
+  const fontPx = roomLabelFontPx(zoom, _rpUiZoom());
+  const pm = plateMetrics(fontPx, 0, skin);
+  ctx.save();
+  ctx.font = _rpLabelFont(fontPx);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.setLineDash([]);
+  const bb = shapeBBox(seatTurn ? turnShape(poly, seatTurn) : poly);
+  const at = turnVec((bb.minX + bb.maxX) / 2, bb.minY + (RP_LABEL_GAP + pm.h / 2) / zoom, unturn(seatTurn));
+  const { sx, sy } = toScreen(at.x, at.y);
+  const bw = ctx.measureText('1').width + pm.padX * 2;
+  uprightAt(ctx, sx, sy);
+  _rpPlate(ctx, skin, pm, sx - bw / 2, sy, bw, '1');
+  ctx.restore();
+}
+
 function drawRoomLabels() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   // A room name over a fire the DM is drawing is chrome for a shape they cannot touch.
-  if (placeMode !== 'rooms') return;
+  if (placeMode !== 'rooms') { _rpEffectMainPlate(); return; }
   if (!showRoomLabels || !polygons.length || !cursorCtx) return;
 
   const ctx = cursorCtx;
@@ -200,11 +243,15 @@ function drawRoomLabels() {
   const measure = t => ctx.measureText(t).width;
   const pm = plateMetrics(fontPx, 0, skin), padX = pm.padX, textH = pm.h;   // plate height, screen px
 
+  // With several picked, the first wears a "1" where its name sat. ⚠ Ids are numbered per list, so only a room pick counts.
+  const roomPick = !worldMapOpen;
+  const mainPlate = roomPick && pickedExtras().length > 0;
   for (const poly of polygons) {
-    if (poly.id === selectedPolygonId) continue;         // its name is already in the card
+    const isMain = roomPick && poly.id === selectedPolygonId;
+    if (isMain && !mainPlate) continue;         // its name is already in the card
     if (!poly.vertices || poly.vertices.length < 3) continue;
 
-    const name = poly.name != null ? poly.name : t('Room {n}', { n: poly.id });
+    const name = isMain ? '1' : poly.name != null ? poly.name : t('Room {n}', { n: poly.id });
     if (!name) continue;
 
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so
@@ -256,24 +303,7 @@ function drawRoomLabels() {
 
     ctx.save();
     uprightAt(ctx, sx, sy);
-    const top = sy - textH / 2, r = pm.radius;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(sx, top, bw, textH, r); else ctx.rect(sx, top, bw, textH);
-    ctx.shadowColor = skin.shadowColor;
-    ctx.shadowBlur = skin.shadowBlur;
-    ctx.shadowOffsetY = skin.shadowY;
-    ctx.fillStyle = skin.bg;
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(sx + 0.5, top + 0.5, bw - 1, textH - 1, Math.max(0, r - 0.5));
-    else ctx.rect(sx + 0.5, top + 0.5, bw - 1, textH - 1);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = skin.line;
-    ctx.stroke();
-
-    ctx.fillStyle = skin.text;
-    ctx.fillText(entry.text, sx + padX, sy);
+    _rpPlate(ctx, skin, pm, sx, sy, bw, entry.text);
     ctx.restore();
   }
 

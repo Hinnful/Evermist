@@ -32,13 +32,13 @@ function _flameAlong()  { return 2.2 / Math.max(24, _gridCell()); }
 // ─── The effects array ────────────────────────────────────────────────────────
 
 // Called by tools.js when a shape is committed in Effects mode. Takes the SAME vertex list a room
-// would have been built from.
-function addEffect(vertices) {
+// would have been built from. A placed size passes its `preset` (presetGeometry.js), an additive field.
+function addEffect(vertices, preset) {
   pushUndo();
   const id = nextEffectId++;
   const mat = EFFECT_MATERIALS[currentMaterial] ? currentMaterial : 'fire';
   const e = { id, vertices, material: mat, cornerRadius: 0,
-              name: EFFECT_MATERIALS[mat].label + ' ' + id };
+              name: EFFECT_MATERIALS[mat].label + ' ' + id, ...(preset ? { preset } : {}) };
   effects.push(e);
   effectsChanged();
   // Rides the Auto/Manual sync gate exactly as a fog reveal does. scheduleAutoSync sends fog and

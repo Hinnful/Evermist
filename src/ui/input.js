@@ -10,9 +10,11 @@ let legendVisible = false;
 let mapPointerClient = null;
 
 // The options row above the toolbar, which carries ONLY what the picked tool uses: the fog clouds and
-// the brush size over the Brush; over a shape the clouds in Fog mode; in Effects mode the shape well, the material and size, then Snap, Straight walls and the repair icon; the door's fields while Door is armed.
-// Select shows no row, except in Effects mode, whose row stays up with every tool. ONE function owns every visibility decision, called from setShape,
-// setShapeOp and setPlaceMode; fogBar.js then places the row over the tool it belongs to.
+// the brush size over the Brush; over a shape the clouds in Fog mode, then Snap and Straight walls; in
+// Effects mode the shape well, the material and size, then the same two; the door's fields while Door is
+// armed; while an edit is open, the edit row alone (editRow.js). Select shows no row otherwise, except in
+// Effects mode, whose row stays up with every tool. ONE function owns every visibility decision, called
+// from setShape, setShapeOp, setPlaceMode and editRow.js.
 function updateContextPanels() {
   const show = (id, on) => {
     const el = document.getElementById(id);
@@ -22,33 +24,37 @@ function updateContextPanels() {
   // beside it - a strip offering brush size while a drag sets the grid describes nothing. Its own
   // count rides the map in #gridcal-hud, not this row.
   const cal    = gridCalArmed;
+  const edit   = editRowOpen();   // an open edit owns the row, Effects mode's included
   const closed = SHAPE_FAMILY.indexOf(shape) >= 0;
   const brush  = !cal && placeMode === 'rooms' && shape === 'brush';
-  const fx     = !cal && placeMode === 'effects' && !worldMapOpen;   // the mode owns the row, whatever tool is in hand
+  const fx     = !cal && !edit && placeMode === 'effects' && !worldMapOpen;   // the mode owns the row, whatever tool is in hand
   const door   = !cal && shape === 'door';
-  const aids   = !cal && (closed || shape === 'cut' || fx);
+  const aids   = !cal && (edit || (!fx && (closed || shape === 'cut')));   // the Effects row has no Snap or Straight walls
   const clouds = !cal && placeMode === 'rooms' && (closed || shape === 'brush');
   show('wa-mode', clouds);
   show('panel-brush-bottom', brush);
   show('div-brush', brush);
-  show('div-aids', aids && (clouds || fx));
+  show('edit-row', edit);
+  show('div-er-done', edit);
+  show('er-done-grp', edit);
+  show('div-aids', aids && (clouds || edit));
   show('fx-aids', aids);
-  show('div-op', aids);
-  show('op-sw', aids);
   refreshFogBar();
   show('fx-shapes', fx);
   show('div-fx-shapes', fx);
   show('ctx-effects', fx);
-  show('ctx-presets', fx && !!EFFECT_PRESETS[shape]);
+  show('ctx-presets', fx && !!effectsSizeKind());
   refreshPresetRow();
   show('ctx-door', door);
   // ⚠ visibility, NEVER display. A hidden box keeps its place, so the bar below does not jump up
   // by this strip's height every time the DM picks Select and drop back on the next shape.
   const row = document.getElementById('context-row');
-  if (row) row.style.visibility = (brush || fx || door || aids) ? '' : 'hidden';
+  if (row) {
+    row.style.visibility = (brush || fx || door || aids) ? '' : 'hidden';
+    row.classList.toggle('er-on', edit);   // the blue frame of an open edit
+  }
   const cellLabel = document.getElementById('door-cell-label');
   if (cellLabel) cellLabel.textContent = Math.round(gridSize);
-  placeContextRow();
 }
 
 function setShape(s) {
@@ -73,7 +79,9 @@ function setShape(s) {
   // ⚠ The Polygon tool and Cut both click their shape out through activePolygon, and a leftover
   // cut path closes as a room on the next Polygon click, so only its owner keeps it.
   if (s !== (activePolygon && activePolygon.cut ? 'cut' : 'poly')) activePolygon = null;
-  if (s !== 'select') leaveShapeEditMode();
+  if (s !== 'cut') splitPickedDisarm();
+  // A Room tool picked while a room's edit is open keeps it: what it draws joins that room (commitClosedShape).
+  if (s !== 'select' && !(SHAPE_FAMILY.indexOf(s) >= 0 && editedRoom())) leaveShapeEditMode();
   refreshPaintAvailability(); // half is shape-tools only; the brush can't paint it
 
   circleCenter = null;
@@ -122,7 +130,7 @@ function initInput() {
       // middle button always does.
       const altCopy = e.button === 0 && e.altKey && shape === 'select' && !gridCalArmed &&
                       selectGrabsAt(raw);
-      const altPan = e.button === 0 && e.altKey && !altCopy && SHAPE_FAMILY.indexOf(shape) < 0;
+      const altPan = e.button === 0 && e.altKey && !altCopy && SHAPE_FAMILY.indexOf(shape) < 0 && !editRowPen();
       if (e.button === 1 || altPan) {
         isPanning = true;
         panStartX = e.clientX; panStartY = e.clientY;
@@ -237,7 +245,9 @@ function initInput() {
       // mousedowns underneath it have already placed the last point.
       if (shape === 'cut' || (activePolygon && activePolygon.cut)) { commitCutPath(); return; }
       if (shape !== 'select') return;
-      selectDblClick(screenToMap(e.clientX, e.clientY));
+      const raw = screenToMap(e.clientX, e.clientY);
+      if (editRowDblClick(e)) return;
+      selectDblClick(raw);
     });
 
     document.getElementById('legend-backdrop').addEventListener('click', () => {
@@ -265,6 +275,9 @@ function initInput() {
     if (worldMapOpen) return;
     // Ahead of the shape shortcuts: while calibration holds the map, Escape means leave it.
     if (gridCalArmed && e.code === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
+    // Figma's boolean keys on the picked, by the physical key so a Russian layout works. ⚠ RETURNS, so
+    // KeyS never sends the map to the TV and KeyE never toggles Effects.
+    if (e.altKey && e.shiftKey && EDIT_ALT_SHIFT[e.code]) { e.preventDefault(); booleanOnPicked(EDIT_ALT_SHIFT[e.code]); return; }
     // ⚠ RETURNS WHATEVER THE KEY WAS, or Ctrl+C picks the Cone and Ctrl+R the Rectangle.
     if (e.ctrlKey || e.metaKey) {
       // With two maps the history is the selected column's; the DM window has none of its own.
@@ -279,11 +292,18 @@ function initInput() {
       else if (e.code === 'KeyF' && !e.target.isContentEditable) { e.preventDefault(); searchOpen(); }
       return;
     }
+    // Enter finishes a piece drawn into the open edit, else opens the picked shape's edit and closes it (editRow.js).
+    // ⚠ A FOCUSED CONTROL KEEPS ITS KEY: a dock or bar button pressed by Enter must press, not open an edit.
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      const control = tg !== container && tg.matches && tg.matches('button, input, select, textarea, a[href], [tabindex], [role="button"]');
+      if (!control && (tg === document || tg === document.body || container.contains(tg)) && (editPieceEnter() || editRowEnter())) e.preventDefault();
+      return;
+    }
     switch (e.code) {
       // ⚠ A KEY FOR A SHAPE THIS MODE DOES NOT OFFER DOES NOTHING - no switch, no fallback, no
       // message, because the bar carries no button for it either. Reveal and Shroud have no key
       // at all: a bare letter means a tool.
-      case 'KeyV': setShape('select'); break;
+      case 'KeyV': if (!editRowSelectKey()) setShape('select'); break;
       case 'KeyE': effectsToolToggle(); break;
       case 'KeyR': pickShapeByKey('rect');   break;
       case 'KeyO': pickShapeByKey('circle'); break;
@@ -311,7 +331,7 @@ function initInput() {
       case 'KeyF': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
       case 'Backspace':   // a MacBook's delete key
-        deleteSelectedPart();
+        if (!editPieceBackspace()) deleteSelectedPart();
         break;
       // One press drops one thing, most local first, then puts the bar back to rest - an armed
       // Merge, Trim or Cut has no other way out from the keyboard.
@@ -321,6 +341,8 @@ function initInput() {
         if (dropPreset()) break;
         // Door is a tool the room's switcher armed, and Esc ends it before it drops the room.
         if (shape === 'door') { setShape('select'); break; }
+        // A Split on the picked ends whole, line and limit, so no later line cuts past the pick.
+        if (shape === 'cut' && cutOnlyIds) { setShape('select'); break; }
         if (activePolygon) {
           activePolygon = null;
           drawCursor(null, null);

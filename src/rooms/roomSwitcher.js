@@ -36,11 +36,11 @@ function _rfSetMode(mode) {
   const room = _rfRoom();
   if (!room) return;
   if (paneRoomEdit('mode', { mode })) return;
-  setPolygonMode(room.id, mode);
+  setPolygonsMode(pickedIds(), mode);   // several picked: every one
   refreshRoomSwitcher();
 }
 
-// Placed over the room's top edge, centred on it and kept in the window; under the room when there
+// Placed over the room's top edge, centred on it and kept in the map area the dock leaves; under the room when there
 // is no space above. A drag of the room, or of one of its corners, puts it away until the drop.
 let _rfKey = '';   // what the switcher was last laid out for; doRender runs it every dirty frame
 function refreshRoomSwitcher() {
@@ -53,17 +53,22 @@ function refreshRoomSwitcher() {
     const s = toScreen(v.x, v.y), c = viewToClient(s.sx, s.sy);
     l = Math.min(l, c.x); r = Math.max(r, c.x); top = Math.min(top, c.y); bottom = Math.max(bottom, c.y);
   }
-  const key = [room.id, room.mode, shape, l, r, top, bottom, innerWidth, innerHeight].join('|');
+  // Several picked light a cloud only when all of them share it, and have no Door: a door goes on one wall.
+  const picked = [room, ...pickedExtras()];
+  const mode = picked.every(p => p.mode === room.mode) ? room.mode : '';
+  const many = picked.length > 1;
+  const key = [picked.map(p => p.id).join(','), mode, shape, l, r, top, bottom, innerWidth, innerHeight, dockMapInset()].join('|');
   if (key === _rfKey && el.style.display === 'flex') return;
   _rfKey = key;
-  el.querySelectorAll('.fx-dir').forEach(b => b.classList.toggle('active', b.dataset.dir === room.mode));
+  el.querySelectorAll('.fx-dir').forEach(b => b.classList.toggle('active', b.dataset.dir === mode));
   const door = el.querySelector('.rf-door');
+  door.style.display = el.querySelector('.tb-mdiv').style.display = many ? 'none' : '';
   door.classList.toggle('active', shape === 'door');
   door.title = shape === 'door' ? t('Click the wall where the door goes. Click a door to remove it. Esc when done.')
                                 : t('Add a door - then click a wall');
   el.style.display = 'flex';
   const box = el.getBoundingClientRect(), m = 8;
-  const left = Math.max(m, Math.min(innerWidth - box.width - m, (l + r) / 2 - box.width / 2));
+  const left = Math.max(m, Math.min(innerWidth - dockMapInset() - box.width - m, (l + r) / 2 - box.width / 2));
   let y = top - box.height - m;
   if (y < m) y = bottom + m;
   y = Math.max(m, Math.min(innerHeight - box.height - m, y));

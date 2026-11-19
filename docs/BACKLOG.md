@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 298."
+description: "Open work only. 9 open items; IDs run to 300."
 metadata: 
   node_type: memory
   type: project
@@ -148,12 +148,18 @@ block both take far too much effort now. The monster rows need simplifying or a 
 mockups.**
 **Play · DM only**
 
-### 297. Drawing and editing rooms is awkward
-Filed 2026-11-19. The room drawing and editing tools were neglected. To Straighten a room the DM must deselect it, pick
-another tool, press Straighten, then select the room again. The first room that was not a rectangle showed how hard
-editing gets once a room moves away from a plain square. **Needs a UX pass.**
+### 299. The edit row in two-map mode
+Filed 2026-11-19, deferred from 297 (5.15.0). A room in a two-map column still edits the old way: double-click, corner
+drags and Ctrl bend, with no edit row, no Pen, no booleans and no several picked. A column has no row today, so the
+row needs messages from the column to the DM window and back. **Patch-sized; no open decision.**
 **Prep · DM only**
 
+### 300. A room made of separate pieces
+Filed 2026-11-19 from 297's testing. A piece drawn into an open room that does not touch it, and a Merge of rooms that
+do not touch, are refused, because a room holds one outline with holes. Figma keeps such shapes as one with several
+islands; the DM wants that in the long run. Touches the room record, fog, labels, doors and every repair, and a new
+persisted shape must load on the previous release. **Needs a design pass first.**
+**Prep · DM only**
 
 ---
 

@@ -91,11 +91,11 @@ function setLightPolys(list) {
   scheduleRender();
 }
 
-// A hand-drawn light, from the shape tools and the Light preset.
-function addLightShape(vertices) {
+// A hand-drawn light, from the shape tools and the Light preset, which passes its `preset` as addEffect does.
+function addLightShape(vertices, preset) {
   pushUndo();
   const id = nextEffectId++;
-  const l = { id, vertices, cornerRadius: 0, light: true };
+  const l = { id, vertices, cornerRadius: 0, light: true, ...(preset ? { preset } : {}) };
   lightShapes.push(l);
   lightsHidden = false;   // a light drawn while they are hidden would be invisible
   lightsChanged();

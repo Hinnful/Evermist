@@ -7,7 +7,7 @@ const path = require('path');
 
 const {
   toRings, fromRings, ringArea, resultPieces, shapesOverlap,
-  joinShapes, trimShapes, splitShapes, cutRing, mostHiddenMode, roomOpMinArea,
+  joinShapes, mergeShapes, weldTolerance, trimShapes, splitShapes, cutOutShapes, intersectShapes, excludeShapes, cutRing, mostHiddenMode, roomOpMinArea,
   crossSegments, ringPathCrossings, arcForward, dedupeRing,
   ROOM_OP_MIN_AREA, REASON_CUT, pointInRing,
 } = require('../src/shapes/roomOps.js');
@@ -598,5 +598,155 @@ describe('roomOps — a ring as the drawn shape', () => {
     const out = splitShapes([{ vertices: rect(20, 20, 80, 80) }], ring, FLOOR);
     const areas = out.groups[0].map(p => ringArea(pv(p)) - ph(p).reduce((s, h) => s + ringArea(h), 0)).sort((a, b) => a - b);
     assert.deepEqual(areas, [1600, 2000]);
+  });
+});
+
+// The booleans on picked shapes (BACKLOG 297): the first pick is the main.
+describe('roomOps — booleans on picked shapes', () => {
+  const sq = (x1, y1, x2, y2) => ({ vertices: rect(x1, y1, x2, y2) });
+  const net = (pieces) => pieces.reduce((s, p) => s + ringArea(pv(p)) - ph(p).reduce((h, r) => h + ringArea(r), 0), 0);
+  const keep = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)] };
+
+  it('Intersect keeps only what every pick covers', () => {
+    assert.equal(net(intersectShapes([sq(0, 0, 10, 10), sq(5, 5, 15, 15)], FLOOR).pieces), 25);
+    assert.equal(net(intersectShapes([sq(0, 0, 10, 10), sq(5, 5, 15, 15), sq(0, 5, 15, 8)], FLOOR).pieces), 15);
+  });
+
+  it('Intersect of rooms that do not touch leaves nothing for the caller to refuse', () => {
+    const out = intersectShapes([sq(0, 0, 10, 10), sq(20, 0, 30, 10)], FLOOR);
+    assert.equal(out.reason, undefined);
+    assert.deepEqual(out.pieces, []);
+  });
+
+  it('Exclude keeps what an odd number of picks cover', () => {
+    const out = excludeShapes([sq(0, 0, 10, 10), sq(5, 5, 15, 15)], FLOOR);
+    assert.equal(out.pieces.length, 2);
+    assert.equal(net(out.pieces), 150);
+    // Covered once, three times, twice, once: the twice-covered strip goes and the rest stays.
+    assert.equal(net(excludeShapes([sq(0, 0, 30, 10), sq(10, 0, 40, 10), sq(10, 0, 20, 10)], FLOOR).pieces), 300);
+  });
+
+  it('Cut out takes every other pick from the main', () => {
+    assert.equal(net(cutOutShapes(sq(0, 0, 10, 10), [sq(5, 0, 15, 10)], FLOOR).pieces), 50);
+    assert.equal(net(cutOutShapes(sq(0, 0, 30, 10), [sq(5, 0, 10, 10), sq(20, 0, 25, 10)], FLOOR).pieces), 200);
+    assert.deepEqual(cutOutShapes(sq(2, 2, 8, 8), [sq(0, 0, 10, 10)], FLOOR).pieces, []);
+  });
+
+  it('a room with a hole: Intersect opens the hole into a notch, Exclude leaves three pieces', () => {
+    const half = sq(50, 0, 150, 100);
+    const both = intersectShapes([keep, half], FLOOR);
+    assert.equal(both.pieces.length, 1);
+    assert.equal(net(both.pieces), 50 * 100 - 20 * 40);
+    const odd = excludeShapes([keep, half], FLOOR);
+    assert.equal(odd.pieces.length, 3);
+    assert.equal(net(odd.pieces), 4200 + 800 + 5000);
+  });
+
+  // The top wall bulges out as a cubic from (0,0) to (100,0) with one control at (0,-40): 1200 exactly,
+  // and the sampled curve the library reads lands within 2% under it.
+  it('a curved wall is read where it is drawn, not along its chord', () => {
+    const curved = { vertices: rect(0, 0, 100, 100), handles: [{ ox: 0, oy: -40, ix: 0, iy: 0 }, null, null, null] };
+    const bulge = net(excludeShapes([curved, sq(0, 0, 100, 100)], FLOOR).pieces);
+    assert.ok(bulge > 1200 * 0.98 && bulge <= 1200, 'bulge area ' + bulge);
+    assert.equal(net(intersectShapes([curved, sq(-10, -100, 110, 0)], FLOOR).pieces), bulge);
+    assert.equal(net(intersectShapes([curved, sq(0, 0, 100, 100)], FLOOR).pieces), 10000);
+  });
+
+  it('a real cave room: Intersect with its box is the room, Exclude with it is the rest of the box', () => {
+    const room = caveRooms.filter(r => !isRect(r)).reduce((a, b) => ringArea(a) > ringArea(b) ? a : b);
+    const b = bbox(room);
+    const box = { vertices: rect(b.x0, b.y0, b.x1, b.y1) };
+    const both = intersectShapes([{ vertices: room }, box], CAVE_FLOOR);
+    assert.ok(Math.abs(net(both.pieces) - ringArea(room)) < 1, 'intersect ' + net(both.pieces) + ' vs ' + ringArea(room));
+    const rest = net(excludeShapes([{ vertices: room }, box], CAVE_FLOOR).pieces);
+    const boxArea = (b.x1 - b.x0) * (b.y1 - b.y0);
+    // Slivers of the box under the floor are dropped, so the rest is at most the exact difference.
+    assert.ok(rest <= boxArea - ringArea(room) + 1 && rest > (boxArea - ringArea(room)) * 0.9, 'exclude ' + rest);
+    for (const p of both.pieces) assertOpenRing(pv(p), 'cave intersect piece');
+  });
+
+  it('two real cave rooms touch nowhere, and a bridge splits into what it shares and what it does not', () => {
+    const pair = findNeighbours();
+    const [a, c] = pair;
+    assert.deepEqual(intersectShapes([{ vertices: a }, { vertices: c }], CAVE_FLOOR).pieces, []);
+    const shared = net(intersectShapes([{ vertices: a }, { vertices: pair.bridge }], FLOOR).pieces);
+    const left = net(cutOutShapes({ vertices: a }, [{ vertices: pair.bridge }], FLOOR).pieces);
+    assert.ok(shared > 0);
+    assert.ok(Math.abs(shared + left - ringArea(a)) < 1, 'shared ' + shared + ' + left ' + left + ' vs ' + ringArea(a));
+  });
+});
+
+// ─── Merge welds a hairline gap ───────────────────────────────────────────────
+// A corridor maze with a hole and a crypt drawn beside it, by hand, on a 4050x3900 map with an 86.59px hex grid:
+// the crypt's top right corner stops 1.5px short of the corridor's wall, tapering to 0 at its bottom.
+const WELD_GRID = 86.59;
+const xy = flat => { const v = []; for (let i = 0; i < flat.length; i += 2) v.push({ x: flat[i], y: flat[i + 1] }); return v; };
+const WELD_CORRIDOR = {
+  vertices: xy([1312.2, 1947.677, 1786.419, 1948.296, 1786.419, 2591.018, 2422.191, 2588.199, 2422.191, 2269.715, 1944.464, 2269.715, 1944.464, 1470.685, 2103.707, 1470.685, 2103.707, 1791.988, 2264.358, 1791.988, 2264.358, 1632.745, 2423.601, 1632.745, 2423.601, 1793.397, 3059.161, 1793.397, 3059.161, 1311.442, 2742.085, 1311.442, 2742.085, 1474.122, 2583.211, 1474.122, 2582.843, 1314.261, 2103.707, 1314.261, 2103.707, 998.594, 2262.949, 998.594, 2262.949, 1157.837, 2582.843, 1157.837, 2582.843, 842.171, 1786.441, 842.171, 1786.499, 678.5, 2579.999, 678.5, 2579.999, 521, 2738.999, 521, 2738.999, 678.5, 2897.999, 678.5, 2897.999, 837.5, 2738.999, 837.5, 2738.999, 1155.5, 3056.999, 1155.5, 3056.999, 521, 3215.999, 521, 3215.999, 837.5, 3532.499, 837.5, 3532.499, 1948.999, 2104.499, 1948.999, 2104.499, 2107.999, 3532.499, 2107.999, 3532.499, 2266.999, 3373.498, 2266.999, 3373.498, 2424.499, 3215.999, 2424.499, 3215.999, 2266.999, 3056.999, 2266.999, 3056.999, 2424.499, 2897.999, 2424.499, 2897.999, 2266.999, 2579.999, 2266.999, 2579.999, 2742.499, 1627.499, 2742.499, 1627.499, 2107.999, 1312.2, 2107.999]),
+  holes: [xy([3213.476, 995.768, 3213.476, 1798.899, 3377.172, 1798.899, 3377.172, 995.768])],
+};
+const WELD_CRYPT = { vertices: xy([518.4, 1950, 1310.712, 1950, 1312.2, 3377.4, 518.4, 3377.4]), holes: [] };
+
+describe('roomOps — Merge welds before the union', () => {
+  const minArea = roomOpMinArea(WELD_GRID), tol = weldTolerance(WELD_GRID);
+  const area = s => ringArea(s.vertices) - s.holes.reduce((a, h) => a + ringArea(h), 0);
+  const net = pieces => pieces.reduce((s, p) => s + ringArea(pv(p)) - ph(p).reduce((h, r) => h + ringArea(r), 0), 0);
+
+  it('the tolerance is a tenth of a cell, never under 2px', () => {
+    assert.ok(Math.abs(tol - 8.659) < 1e-9);
+    assert.equal(weldTolerance(10), 2);
+    assert.equal(weldTolerance(0), 2);
+  });
+
+  it('a plain union leaves the crypt and the corridor apart', () => {
+    assert.equal(joinShapes([WELD_CRYPT], WELD_CORRIDOR, minArea).pieces.length, 2);
+  });
+
+  for (const [name, main, other] of [['corridor first', WELD_CORRIDOR, WELD_CRYPT], ['crypt first', WELD_CRYPT, WELD_CORRIDOR]]) {
+    it('the crypt and the corridor merge into one piece, ' + name, () => {
+      const out = mergeShapes(main, [other], minArea, tol);
+      assert.equal(out.reason, undefined);
+      assert.equal(out.pieces.length, 1);
+      const want = area(WELD_CORRIDOR) + area(WELD_CRYPT);
+      assert.ok(Math.abs(net(out.pieces) - want) / want < 0.01, 'area ' + net(out.pieces) + ' vs ' + want);
+      assert.equal(ph(out.pieces[0]).length, 1, 'the corridor keeps its hole');
+    });
+  }
+
+  it('two rectangles 50px apart stay two pieces, so Merge refuses', () => {
+    const out = mergeShapes({ vertices: rect(0, 0, 100, 100) }, [{ vertices: rect(150, 0, 250, 100) }], FLOOR, weldTolerance(50));
+    assert.equal(out.pieces.length, 2);
+  });
+
+  // A room whose top wall holds a door and whose bottom wall bows down, both walls ending at a corner 1px short of
+  // the neighbour's wall: the weld moves those corners, and the door and the curve must ride the merge.
+  it('a door and a curved wall on walls ending at a welded corner are kept', () => {
+    const room = {
+      vertices: rect(0, 0, 100, 100),
+      doors: [{ edge: 0, t: 0.5, width: 20 }],
+      handles: [null, null, { ix: 0, iy: 0, ox: -30, oy: 40 }, { ix: 30, iy: 40, ox: 0, oy: 0 }],
+    };
+    const hall = { vertices: rect(101, -50, 200, 150) };
+    const out = mergeShapes(room, [hall], FLOOR, weldTolerance(50));
+    assert.equal(out.pieces.length, 1);
+    const kept = restoreGroupDetail(out.shapes, out.pieces);
+    assert.equal(kept.droppedDoors, 0, 'no door dropped');
+    const p = kept.pieces[0];
+    assert.equal(p.vertices.length, 8, 'the curve is one wall again, not its samples: ' + p.vertices.length);
+    assert.equal((p.doors || []).length, 1);
+    const d = p.doors[0], a = p.vertices[d.edge], b = p.vertices[(d.edge + 1) % p.vertices.length];
+    const at = { x: a.x + (b.x - a.x) * d.t, y: a.y + (b.y - a.y) * d.t };
+    assert.ok(Math.abs(at.x - 50.5) < 1e-6 && Math.abs(at.y) < 1e-6, 'door at ' + JSON.stringify(at));
+    assert.equal(d.width, 20);
+    const curved = (p.handles || []).filter(Boolean);
+    assert.equal(curved.length, 2, 'two curve handles, the bowed wall\'s two ends');
+    const bow = curved.map(h => Math.max(Math.abs(h.oy), Math.abs(h.iy)));
+    assert.ok(bow.every(v => Math.abs(v - 40) < 1e-6), 'the bow keeps its 40px: ' + bow);
+  });
+
+  it('two rectangles sharing a wall give one piece of both areas', () => {
+    const out = mergeShapes({ vertices: rect(0, 0, 100, 100) }, [{ vertices: rect(100, 0, 250, 100) }], FLOOR, weldTolerance(50));
+    assert.equal(out.pieces.length, 1);
+    assert.ok(Math.abs(net(out.pieces) - 25000) < 1e-6);
   });
 });

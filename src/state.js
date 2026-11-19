@@ -144,7 +144,7 @@ const LIGHT_OUTLINE_RGB = '255,217,138';
 const EFFECT_LOOK = { fillA: 0.16, edgeA: 0.28, edgeW: 6, lineA: 0.50, lineW: 1.3 };
 // A held shape's line and soft edge go gold no matter its fog state; its box stays faint.
 const HELD_RGB   = '255,208,96';
-const HELD_LOOK  = { edgeA: 0.16, edgeW: 4, lineW: 1.5 };
+const HELD_LOOK  = { edgeA: 0.16, edgeW: 4, lineW: 1.5, mainLineW: 3 };
 const HELD_BOX_A = 0.30;
 const EDIT_RGB = '255,255,255';   // an editing shape's line - past held, never explained twice
 // A picked hole's ring and hatch, in the same blue a picked vertex wears.
@@ -152,6 +152,9 @@ const HOLE_HATCH_PITCH = 7;
 
 // ─── The selection ── read by a dozen modules, owned by shapeSelect.js ───────
 let selectedPolygonId = null;
+// The other rooms (or effects) picked with Shift+click; selectedPolygonId stays the main pick. Never on the
+// Campaign or in a column. Read through pickedExtras() (shapeSelect.js), which drops ids that no longer resolve.
+let extraPickedIds = [];
 // What the DM picked in the Notes window: a target { kind, id, scene? }, or null to follow the
 // selection (the room if one is selected, else the scene). A new room pick, a deselect or a scene
 // switch puts it back to null (notesPanel.js).

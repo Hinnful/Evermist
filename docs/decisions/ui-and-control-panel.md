@@ -448,7 +448,8 @@ The clipping kernel's refusals name a room, and `refuseShapeOp` swaps the noun i
 
 ### A repair stays armed until it is pressed again · `REVERTED` (2026-09-13)
 **Holds, with a new button, 2026-10-16:** an armed repair stays armed until the repair icon, lit, is clicked. A held
-key is not armed; it lasts as long as the key.
+key is not armed; it lasts as long as the key. **Reversed 2026-11-19 (5.15.0): the repair icon and its sticky arming left every row;
+the held keys stay, and the edit row's booleans act on the picked shapes.**
 
 Merge and Cut out spent themselves on one shape for a day, on the reasoning that a mode set
 correctly reads as armed twenty minutes later and eats the next room drawn. Use answered it:
@@ -782,7 +783,8 @@ bounding box's handles over every corner of every room, on a map already carryin
 and the room card, and the curve handles planned next are the smallest target of the three.
 Reshaping costs a double-click first, which was accepted: rooms are prep work and are mostly left
 alone once drawn. A Bend tool and a Transform tool were each offered for the bar and refused - the
-whole gesture set lives on the shape itself.
+whole gesture set lives on the shape itself. **The Bend refusal is reversed 2026-11-19 (5.15.0): Bend is a tool in the edit row,
+and a held Ctrl lights it; the Transform tool stays refused.**
 
 ### A hole stops at its room's wall instead of floating free · `SETTLED` (2026-09-17)
 A dragged hole may overlap its room's wall and bite the edge; it may not leave the room entirely.
@@ -1125,6 +1127,7 @@ the players' view frame, and fades over 180 ms. Both frames end at the dock's le
 frame had run under the dock rail.
 
 ### Figma's pick-two-then-boolean is rejected · `REJECTED` (2026-10-16)
+**Reversed 2026-11-19 (5.15.0): see "Several picked, and the first pick leads" below.**
 Figma merges, subtracts or intersects the shapes you picked. Evermist has no layers, and the drawn shape is not a record
 until it is committed, so the repair is a choice made while drawing: Shift, Alt or Ctrl, or the repair icon. A shape that
 touches nothing changes nothing.
@@ -1344,7 +1347,7 @@ does not grow.
 ### Effects is a button beside Room, and stays a mode · `SETTLED` (2026-10-24)
 Testers did not find the sliding thumb, so Effects is a button beside Room (E); the old `.tb-seg` buttons stay hidden as
 the back end. A click with Select in hand arms the last effect again, since a placement ends on Select; with an effect
-armed it leaves the mode. While on, the button wears the blue of a switch that is on, glyph included. The bar burns on
+armed it leaves the mode (**reversed 2026-11-19, 5.15.0: the mode opens on the row's own Select, and the bar's Select leaves it**). While on, the button wears the blue of a switch that is on, glyph included. The bar burns on
 its own border in the material's colour, and Fire, Acid and Light are the only coloured glyphs. Rejected: a modeless
 Effects tool where Select picks rooms, effects and lights together, because a .dd2vtt import brings every candle as a
 light (87 on one inn floor, covering the map almost ten times) and Select would land on a light on nearly every room
@@ -1465,3 +1468,49 @@ dropped on a Campaign group moves its card inside the outline (clear of nested o
 group. Order lives in `evermist.notesOrder`, one record per list, never in scene `sortOrder` (a column's whole-record save
 loses it) and never touching the fog. **Reverses** "The room LIST" (`listOrder`, drag-reorder of rooms) and "The Scene
 library is removed" (no map reorder). **Out:** moving a room to another map, a layer control in Notes.
+
+### Several picked, and the first pick leads · `SETTLED` (2026-11-19)
+Shift+click adds or removes rooms from the pick, and a boolean (Merge, Cut out, Intersect, Exclude; Alt+Shift+U/S/I/E) runs on
+them, as in Figma. **Reverses** "Figma's pick-two-then-boolean is rejected" and "Repairs act on what a shape overlaps, not on a
+selection". Figma names the main shape by layer order; Evermist shows no layers, so the first pick stands in: it keeps its id,
+name and own fog (**reverses** the join's "most hidden fog": a revealed first pick merged with a hidden room reveals that
+ground, accepted), the others' notes are appended, doors and curves carry, and an empty result is refused with a message.
+Results are final: Ctrl+Z takes one back, and Figma's live boolean groups were left out. The Campaign map and the two-map
+columns keep one selection.
+Merge on picked shapes welds first: a corner within a tenth of a grid cell (never under 2px) of another picked shape's wall
+moves onto it, because a hand-drawn room 1.5px off a floor-plan wall silently stayed two rooms. If the union is still more than
+one piece, Merge refuses ("Those rooms do not touch. Nothing changed.") rather than make a room from each piece. Cut out,
+Intersect, Exclude and drawing repairs do not weld (`mergeShapes` in `roomOps.js`). The weld moves corners on the shape records, so doors, curves and radii are matched back against the welded shapes. `restoreRing` also checks which shape a corner index belongs to, so a straight wall never takes another merged room's curve.
+
+### The edit row opens on a double-click, and stays off two-map columns · `SETTLED` (2026-11-19)
+A click shows the fog and Door popup alone; a double-click or Enter opens one centred row in a blue frame (Select, Pen, Bend,
+Split, the booleans, Snap, Straight walls, Done). **Reverses** the row hanging over its tool with a pointer: every row is centred,
+no pointer. Straight walls persists (`evermist.straightWalls`) so it can be set while corners are edited. A column has no row
+and would need messages both ways, so it keeps today's double-click, corners and Ctrl bend; a patch may add it.
+
+### With an edit open, two presses on empty map clear everything · `SETTLED` (2026-11-19)
+The first press on empty map closes the edit and keeps every pick, the next empties the selection, so a double-click on empty
+map ends with nothing picked (**replaces** "a double-click on empty map closes edit, the room stays picked"). V with an edit open
+puts the edit row's Select in hand. The Pen's ends snap to a wall within 20 screen px, with a marker on the wall point.
+While a room's edit is open, anything drawn joins that room: the Pen starts anywhere and finishes on a wall, its first point, a
+double-click or Enter (3+ points) (**reverses** wall-to-wall only); the bar's Room tools draw into the room and edit stays open;
+Shift also joins, Alt cuts out of that room only, Ctrl splits. A piece that would leave islands is refused: rooms with separate
+islands are not supported. Delete/Backspace while drawing removes the last point, never the room.
+
+### The armed shape wears the material's colour, and a right-click lists the shapes · `SETTLED` (2026-11-19)
+The armed shape in the Effects row wears the current material's colour again, as in 5.14.8 (a lit fog cloud wears its own); the
+row's Select stays the blue tint. A right-click on the row's shape button or the bar's Effects button opens the seven-shape list.
+
+### Several picked draw gold, and the edit row serves them · `SETTLED` (2026-11-19)
+Several picked rooms all draw gold (the main thicker, with the "1" plate and no corner handles), and a Shift+click no longer
+opens corner edit. The edit row shows while two or more are picked (booleans and Split; Pen and Bend greyed); a Shift+click in a
+room's edit takes the main out of edit, and it returns when the extras go. Done, Enter and Esc close the row keeping every pick;
+the next Esc or a press on empty map empties the selection. After a Split on picked rooms or a paste of several, the pieces stay
+picked with the row down. Ctrl+C/X/V and Ctrl+D act on every picked shape and pasted shapes end picked; T cycles every picked
+room's fog; Split's limit to the picked holds through a missed line. With several effects picked, the main shows the "1" plate.
+
+### The popup changes the picked effect, the row the next one, and the bar draws every kind · `SETTLED` (2026-11-19)
+`setPickedMaterial` (popup) changes only the picked effect; `setMaterial` (row) only the next effect, material and size alike.
+The popup's palette holds every material plus Light and moves a shape between the light list and the effects list, keeping its
+id and outline, one undo step. The bar's band draws every material's own effect (a non-flame kind its one-pass shader)
+(**reverses** "Only a flame burns on the bar"). Both popups stay clear of the dock pane.

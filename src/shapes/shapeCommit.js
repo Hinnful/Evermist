@@ -125,7 +125,8 @@ function setShapeHoles(shape, holes) {
   else delete shape.holes;
 }
 
-// One plan entry: a group of shapes and the pieces replacing them.
+// One plan entry: a group of shapes and the pieces replacing them, and `detail`, the shapes the pieces' walls came
+// from when that is not `shapes` itself (Merge's welded copies, roomOps.js).
 // ⚠ ARRAY ORDER IS FOG COMPOSITING PRECEDENCE, so a group's first piece takes the slot its
 // earliest member already holds and every other piece goes right after it, at its parent's layer:
 // appended, half a split room would sit under whatever it was above. `mode` is handed in because a
@@ -142,7 +143,7 @@ function shapePlanApplied(list, plan, mode, newId) {
     if (!g.pieces.length) { drop.add(base.id); continue; }
     // Curves, corner radii and doors are CARRIED, not dropped: shapeDetail.js matches the
     // library's answer back onto the walls it came from, and counts the doors left with no wall.
-    const kept = restoreGroupDetail(g.shapes, g.pieces);
+    const kept = restoreGroupDetail(g.detail || g.shapes, g.pieces);
     lostDoors += kept.droppedDoors;
     const parts = kept.pieces.length ? kept.pieces : g.pieces.map(p => ({ vertices: p.verts, holes: p.holes }));
     applyPieceToShape(base, parts[0]);
@@ -178,6 +179,7 @@ function reportLostDoors(n) {
 // the old outline's length puts every curve and every door on the wrong wall.
 function applyPieceToShape(shape, piece) {
   shape.vertices = piece.vertices;
+  delete shape.preset;   // a repair or boolean reshapes it: an effect's placed size no longer holds
   setShapeHoles(shape, piece.holes);
   if (piece.cornerRadii) shape.cornerRadii = piece.cornerRadii; else delete shape.cornerRadii;
   if (piece.handles)     shape.handles     = piece.handles;     else delete shape.handles;
@@ -244,12 +246,87 @@ function commitShapeOp(verts, op) {
   return true;
 }
 
+// ─── Booleans on the picked shapes ───────────────────────────────────────────
+// The first pick is the main: it keeps its id, name and own fog, the others go and their notes follow
+// its own (shapePlanApplied). Effects combine fire with fire and light with light. One undo step each.
+const PICKED_OPS = {
+  union:      (main, rest, minArea) => mergeShapes(main, rest, minArea, weldTolerance(gridSize)),
+  difference: (main, rest, minArea) => cutOutShapes(main, rest, minArea),
+  intersect:  (main, rest, minArea) => intersectShapes([main, ...rest], minArea),
+  xor:        (main, rest, minArea) => excludeShapes([main, ...rest], minArea),
+};
+const REASON_PICKED_APART = 'Those rooms do not overlap, so nothing is left. Nothing changed.';
+const REASON_PICKED_EMPTY = 'Nothing of the first room is left. Nothing changed.';
+const REASON_PICKED_MIXED = 'An effect and a light cannot be combined. Nothing changed.';
+const REASON_PICKED_APART_MERGE = 'Those rooms do not touch. Nothing changed.';
+
+// `op` is 'union' (Merge), 'difference' (Cut out), 'intersect' or 'xor' (Exclude). Step 3's buttons call it.
+function booleanOnPicked(op) {
+  const main = findActiveShape(), rest = pickedExtras();
+  // ⚠ NEVER MID-DRAG: the next mousemove would write the main's pre-merge rings back over the merged outline.
+  if (!main || !rest.length || !PICKED_OPS[op] || selectDragging()) return false;
+  if (rest.some(s => !!s.light !== !!main.light)) return refuseShapeOp(REASON_PICKED_MIXED);
+  const out = PICKED_OPS[op](main, rest, roomOpMinArea(gridSize));
+  if (out.reason) return refuseShapeOp(out.reason);
+  // ⚠ REFUSED BEFORE THE PLAN: a group with no pieces drops every shape in it, the main included.
+  if (!out.pieces.length) return refuseShapeOp(op === 'intersect' ? REASON_PICKED_APART : REASON_PICKED_EMPTY);
+  // Merge makes one shape or nothing: a second piece would come out as an extra room.
+  if (op === 'union' && out.pieces.length > 1) return refuseShapeOp(REASON_PICKED_APART_MERGE);
+  pushUndo();
+  applyShapePlan([{ shapes: [main, ...rest], pieces: out.pieces, detail: out.shapes }], null);
+  dropPickedExtras();
+  pickSetReset();
+  commitShapeOpFog(placeMode === 'rooms' ? main.mode === 'shroud' : null);
+  drawCursor(lastScreenX, lastScreenY);
+  return true;
+}
+
+// A piece drawn in an open edit, by the Pen (editRow.js) or a Room tool on the bar: 'join' unions it into the edited
+// shape alone through Merge's weld, 'trim' cuts it out of that shape alone. One undo step; edit stays open. A piece
+// that would leave the shape as two islands never touched it.
+const REASON_PEN_APART = 'The piece does not touch the room. Nothing changed.';
+
+function joinPieceToPicked(verts, op) {
+  const main = findActiveShape();
+  if (!main || verts.length < 3) return false;
+  const minArea = roomOpMinArea(gridSize);
+  let pieces, detail;
+  if (op === 'trim') {
+    if (!shapesOverlap(main, verts)) return refuseShapeOp(REASON_PEN_APART);
+    const out = trimShapes([main], verts, minArea);
+    if (out.reason) return refuseShapeOp(out.reason);
+    pieces = out.groups[0];
+    if (!pieces.length) return refuseShapeOp(REASON_PICKED_EMPTY);
+  } else {
+    const out = mergeShapes(main, [verts], minArea, weldTolerance(gridSize));
+    if (out.reason) return refuseShapeOp(out.reason);
+    if (out.pieces.length !== 1) return refuseShapeOp(REASON_PEN_APART);
+    pieces = out.pieces;
+    detail = [out.shapes[0]];   // the welded room; the piece has no detail of its own
+  }
+  pushUndo();
+  applyShapePlan([{ shapes: [main], pieces, detail }], null);
+  selectedVertexIndex = -1;   // every flat index moved with the new outline
+  selectedHoleIndex = -1;
+  commitShapeOpFog(placeMode !== 'rooms' ? null : op === 'trim' ? main.mode !== 'shroud' : main.mode === 'shroud');
+  drawCursor(lastScreenX, lastScreenY);
+  return true;
+}
+
+// The room whose edit is open on the single map: a shape the bar's Room tools draw joins it instead of making a room.
+function editedRoom() {
+  if (!shapeEditMode || placeMode !== 'rooms' || worldMapOpen || isPane) return null;
+  const p = findActiveShape();
+  return p && !p.open && p.vertices && p.vertices.length >= 3 ? p : null;
+}
+
 // THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `op` is what the shape was drawn as (repairNow, in
 // repairKeys.js): 'new' makes a record; the three repairs make none, and an armed one stays armed.
 // ⚠ RETURNS NULL FOR EVERY OP BUT 'new', a refusal included, so no caller may reach into it.
 // A repair also takes a { vertices, holes } record (a Ring size); 'new' takes a point list only.
 function commitClosedShape(verts, op) {
   const as = op || shapeOp;
+  if (as !== 'split' && Array.isArray(verts) && editedRoom()) { joinPieceToPicked(verts, as === 'trim' ? 'trim' : 'join'); return null; }
   if (as === 'new') return commitDrawnShape(verts);
   clearShapeSelection();
   commitShapeOp(verts, as);

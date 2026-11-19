@@ -11,6 +11,7 @@ const ALLOWED = [
   /^\.tv-go$/,                               // Show on TV
   /^\.tv-grp \.lv\.sw:hover$/,               // the TV pill's Stop, a press target
   /^#wm-bar \.wm-bar-open(:hover)?$/,        // the world map's Open
+  /^#btn-edit-done(:hover)?$/,               // the edit row's Done
   /^\.sm-track i$/,                          // progress fill
   /^#pv-frame span$/,                        // the Player-view label
   /^\.wm-card\[data-col\]:not\(\[data-col=""\]\)::after$/, // the world map's L/R number badge

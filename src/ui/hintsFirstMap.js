@@ -99,12 +99,6 @@ function _hfAtRoom(id) {
   };
 }
 
-// The repair icon blinks only where it can be seen: it has a size and its row is not hidden.
-function _hfRepairShown() {
-  const row = document.getElementById('context-row');
-  return !!_hfRect('op-sw') && !!row && getComputedStyle(row).visibility === 'visible';
-}
-
 // A room was just committed (commitDrawnShape); the drawing tool stays in hand. `touches`: it overlaps another room.
 function hintsRoomDrawn(room, touches) {
   hintClose('room-edit');
@@ -112,11 +106,11 @@ function hintsRoomDrawn(room, touches) {
   _hfNewId = null;
   if (touches) {
     _hintShow('repair-keys', 'Merge, cut out or split rooms',
-      'Hold Shift while you draw to merge a shape into the rooms it touches, Alt to cut it out, or Ctrl to split them.',
-      _hfRepairShown() ? 'op-sw' : 'btn-shape', _hfAtRoom(room.id));
+      'Double-click a room, then Shift+click another: the row over the bar merges, cuts out or splits them. Or hold Shift, Alt or Ctrl while you draw.',
+      'btn-shape', _hfAtRoom(room.id));
   } else {
     _hintShow('room-edit', 'Edit this room',
-      'Pick Select, then double-click the room to move its corners. In there, double-click a wall to add one.',
+      'Pick Select, then double-click the room: the row over the bar edits it. Drag a corner, or double-click a wall to add one.',
       'btn-select', _hfAtRoom(room.id));
   }
   if (_hintCur && (_hintCur.id === 'room-edit' || _hintCur.id === 'repair-keys')) _hfNewId = room.id;

@@ -1,7 +1,7 @@
 'use strict';
-// effectsBarFire.js — the toolbar burns while Effects mode is on: a band of the real fire effect on the bar's own
-// border, which takes the material's colour (effectsTool.js), drawn with the app's own two fragment passes and the
-// current material's record. A UI decoration, so it has a small canvas and WebGL context of its own (not the map's PixiJS one), sized to the bar plus a margin, under
+// effectsBarFire.js — the toolbar burns while Effects mode is on: a band of the current material's real effect on the
+// bar's own border, which takes the material's colour (effectsTool.js): a flame with the app's own two fragment passes,
+// any other kind with its own one-pass shader (effectShaderKinds.js), each fed the material's record. A UI decoration, so it has a small canvas and WebGL context of its own (not the map's PixiJS one), sized to the bar plus a margin, under
 // the bar and out of the pointer's way. The DM window only.
 // ⚠ IT RUNS ITS LOOP ONLY WHILE THE MODE IS ON OR FADING. Off, there is no frame request and no draw.
 
@@ -23,7 +23,7 @@ const BF_LIGHT = {
           toon: 0, core: 0.3, spill: 0.2, flicker: 0.15, scorch: 0, drift: 0.5 },
 };
 
-let _bf = null;            // { cv, gl, light, dark, buf } once built
+let _bf = null;            // { cv, gl, light, dark, kinds, buf } once built; kinds holds each other kind's program, or null
 let _bfBroken = false;
 let _bfHeat = 0;           // 0..1, eased toward _bfOn
 let _bfOn = false;
@@ -77,7 +77,7 @@ function _bfBuild() {
   if (!light || !dark) { _bfBroken = true; return null; }
   cv.addEventListener('webglcontextlost', e => { e.preventDefault(); cv.remove(); _bf = null; });
   row.insertBefore(cv, row.firstChild);
-  return { cv, gl, light, dark, buf: gl.createBuffer() };
+  return { cv, gl, light, dark, kinds: {}, buf: gl.createBuffer() };
 }
 
 function _bfRoundRect(x, y, w, h, r, n) {
@@ -88,10 +88,10 @@ function _bfRoundRect(x, y, w, h, r, n) {
   return out;
 }
 
-// One pass over the band: rings are points in canvas px, the first the outer outline and the second the hole.
-function _bfPass(prog, rings, t, w, h) {
-  const gl = _bf.gl, u = prog.u, g = BF_CELL;
-  const light = currentMaterial === 'light', m = light ? BF_LIGHT : effectMaterial(currentMaterial), L = m.look;
+// The band's rings into a program: the points (canvas px, the first ring the outer outline, the second the hole), the
+// quad it draws over and the canvas size. Returns the points' bounds and centre.
+function _bfLoad(prog, rings, w, h, quad) {
+  const gl = _bf.gl, u = prog.u;
   const vs = new Float32Array(MAX_FX_VERTS * 2), br = new Float32Array(MAX_FX_VERTS);
   let i = 0, cx = 0, cy = 0, x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
   for (const ring of rings) {
@@ -102,27 +102,52 @@ function _bfPass(prog, rings, t, w, h) {
       x1 = Math.min(x1, q.x); y1 = Math.min(y1, q.y); x2 = Math.max(x2, q.x); y2 = Math.max(y2, q.y);
     }
   }
-  x1 -= g * 0.9; x2 += g * 0.9; y2 += g * 0.9; y1 -= g * 2.7;
+  const [qx1, qy1, qx2, qy2] = quad(x1, y1, x2, y2);
   gl.useProgram(prog.p);
   gl.bindBuffer(gl.ARRAY_BUFFER, _bf.buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x1, y1, x2, y1, x2, y2, x1, y1, x2, y2, x1, y2]), gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([qx1, qy1, qx2, qy1, qx2, qy2, qx1, qy1, qx2, qy2, qx1, qy2]), gl.DYNAMIC_DRAW);
   gl.enableVertexAttribArray(prog.a);
   gl.vertexAttribPointer(prog.a, 2, gl.FLOAT, false, 0, 0);
-  const f1 = (k, x) => { if (u[k]) gl.uniform1f(u[k], x); };
-  const f3 = (k, x) => { if (u[k]) gl.uniform3fv(u[k], x); };
   gl.uniform2f(u.uRes, w, h);
   gl.uniform2fv(u.uVerts, vs);
   gl.uniform1fv(u.uBreak, br);
   gl.uniform1i(u.uCount, i);
+  return { cx: cx / i, cy: cy / i };
+}
+
+// One flame pass over the band.
+function _bfPass(prog, rings, t, w, h) {
+  const gl = _bf.gl, u = prog.u, g = BF_CELL;
+  const light = currentMaterial === 'light', m = light ? BF_LIGHT : effectMaterial(currentMaterial), L = m.look;
+  const c = _bfLoad(prog, rings, w, h, (x1, y1, x2, y2) => [x1 - g * 0.9, y1 - g * 2.7, x2 + g * 0.9, y2 + g * 0.9]);
+  const f1 = (k, x) => { if (u[k]) gl.uniform1f(u[k], x); };
+  const f3 = (k, x) => { if (u[k]) gl.uniform3fv(u[k], x); };
   f1('uTime', t); f1('uHeight', Math.max(8, Math.min(140, g * 0.55 * L.heightMul))); f1('uSpeed', FX_LOOK.speed);
   f1('uAlong', 2.2 / Math.max(24, g)); f1('uDiss', L.diss); f1('uWarm', m.warm);
   if (u.uRamp) gl.uniform3fv(u.uRamp, light ? m.ramp : effectRamp(currentMaterial));
   f1('uFill', FX_LOOK.fill); f1('uG', g); f1('uSpark', L.spark); f1('uSmoke', L.smoke); f1('uHaze', L.haze);
-  gl.uniform2f(u.uCentroid, cx / i, cy / i);
+  gl.uniform2f(u.uCentroid, c.cx, c.cy);
   f3('uSparkCol', L.sparkCol); f3('uSmokeCol', L.smokeCol); f3('uSteamCol', L.steamCol);
   for (const k of ['steam', 'liquid', 'bub', 'bubSize', 'toon', 'core', 'spill', 'flicker', 'scorch', 'drift']) {
     f1('u' + k[0].toUpperCase() + k.slice(1), L[k]);
   }
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+// Any other kind's one pass over the band, with the uniforms effects.js gives it on the map: the outer ring's length,
+// the hub (the bar's centre), and the band's half width as the shape's depth, so a look scales its edge work to fit.
+function _bfKindPass(prog, rings, t, w, h) {
+  const gl = _bf.gl, u = prog.u, g = BF_CELL, m = effectMaterial(currentMaterial), outer = rings[0];
+  const c = _bfLoad(prog, rings, w, h, () => [0, 0, w, h]);
+  let perim = 0;
+  for (let i = 0; i < outer.length; i++) {
+    const a = outer[i], b = outer[(i + 1) % outer.length];
+    perim += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  const f1 = (k, x) => { if (u[k]) gl.uniform1f(u[k], x); };
+  f1('uTime', t); f1('uG', g); f1('uPerim', perim); f1('uInR', BF_PAD);
+  if (u.uTint) gl.uniform3fv(u.uTint, m.tint || [1, 1, 1]);
+  if (u.uHub) gl.uniform2f(u.uHub, c.cx, c.cy);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
@@ -153,9 +178,16 @@ function _bfDraw(now) {
   gl.viewport(0, 0, cv.width, cv.height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  // Only a flame burns on the bar; the other kinds leave the border in the material's colour.
-  if (currentMaterial !== 'light' && effectMaterial(currentMaterial).kind !== 'flame') return;
   gl.enable(gl.BLEND);
+  const kind = currentMaterial === 'light' ? 'flame' : effectMaterial(currentMaterial).kind;
+  if (kind !== 'flame') {
+    // Built on first use; one that fails to build leaves the border in the material's colour alone.
+    if (!(kind in _bf.kinds)) _bf.kinds[kind] = _FX_KIND_FRAG[kind] ? _bfProgram(gl, _FX_KIND_FRAG[kind]) : null;
+    if (!_bf.kinds[kind]) return;
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // the kinds paint premultiplied, over
+    _bfKindPass(_bf.kinds[kind], rings, now / 1000, cssW, cssH);
+    return;
+  }
   gl.blendFunc(gl.ONE, gl.ONE);
   _bfPass(_bf.light, rings, now / 1000, cssW, cssH);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);

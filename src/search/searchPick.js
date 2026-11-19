@@ -20,7 +20,7 @@ function _srSelectRoom(id, notes) {
   const p = polygons.find(x => x.id === id);
   if (!p || panesActive) return;
   if (placeMode !== 'rooms') setPlaceMode('rooms');   // ids are per list: in Effects mode this one is an effect's
-  selectedPolygonId = p.id;
+  selectedPolygonId = p.id; extraPickedIds = [];
   leaveShapeEditMode();
   notesLevelPick = null;
   if (notes) notesShow(null);

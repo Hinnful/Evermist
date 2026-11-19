@@ -71,6 +71,20 @@ function effectEdgeRgb(name) {
   return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(',');
 }
 
+// A shape crossing between the effects and the lights (the picked shape's popup), as the list it lands in stores
+// one: outline, rounding, curves and `preset` kept. A light has no name, material or uid; an effect no `light`.
+function shapeAsLight(rec) {
+  const out = { ...rec, light: true };
+  delete out.material; delete out.name; delete out.uid;
+  return out;
+}
+function shapeAsEffect(rec, m) {
+  const mat = EFFECT_MATERIALS[m] ? m : 'fire';
+  const out = { ...rec, material: mat, name: EFFECT_MATERIALS[mat].label + ' ' + rec.id };
+  delete out.light;
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { EFFECT_MATERIALS, effectMaterial, effectEdgeColor, effectEdgeRgb, effectRamp };
+  module.exports = { EFFECT_MATERIALS, effectMaterial, effectEdgeColor, effectEdgeRgb, effectRamp, shapeAsLight, shapeAsEffect };
 }

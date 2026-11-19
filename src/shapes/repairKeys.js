@@ -1,9 +1,8 @@
 'use strict';
 // repairKeys.js — what a drawn shape does to the rooms it touches. Bare, it draws one. Held while it
-// is drawn, Shift merges it into every room it touches, Alt cuts it out of them and Ctrl splits them;
-// the bar's repair icon arms the same three with no key held. The press or release event is what
-// commit reads (repairNow(e)); the listeners below only feed the outline, the pointer tag and the
-// icon, which light while a key is down.
+// is drawn, Shift merges it into every room it touches, Alt cuts it out of them and Ctrl splits them.
+// The press or release event is what commit reads (repairNow(e)); the listeners below only feed the
+// outline, the pointer tag and the fog clouds, which grey while a key is down.
 //
 // ⚠ A SHAPE FROM A SIZE (presetArmed) TAKES NO KEY. Shift there snaps its angle (toolPreset.js), and
 // the repair keys act on shapes drawn by hand; an armed repair still applies to it.
@@ -32,7 +31,7 @@ function repairNow(e) {
   return shapeOp;
 }
 
-// What the bar's icon and the outline show: a key down here or in a column, else the armed repair.
+// What the outline and the tag show: a key down here or in a column, else the armed repair.
 function repairShown() {
   if (shape === 'cut' && !worldMapOpen) return 'split';
   const key = heldRepair || heldRepairRemote;
@@ -44,7 +43,7 @@ function _repairSetHeld(key) {
   if (key === heldRepair) return;
   heldRepair = key;
   reportPaneRepairKey();
-  if (typeof refreshRepairIcon === 'function') refreshRepairIcon();
+  if (typeof refreshFogBar === 'function') refreshFogBar();
   drawCursor(lastScreenX, lastScreenY);
 }
 
@@ -56,7 +55,7 @@ function reportPaneRepairKey() {
 
 function setRemoteRepairKey(key) {
   heldRepairRemote = key || null;
-  if (typeof refreshRepairIcon === 'function') refreshRepairIcon();
+  if (typeof refreshFogBar === 'function') refreshFogBar();
 }
 
 function initRepairKeys() {

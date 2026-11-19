@@ -560,6 +560,10 @@ by hand or with the size presets. A repair acts on the kind being drawn,
 fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights switch in Map settings hides them all; a single light is
 deleted, not switched off.
 
+A picked effect shows a popup (`#fx-pop`) with its material and size. A placed effect stores an additive `preset`, and size
+rescales from its current outline; any reshape drops it and the popup reads "By hand". Effects mode opens on the row's own
+Select. A double-click on an effect opens the edit row; booleans combine like with like and refuse a light.
+
 A floor plan seeds lights once. Map settings' Rooms and lights section loads one floor plan (`.dd2vtt`, `.uvtt` or `.df2vtt`, the same Universal VTT JSON; beside a map they are tried in that order and the first that reads wins) as a file card showing the plan's file name without its ending (ellipsis when long, full name in the tooltip; a scene stored before the name was kept reads "Floor plan"; the scene field `floorPlanName` travels with `floorPlan` and clears on remove), whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
 polygon, by where it sits. A light inside a room fills the room up to the walls or its radius: the whole room when the radius reaches every corner, the part the radius
 covers when it does not. The lights of one room become one polygon when they share 30% of the

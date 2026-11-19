@@ -125,6 +125,8 @@ function doRender() {
   // Ahead of the early returns so the flag always clears — drawCursor() guards the no-map case.
   if (cursorDirty) drawCursor(_cursorX, _cursorY);
   if (!isPlayer && typeof refreshRoomSwitcher === 'function') refreshRoomSwitcher();   // selection, tool and view changes need no mouse move
+  if (!isPlayer && typeof refreshEditRow === 'function') refreshEditRow();
+  if (!isPlayer && typeof refreshEffectPopup === 'function') refreshEffectPopup();
 
   // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map at all and the
   // preview draws a COLUMN's, so below the return it froze on its last paint - a drag moved the
@@ -226,15 +228,16 @@ function drawCursor(screenX, screenY) {
   // list the placement mode names can be SELECTED. The other is DIMMED, so it stops offering
   // handles it would refuse.
   const roomsLive = placeMode === 'rooms', fxLive = placeMode === 'effects';
+  const extras = new Set(pickedExtras());
   for (const poly of polygons) {
     const isSel = roomsLive && poly.id === selectedPolygonId;
-    drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1, !roomsLive);
+    drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1, !roomsLive, extras.has(poly));
   }
   // Player-side guard: effects DO cross to the Player, and its view carries no editing chrome.
   if (!isPlayer) {
     for (const e of effects) {
       const isSel = fxLive && e.id === selectedPolygonId;
-      drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, !fxLive);
+      drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, !fxLive, extras.has(e));
     }
   }
   // The editing outlines are Effects mode's alone, so a room whose light has the same shape is
@@ -243,14 +246,14 @@ function drawCursor(screenX, screenY) {
     for (const l of lightShapes) {
       // Only the picked light is drawn at full strength; the rest wait, dimmed.
       const isSel = l.id === selectedPolygonId;
-      drawPolyOutline(l, isSel, isSel ? selectedVertexIndex : -1, !isSel);
+      drawPolyOutline(l, isSel, isSel ? selectedVertexIndex : -1, !isSel && !extras.has(l), extras.has(l));
     }
   }
   // The bounding box, above every outline and below the labels. It draws only where there is one
   // to draw, so an edit-mode selection reaches it and paints nothing.
   if (!isPlayer && selectedPolygonId != null) {
     const sel = activeShapeList().find(s => s.id === selectedPolygonId);
-    if (sel) { drawShapeBox(sel); drawCornerCircles(sel); }
+    if (sel && sel === boxedShape()) { drawShapeBox(sel); drawCornerCircles(sel); }
   }
   // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
   // screens. Effects mode has no doors to show.
@@ -261,12 +264,15 @@ function drawCursor(screenX, screenY) {
   if (typeof drawRoomLabels === 'function') drawRoomLabels();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   if (typeof refreshRoomSwitcher === 'function') refreshRoomSwitcher();
+  if (typeof refreshEditRow === 'function') refreshEditRow();
+  if (typeof refreshEffectPopup === 'function') refreshEffectPopup();
 
   // Calibration owns the map's mouse, so its square and magnifier replace every cursor shape below
   // rather than sharing the canvas with them.
   if (gridCalArmed) { drawGridCalibration(); return; }
 
   drawRepairTag(screenX, screenY);   // repairKeys.js: the repair in force, by the pointer
+  drawEditPenMarker(screenX, screenY);   // editRow.js: the wall point the Pen's next click takes
   if (activePolygon && activePolygon.vertices.length > 0) {
     drawActivePolyPreview(screenX, screenY);
     return; // skip other cursor shapes while drawing polygon

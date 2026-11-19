@@ -90,15 +90,13 @@ UI.
 The floor-plan import draws most rooms correctly, and the rest need fixing rather than redrawing.
 Three repairs cover it, and none of them asks you to select anything first: you draw a shape over
 the rooms you mean and say what it does while you draw it. Hold Shift to merge it in, Alt to cut it
-out, Ctrl to split along it. The repair icon at the end of the shape's row arms the same three for
-whoever does not know the keys, and an armed repair stays armed until the lit icon is clicked, so a
-run of repairs needs no re-arming. Bare, a shape draws a room, and one that touches nothing changes
+out, Ctrl to split along it. No row carries a repair icon. Picked rooms take the same
+operations from the edit row (below). Bare, a shape draws a room, and one that touches nothing changes
 nothing.
 
 **Join**, which the bar calls Merge, unions the shape you draw with every room it lands on, so
 one rectangle straddling two rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes
-the *most hidden* fog mode of the pair - joining a revealed room to a shrouded one gives a
-shrouded room, so a repair can never uncover ground on the TV by accident. **Trim** subtracts the
+the fog mode of the first pick (a drawn shape's repair keeps the room's own). **Trim** subtracts the
 shape instead, and the bar calls it Cut out. One rectangle over a wall cuts a notch; one drawn
 clean across a room splits it in two; one covering a room whole deletes it. **Split** has two shapes. With a Rectangle or Circle it divides every room along the shape's edge:
 the part inside becomes a room of its own and the rest keeps the original, which `splitShapes`
@@ -108,6 +106,23 @@ finished by a double-click, that divides every room it crosses into two whose ed
 
 All three are one undo step, save with the scene, and reach the Player like any other room,
 because a room's outline *is* the fog stencil.
+
+**Several picked, and the edit row.** A click picks one room and shows its fog popup. Shift+click adds or removes rooms
+(`extraPickedIds`); the first pick keeps its id, name and own fog, wears a thicker outline and a "1" plate, the extras outline
+gold. Several effects picked put the same "1" plate at the main's top centre. With several picked the popup's fog and T set all
+to the main's next fog, a drag moves all, Delete deletes all, Ctrl+C and Ctrl+X copy all, and Ctrl+V pastes all at the pointer as
+they sat, the first pasted as the main; one undo step each. A double-click
+or Enter opens the edit row on the single map: Select, Pen, Bend, Split, Merge, Cut out, Intersect, Exclude, Snap, Straight
+walls and Done. The booleans work on the picked shapes (also Alt+Shift+U/S/I/E), the others' notes are appended, and a result
+with nothing left is refused. Merge first welds a corner within a tenth of a cell (never under 2px) onto another picked
+shape's wall, and refuses when the union is still more than one piece; doors, curves and radii are matched back against the
+welded shapes, so a wall ending at a welded corner keeps them. Split on the picked cuts only them until a line splits, Esc or
+the pick changes. Done, Enter, Esc and a press on empty map close the row keeping every pick, and the next Esc or press there
+empties the selection; Enter with a button or field focused is that control's. V puts the row's Select in hand. Pen draws a
+piece from wall to wall that joins the room, its ends snapping to a wall within 20 screen px. While a Pen piece or a Polygon
+is drawn into the open edit, Delete takes its last point, Enter joins it once it has three, and Esc drops it first. A still
+click with several picked narrows to the clicked room and never also cycles to the next larger one. Shift while dragging a corner keeps it
+horizontal or vertical. The Campaign map and the two-map columns keep one selection and no row.
 
 **A repair keeps the curves, the corner rounding and the doors on the walls that survive it.** All
 three are stored by position in the corner list, and a repair renumbers every position, so each one
@@ -190,7 +205,8 @@ on the map by their circles, not in the pane. The pane's other levels, the scene
 campaign's notes, are in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 The room's fog is set from the toolbar: with Select in hand and a room selected, Reveal, Half and
-Shroud above the bar show and set that room's fog, and T cycles it.
+Shroud above the bar show and set that room's fog, and T cycles it (every picked room to the main's next fog). The popup
+keeps within the map area the dock leaves, as the picked effect's does.
 
 Room names are also drawn on the DM map itself, sized relative to zoom and placed inside the
 room's outline rather than at its bounding box corner, which is what makes circles and

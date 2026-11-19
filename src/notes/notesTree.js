@@ -170,7 +170,7 @@ function _ntGoRoom(n) {
   }
   // ⚠ Ids are numbered per list: picked in Effects mode, the room's id selects an effect.
   if (placeMode !== 'rooms') setPlaceMode('rooms');
-  selectedPolygonId = n.id;
+  selectedPolygonId = n.id; extraPickedIds = [];
   leaveShapeEditMode();
   notesLevelPick = null;
   refreshRoomPanel();
@@ -279,7 +279,7 @@ function _ntDoDelete(n) {
       const col = paneColumnOf(n.scene);
       sendToPane({ type: 'pane-room-select', id: n.id }, col);
       sendToPane({ type: 'pane-room-edit', op: 'delete', id: n.id }, col);
-    } else { if (placeMode !== 'rooms') setPlaceMode('rooms'); selectedPolygonId = n.id; deleteSelectedPolygon(); }
+    } else { if (placeMode !== 'rooms') setPlaceMode('rooms'); selectedPolygonId = n.id; extraPickedIds = []; deleteSelectedPolygon(); }
   } else if (n.kind === 'monster') {
     const b = cbState.blocks[n.id];
     if (b) { b.notes = ''; delete b.listed; cbSave(); }

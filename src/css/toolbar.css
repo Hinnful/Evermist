@@ -94,16 +94,19 @@
   /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom, #fx-aids, #fx-shapes { display: none; }
+  #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom, #fx-aids, #fx-shapes, #edit-row, #er-done-grp { display: none; }
+  /* Every row sits centred over the bar (#tools-wrapper centres both) and points at no tool. An open edit
+     frames it in blue (editRow.js). */
+  #context-row.er-on { border-color: var(--b-solid); box-shadow: 0 0 0 1px var(--b-solid); }
+  /* The edit row: the well's pick in the blue tint, then the actions at the row's 8px gap, then Done. */
+  #edit-row { gap: 8px; }
+  #edit-row > .tb-mdiv { display: block; }
+  #edit-row .fx-track .mode-btn.active, #edit-row .fx-track .mode-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
+  #edit-row .er-op svg { width: 17px; height: 17px; }
+  #btn-edit-done { height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--b-solid); color: #fff;
+    font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); white-space: nowrap; }
+  #btn-edit-done:hover { background: var(--b-solid-h); }
 
-  /* The row hangs over the tool it belongs to, with a small pointer down to it. fogBar.js sets the
-     offset; a row with no tool under it (Door's fields) wears no pointer. */
-  #context-row::after {
-    content: ''; position: absolute; left: calc(50% + var(--fx-caret, 0px) - 6px); bottom: -6px;
-    width: 10px; height: 10px; background: var(--panel-bg);
-    border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
-  }
-  #context-row.no-caret::after { display: none; }
   /* Snap and Straight walls: an icon each, the name in the tooltip. */
   #fx-aids { gap: 2px; }
   #fx-aids .tb-toggle svg { width: 16px; height: 16px; flex: none; }
@@ -111,8 +114,7 @@
   /* ===== ONE SYSTEM for every pick-one control and divider =====
      A well: 30px tall, field grey, 8px radius, 2px padding, 26px items with a 6px radius, the pick lifted
      with a soft shadow. A bare icon is an action or a tool. Every gap between groups is 8px, and a divider
-     sits in the middle of one: 8px clear on each side, the full height of its strip. The row's pointer
-     never sits under one (fogBar.js placeContextRow). */
+     sits in the middle of one: 8px clear on each side, the full height of its strip. */
   .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: var(--g-divider); }
   #toolbar-bottom > .tb-mdiv { display: block; }
   .fx-track { display: flex; align-items: center; gap: 2px; padding: 2px; height: 30px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
@@ -127,46 +129,34 @@
   .fx-track .fx-dir[data-dir="shroud"].active, .fx-track .fx-dir[data-dir="shroud"].active:hover { background: rgba(150, 80, 255, 0.24); color: #b48cff; box-shadow: none; }
   .fx-track .fx-dir.active:disabled, .fx-track .fx-dir.active:disabled:hover { background: none; color: #4d5158; }
 
-  /* The repair icon, last in the row of a shape: two overlapping squares at rest, the held or armed
-     repair's own glyph and colour otherwise (repairBar.js). */
-  #op-sw { display: none; align-items: center; }
-  #op-sw .op-wrap { display: inline-flex; align-items: center; height: 30px; border-radius: 6px; color: #a3a8b0; }
-  #op-sw .op-ic, #op-sw .op-chev { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0; border: 0; background: none; color: inherit; cursor: var(--cur-pointer); }
-  #op-sw .op-ic { width: 28px; border-radius: 6px 0 0 6px; }
-  #op-sw .op-chev { width: 16px; border-radius: 0 6px 6px 0; }
-  #op-sw .op-ic:hover, #op-sw .op-chev:hover, #op-sw .op-chev.open { background: var(--g-field); color: var(--g-text); }
-  #op-sw .op-ic svg { width: 17px; height: 17px; }
-  #op-sw .op-chev svg { width: 8px; height: 8px; }
-  #op-sw .op-wrap.op-join { background: rgba(50, 220, 110, 0.18); color: #5fe39a; }
-  #op-sw .op-wrap.op-trim { background: rgba(240, 80, 80, 0.18); color: #ff8a8a; }
-  #op-sw .op-wrap.op-split { background: rgba(255, 208, 96, 0.16); color: #ffd060; }
-  #op-sw .op-wrap:is(.op-join, .op-trim, .op-split) .op-ic:hover, #op-sw .op-wrap:is(.op-join, .op-trim, .op-split) .op-chev:hover { background: rgba(255, 255, 255, 0.08); color: inherit; }
-
   /* The material button and its size field are one control in two halves: 2px apart, no divider. */
   /* The material button is a grey field with its arrow inside, like the size field beside it, so it reads as a pick. */
-  #mat-pick { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 8px; background: var(--g-field); cursor: var(--cur-pointer); }
-  #mat-pick:hover { background: var(--g-hover); }
-  #mat-pick .mt-chev, #mat-pick .mt-chev:hover { color: var(--g-dim); background: none; }
-  #mat-pick .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); }
-  #mat-pick .mt-btn:hover { background: none; }
-  /* The picked effect shape wears the material's colour, as a lit fog cloud wears its own (effectsTool.js sets it). */
-  #fx-shapes .fx-track .mode-btn.active, #fx-shapes .fx-track .mode-btn.active:hover {
-    background: color-mix(in srgb, var(--fx-col, #ff8a3d) 22%, transparent); color: var(--fx-col, #ff8a3d); box-shadow: none; }
-  #mat-pick .mt-btn svg { width: 18px; height: 18px; }
+  :is(#mat-pick, #fxp-mat) { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 8px; background: var(--g-field); cursor: var(--cur-pointer); }
+  :is(#mat-pick, #fxp-mat):hover { background: var(--g-hover); }
+  :is(#mat-pick, #fxp-mat) .mt-chev, :is(#mat-pick, #fxp-mat) .mt-chev:hover { color: var(--g-dim); background: none; }
+  :is(#mat-pick, #fxp-mat) .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); }
+  :is(#mat-pick, #fxp-mat) .mt-btn:hover { background: none; }
+  /* The well's Select in hand wears the blue tint; the armed shape wears the material's colour (--fx-col, effectsTool.js),
+     as a lit fog cloud wears its own. The shape's arrow sits inside the well. */
+  #fx-shapes .fx-track .mode-btn.active, #fx-shapes .fx-track .mode-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
+  #fx-shapes .fx-track .fx-shape.active, #fx-shapes .fx-track .fx-shape.active:hover {
+    background: color-mix(in srgb, var(--fx-col, #ff8a3d) 22%, transparent); color: var(--fx-col, #ff8a3d); }
+  #fx-shapes .fx-track .tb-chev { height: 26px; }
+  :is(#mat-pick, #fxp-mat) .mt-btn svg { width: 18px; height: 18px; }
   /* The material's name after its glyph. */
-  #mat-pick .mt-btn.mt-named { width: auto; padding: 0 8px 0 6px; gap: 6px; }
-  #mat-pick .mt-btn.mt-named span { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); text-box: trim-both cap alphabetic; }
-  #fx-sizes { display: flex; align-items: center; }
-  #fx-sizes .sz-field { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 8px; background: var(--g-field); }
-  #fx-sizes .sz-scrub { display: inline-flex; color: #8b9099; cursor: var(--cur-ew); padding-right: 6px; }
-  #fx-sizes .sz-scrub svg { width: 14px; height: 14px; }
-  #fx-sizes .sz-in { width: 38px; height: 28px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; }
-  #fx-sizes .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 28px; color: var(--g-text); }
-  #fx-sizes .sz-handv svg { width: 17px; height: 17px; }
-  #fx-sizes .sz-unit { color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; padding-right: 2px; }
-  #fx-sizes .tb-chev { height: 28px; }
-  #fx-sizes .sz-field.hand .sz-in, #fx-sizes .sz-field.hand .sz-unit { display: none; }
-  #fx-sizes .sz-field:not(.hand) .sz-handv { display: none; }
+  :is(#mat-pick, #fxp-mat) .mt-btn.mt-named { width: auto; padding: 0 8px 0 6px; gap: 6px; }
+  :is(#mat-pick, #fxp-mat) .mt-btn.mt-named span { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); text-box: trim-both cap alphabetic; }
+  :is(#fx-sizes, #fxp-size) { display: flex; align-items: center; }
+  :is(#fx-sizes, #fxp-size) .sz-field { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 8px; background: var(--g-field); }
+  :is(#fx-sizes, #fxp-size) .sz-scrub { display: inline-flex; color: #8b9099; cursor: var(--cur-ew); padding-right: 6px; }
+  :is(#fx-sizes, #fxp-size) .sz-scrub svg { width: 14px; height: 14px; }
+  :is(#fx-sizes, #fxp-size) .sz-in { width: 38px; height: 28px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; }
+  :is(#fx-sizes, #fxp-size) .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 28px; color: var(--g-text); }
+  :is(#fx-sizes, #fxp-size) .sz-handv svg { width: 17px; height: 17px; }
+  :is(#fx-sizes, #fxp-size) .sz-unit { color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; padding-right: 2px; }
+  :is(#fx-sizes, #fxp-size) .tb-chev { height: 28px; }
+  :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-in, :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-unit { display: none; }
+  :is(#fx-sizes, #fxp-size) .sz-field:not(.hand) .sz-handv { display: none; }
   #mat-pal { position: absolute; left: 0; bottom: calc(100% + 10px); width: 300px; padding: 8px; border-radius: 10px; background: var(--panel-bg);
     border: var(--panel-border); box-shadow: var(--panel-shadow); z-index: 5; }
   #mat-pal[hidden] { display: none; }
@@ -274,7 +264,7 @@
 
   /* The selected room's own fog and door buttons, on the map just above it. Zoomed like every floating
      surface here, so only _rpScreenToStyle places it. */
-  #room-fog {
+  #room-fog, #fx-pop {
     position: fixed; left: 0; top: 0; z-index: 60; zoom: var(--ui-zoom, 1.2); display: none; padding: 6px; gap: 0; align-items: center;
     border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
   }
@@ -284,6 +274,16 @@
   #room-fog .rf-door svg { width: 17px; height: 17px; }
   #room-fog .rf-door.active, #room-fog .rf-door.active:hover { background: var(--b-tint); color: var(--b-icon); }
   body.player-mode #room-fog, body.world #room-fog, body.players-view #room-fog { display: none !important; }
+  /* A picked effect's popup: its material and size fields at the row's 8px gap. By hand greys the size, and a
+     light's material opens nothing. */
+  #fx-pop { gap: 8px; }
+  /* The glyph sits in a span here, so the name's cap trim must not reach it: it centres as the row's bare svg does. */
+  #fxp-mat .mt-btn.mt-named .fxp-glyph { display: inline-flex; text-box: normal; }
+  #fxp-size .sz-hand { display: none; padding: 0 6px 0 0; color: var(--g-dim); font: 500 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap; }
+  #fxp-size .sz-field.off .sz-hand { display: inline; }
+  #fxp-size .sz-field.off .sz-in, #fxp-size .sz-field.off .sz-unit { display: none; }
+  #fxp-size .sz-field.off .sz-scrub, #fxp-size .sz-field.off .tb-chev { color: #4d5158; cursor: var(--cur-arrow); background: none; }
+  body.player-mode #fx-pop, body.world #fx-pop, body.players-view #fx-pop { display: none !important; }
 
   /* The players' view: the DM's map as the TV shows it, inside a blue frame while it is on. */
   #pv-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-solid); }

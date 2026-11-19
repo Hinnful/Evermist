@@ -1,7 +1,7 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-// shapeSelect.js reaches these as bare globals, the way the browser's script order provides them.
+// shapeEdit.js reaches these as bare globals, the way the browser's script order provides them.
 // The real implementations are hoisted rather than duplicated; pushUndo is a counter, since what
 // matters here is that one delete spends exactly one step.
 const _fg = require('../src/fog/fogGeometry.js');
@@ -26,7 +26,7 @@ global.edgeEndFlat = edgeEndFlat;
 global.closestOnEdge = closestOnEdge;
 
 const { deleteShapeVertex, deleteShapeHole, editCornerRadii, editHandles, editHoles,
-        computeBendStart } = require('../src/shapes/shapeSelect.js');
+        computeBendStart } = require('../src/shapes/shapeEdit.js');
 
 // A simple convex quad (unit square)
 const square = [
