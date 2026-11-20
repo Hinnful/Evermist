@@ -224,7 +224,7 @@ function _nwEscape(e) {
   if (nePickerOpen()) return;
   if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && inside) return;
   if (document.querySelector('.sm-menu') || ['cd-anchor', 'cl-anchor', 'mt-modal'].some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none' && el.style.display !== ''; })) return;
-  if (searchIsOpen() || bsIsOpen() || (worldMapOpen && !inside)) return;
+  if (searchIsOpen() || bsHasFocus() || (worldMapOpen && !inside)) return;
   if (!inside && (activePolygon || shape !== 'select' || shapeOp !== 'new' || selectedPolygonId != null)) return;
   e.stopPropagation();
   nwHide();

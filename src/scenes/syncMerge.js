@@ -43,7 +43,8 @@ const syncMerge = (() => {
       openScene: currentScene ? currentScene.id : null,
       tvScene: tvSceneId,
       paneScenes: panesActive ? livePanes().map(id => panes[id].sceneId).filter(Boolean) : [],
-      fightTable: !!cb && cb.style.display === 'block',
+      // A page in the Bestiary being edited holds the bestiary back as the fight table does.
+      fightTable: (!!cb && cb.style.display === 'block') || (typeof bsEditing === 'function' && bsEditing()),
       openNoteKey: openNoteKey(),
     };
   }
@@ -189,7 +190,9 @@ const syncMerge = (() => {
     if (key === 'evermist.campaignNotesAt') return { applied: false };
     if (key === 'evermist.combat' || key === 'evermist.combatFights') {
       if (ctx.keep) ctx.keep(r.key, localStorage.getItem(key));
-      return { applied: cbMergePayload(r.text).ok };
+      const ok = cbMergePayload(r.text).ok;
+      if (ok && typeof bsIsOpen === 'function' && bsIsOpen()) _bsRenderPage();
+      return { applied: ok };
     }
     if (key === 'evermist.notesEntries') {
       let d;

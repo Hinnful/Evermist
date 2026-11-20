@@ -67,7 +67,7 @@ function dockOpen(name, forced) {
 function _dockWindowOpen(name) {
   const shown = id => { const el = document.getElementById(id); return !!el && el.style.display !== 'none' && el.style.display !== ''; };
   if (name === 'world') return worldMapOpen;
-  if (name === 'bestiary') { const m = document.getElementById('bs-modal'); return !!m && m.style.display !== 'none'; }
+  if (name === 'bestiary') return bsIsOpen();
   if (name === 'combat') return shown('cb-fight');
   if (name === 'notes') return nwIsOpen();
   return false;
@@ -93,7 +93,7 @@ function dockRefreshRail() {
   const fight = document.getElementById('btn-combat');
   if (fight) fight.classList.toggle('win', _dockWindowOpen('combat'));
   const bestiary = document.getElementById('btn-bestiary');
-  if (bestiary) bestiary.classList.toggle('win', _dockWindowOpen('bestiary'));
+  if (bestiary) { bestiary.disabled = _dockCalibrating; bestiary.classList.toggle('win', _dockWindowOpen('bestiary')); }
 }
 
 // ─── Pop-outs ─────────────────────────────────────────────────────────────────
@@ -146,12 +146,13 @@ function dockPlacePop(el, row) {
 }
 
 // ─── Calibration ──────────────────────────────────────────────────────────────
-// Arming puts the pane and the Notes window away and leaving gives them back; a tab picked meanwhile wins (dm-ui skill).
+// Arming puts the pane, the Notes window and the Bestiary away and leaving gives them back; a tab picked meanwhile wins (dm-ui skill).
 let _dockBeforeCal = null;
 
 function dockHoldForCalibration(on) {
   _dockCalibrating = on;
   nwHoldForCalibration(on);
+  bswHoldForCalibration(on);
   if (on) {
     _dockBeforeCal = _dockPane;
     dockOpen(null, true);

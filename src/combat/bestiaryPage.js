@@ -46,7 +46,7 @@ function _bpNotes(b) {
   return `<div class="bp-notes" data-notes placeholder="${_cbEsc(t('Tactics, where it lives in your campaign, what it knows'))}"></div>`;
 }
 
-function _bpRead(b) {
+function _bpRead(b, noNotes) {
   const line = (label, v) => v ? `<div class="bp-kv"><b>${t(label)}:</b> ${_cbEsc(v)}</div>` : '';
   const secs = CB_SECTIONS.filter(s => b.secs[s] && b.secs[s].length);
   const lore = String(b.lore || '').split(/\n{2,}/).filter(Boolean);
@@ -61,17 +61,16 @@ function _bpRead(b) {
     ${secs.map(s => _bpSection(s, s, b.secs[s].map(e => `<p>${e.n ? `<span class="n">${_cbEsc(e.n)}.</span> ` : ''}${_bpMarked(e.t)}</p>`).join(''))).join('')}
     ${_bpSection('lore', 'Lore', lore.length ? lore.map(p => `<p>${_cbEsc(p)}</p>`).join('')
       : '<p class="bp-none">' + t('No lore yet. An import keeps the page\'s own description here; Edit to write your own.') + '</p>')}
-    ${_bpSection('notes', 'Your notes', _bpNotes(b))}
+    ${noNotes ? '' : _bpSection('notes', 'Your notes', _bpNotes(b))}
   </div>`;
 }
 
-function _bpEdit(b) {
+function _bpEdit(b, noNotes) {
   return `<div class="bp-editing">
     ${cbEditorHtml(b)}
     <div class="bp-sec-h bp-edit-h">Lore</div>
     <textarea class="bp-notes bp-lore" data-lore spellcheck="false" placeholder="What the monster is, where it lives, how it fights">${_cbEsc(b.lore || '')}</textarea>
-    <div class="bp-sec-h bp-edit-h">Your notes</div>
-    ${_bpNotes(b)}
+    ${noNotes ? '' : `<div class="bp-sec-h bp-edit-h">Your notes</div>${_bpNotes(b)}`}
   </div>`;
 }
 
@@ -84,8 +83,9 @@ function bpMount(page, b) {
   f.value = b.notes || '';
 }
 
-function bpHtml(b, editing) {
-  return editing ? _bpEdit(b) : _bpRead(b);
+// `noNotes` for a fight's copy with no entry behind it: the notes are an entry's, and it has none.
+function bpHtml(b, editing, noNotes) {
+  return editing ? _bpEdit(b, noNotes) : _bpRead(b, noNotes);
 }
 
 // `ed` as cbWireEditor takes it, so the editor and the two text fields report the same way.

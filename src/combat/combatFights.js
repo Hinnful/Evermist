@@ -22,7 +22,7 @@ function cbFightsTitle() {
 
 function _cfSwitch(id) {
   searchRecentAdd('fight:' + id);
-  if (cbStatRowId()) cbCloseStat();
+  bcClose();
   cbCloseMenu();
   combatOpenFight(cbState, id);
   cbSave();
@@ -89,7 +89,7 @@ function _cfDelete(f) {
       'Its {n} creatures go with it, with their HP and conditions.') : t('It is empty.'),
     confirmLabel: 'Delete', danger: true,
     onConfirm: () => {
-      if (f.id === cbState.openId && cbStatRowId()) cbCloseStat();
+      if (f.id === cbState.openId) bcClose();
       combatDeleteFight(cbState, f.id, combatFightId);
       cbSave();
       cbRender();

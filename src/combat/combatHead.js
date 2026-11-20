@@ -102,7 +102,7 @@ function _cbSuggest(input, row) {
   _cbSuggestOpen(input, items, combatRowIsFresh(row) ? 0 : -1, i => {
     combatPickInto(row, items[i].entry, cbState.rows.filter(r => r !== row));
     cbSave();
-    if (cbStatRowId() === row.id) cbOpenStat(row);
+    bcRefresh(row);
     document.activeElement.blur();
     cbRender();
   });

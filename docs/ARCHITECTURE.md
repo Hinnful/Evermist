@@ -33,7 +33,7 @@ The map fills the DM window. Over it sit three things: the toolbar at the bottom
 the bottom-left corner, and **the dock** on the right edge. The left side of the window is empty.
 
 The dock is an icon rail with one pane open beside it. The rail opens the Campaign (the world map), the
-Bestiary as a centred window, and the fight table as a free window. Its panes are **Map
+Bestiary as a free window, and the fight table as a free window. Its panes are **Map
 settings** (grid first, then fog, rooms, lights), **Notes**, **Music**,
 **Sounds**, **Pictures** (`gallery.js`) and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
@@ -691,7 +691,7 @@ a pick, a swap, or two alternatives joined by "or". Wording that needs more than
 a dashed Multiattack pill. It keeps them until the DM
 double-clicks it to write a line of their own, and holds the row's icons on hover: stat block,
 duplicate, switch side, delete. The right-click menu carries the same actions, and Ctrl+D
-duplicates. Every column resizes (widths in `evermist.fightCols`), and the table resizes from its right and bottom edges. It grows down to the window's bottom and stays 8px inside the window on a move or resize, as does the stat block popup (one shared helper); the popup's next opening uses the size the last was left at.
+duplicates. Every column resizes (widths in `evermist.fightCols`), and the table resizes from its right and bottom edges. It grows down to the window's bottom and stays 8px inside the window on a move or resize, as does the Bestiary window (one shared helper). The row's stat block is the row's own copy shown as a page in the Bestiary (below); `statW`/`statH` in the fight columns key remember the size it opens at, and a resize of that window updates them.
 
 A row owns a copy of its stat block. Typing in a name field offers matching bestiary entries; a
 pick copies the entry into the row, and after that the two never affect each other. The row's
@@ -699,7 +699,7 @@ name without its copy number, its AC and its max HP are the copy's own fields, s
 either side shows on both. A hand-typed row starts from an empty copy. Save to Bestiary
 lights after any edit to a copy and adds it to the bestiary as a new entry.
 
-The bestiary is the DM's list of every monster, opened by the Bestiary button: a sortable
+The bestiary is the DM's list of every monster, opened by the Bestiary button in a free window with its own shell (`bestiaryWindow.js`): a header with a list toggle, back/forward, crumbs and close; it moves by its header, resizes by its corner and stays 8px inside the app window. Place, size, list widths and list state persist in `evermist.bestiaryWin` (the previous release ignores it). It sits below the fight table and above the Notes window, and both can be open. It switches by its own width (`bestiaryWidths.js`): wide (860px and up) keeps the header search, the filter row and the columns; medium moves search into the list, folds filters into one button and shows CR and name; narrow (list hidden, or under 500px with a page open) shows the page alone. Opened from the dock with no page open, it selects the list's first monster. Its shortcuts (Ctrl+A/C/V/D, Delete, Esc) act only while focus is inside it. A fight row's stat block opens as a copy page (`bestiaryCopy.js`): crumbs "fight › row", a strip naming AC and HP where they differ from the entry and holding Save to Bestiary (add-only), the pencil editing the copy (name, AC and Table line reach the row), notes being the source entry's note, and a book icon opening the entry. The entry is found by uid (`combatBackfillUids` gives older entries one), falling back to base name and source, never when the copy has no source. Deleting the row, switching or deleting the fight, or closing the fight table closes the page. A redrawn page keeps its scroll, and a synced change is held while a page is edited (`syncMerge.js`). Grid calibration puts the window away and restores it. The list is a sortable
 table, a name search and filters that read size, type and alignment in English or Russian
 as one vocabulary (`bestiaryPlan.js`), and the picked monster's page beside it (`bestiaryPage.js`),
 read-only until Edit swaps in the stat block editor. Links pasted in go through a queue one at a
@@ -733,7 +733,7 @@ list existed, and the other fights sit under a second key an older build never r
 (fightPlan.js). Both go into backups as `combat.json`; a restore adds entries the bestiary lacks
 and fights the list lacks, never replacing one. Column widths and where the panel sits are kept apart, as viewing settings. The
 Player window never builds any of it. `combatTracker.js` owns the table and saving, `combatRows.js` the rows, `combatHead.js` the header,
-`combatStatBlock.js` the editor and the row's popup, `bestiary.js` the window, `statBlockImport.js`
+`combatStatBlock.js` the editor, `bestiary.js` the list and its logic, `bestiaryWindow.js` the shell, `statBlockImport.js`
 the queue and the book import, `combatPlan.js` the arithmetic and a row's copy.
 
 ## The Claude connection

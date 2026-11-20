@@ -291,11 +291,49 @@ function combatSearchBlocks(blocks, query) {
   return starts.concat(has);
 }
 
+// The entry a fight row's copy came from: by uid, else by base name and source for a copy older than uids. Null for a
+// row typed by hand or an entry since deleted. ⚠ A copy with no source never falls back: a row typed by hand has a blank
+// one, and a hand-made entry of the same name would take its book and its notes.
+function combatEntryOf(blocks, copy) {
+  if (!copy) return null;
+  const all = Object.values(blocks);
+  if (copy.uid) return all.find(b => b.uid === copy.uid) || null;
+  if (!copy.source) return null;
+  const name = combatBaseName(copy.name);
+  return all.find(b => b.name === name && (b.source || '') === (copy.source || '')) || null;
+}
+
+// The copy's AC and HP that no longer match its entry's, as { ac: [copy, entry] } and the same for hp.
+function combatCopyDiffs(copy, entry) {
+  const out = {};
+  if (!copy || !entry) return out;
+  for (const k of ['ac', 'hp']) {
+    const a = combatFirstNum(copy[k]), b = combatFirstNum(entry[k]);
+    if (a !== b) out[k] = [a, b];
+  }
+  return out;
+}
+
+// An entry made before uids existed takes one at load, so a fight's copy of it can point back at it.
+function combatBackfillUids(blocks, mint) {
+  const all = Object.values(blocks), taken = new Set(all.map(b => b.uid).filter(Boolean));
+  let n = 0;
+  for (const b of all) {
+    if (b.uid) continue;
+    let u;
+    do u = mint(); while (taken.has(u));
+    taken.add(u);
+    b.uid = u;
+    n++;
+  }
+  return n;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatIsSortedByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid,
     combatAddEntry, combatRowFromEntry, combatRowIsFresh, combatCleanBlock, combatCleanRow, combatRowHpState, combatSourceName, combatNewBlocks,
     combatSearchBlocks, combatNextName, combatDuplicateRow, combatIsDefeated, combatIsCleaned, combatToClean, combatCleanUp,
     combatRenderOrder, combatReviveRows, combatReturnRow, combatPickInto, combatLiveSorted, combatSortLive, combatAddIndex,
-    combatHpHits, combatHpTail, combatReadCols };
+    combatHpHits, combatHpTail, combatReadCols, combatEntryOf, combatCopyDiffs, combatBackfillUids };
 }

@@ -221,7 +221,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/combatTracker.js` | The fight table: saving, row edits, menus, drag, columns, wiring |
 | `combat/combatRows.js` | The fight table's rows: the cells, conditions in the Name cell, the hover toolbar, the row's menu, the Defeated line |
 | `combat/combatHead.js` | The fight table's header: search, Clean up, close; the bestiary suggestions the search and a row's Name share |
-| `combat/combatStatBlock.js` | The stat block popup |
+| `combat/combatStatBlock.js` | The stat block editor an entry's page and a fight row's copy share |
 | `combat/combatFights.js` | The fight picker and its list |
 | `combat/combatSort.js` | The fight table's Sort button, lit while the rows are out of initiative order |
 | `combat/initiativeTv.js` | The fight table's Start fight / End fight and the slots sent to the TV; only the DM ends a fight |
@@ -230,6 +230,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/statBlockImport.js` | The link queue and the book import |
 | `combat/bestiary.js` | The bestiary: table, filters, selection |
 | `combat/bestiaryPage.js` | A bestiary monster's page |
+| `combat/bestiaryCopy.js` | A fight row's copy as a page in the Bestiary window: crumbs, the strip and Save to Bestiary, the pencil, the book to its entry; its notes are the entry's |
+| `combat/bestiaryWindow.js` | The Bestiary window's shell: open and shut, header drag, corner resize, 8px inside, the list's toggle and edge, back and forward, crumbs, `evermist.bestiaryWin` |
+| `combat/bestiaryWidths.js` | The Bestiary window's widths: wide, medium (search in the list, folded filters, icon buttons), narrow (the page alone) |
 | `rooms/floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player/player.js` | Player-mode runtime: the loading card, the handshake, resize, pan/zoom |
 | `player/playerMap.js` | A map landing on the Player: cover, fog mask, image or video |
@@ -337,6 +340,6 @@ ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js �
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
-combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatRows.js → combat/combatHead.js → combat/combatFights.js → combat/combatSort.js → combat/initiativeTv.js →
+combat/bestiaryPage.js → combat/bestiaryCopy.js → combat/bestiaryWindow.js → combat/bestiaryWidths.js → combat/bestiary.js → combat/combatTracker.js → combat/combatRows.js → combat/combatHead.js → combat/combatFights.js → combat/combatSort.js → combat/initiativeTv.js →
 mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapFilePlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpShrink.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpSoundsPlan.js → mcp/mcpSounds.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

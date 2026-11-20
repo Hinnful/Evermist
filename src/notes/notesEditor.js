@@ -258,7 +258,6 @@ function neOpenMention(kind, id) {
   const r = mxResolve(kind, id);
   if (!r || !r.target || !r.key) return;
   if (kind === 'fight') { cbSetOpen(true); _cfSwitch(id); return; }
-  if (typeof bsIsOpen === 'function' && bsIsOpen()) bestiarySetOpen(false);
   nwShow();
   if (!ntGoKey(r.key)) notesShow(r.target);
 }

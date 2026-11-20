@@ -8,6 +8,7 @@ const UI_ICON_PATHS = {
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   export: '<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>',
   file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+  filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>',
   link: '<path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1"/>',
   external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/>',

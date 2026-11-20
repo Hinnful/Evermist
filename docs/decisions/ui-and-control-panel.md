@@ -275,7 +275,7 @@ Item 150, settled over four prototype rounds. A centred window has a 48px header
 title, its count, its actions and one close cross last; a free window (the fight table, the stat
 block) carries the dock's 12px bold title. Controls in a window are 28px, a step above the dock's
 26px. Widths are three: 360 for a question or a progress bar, 480 for a list, 720 for a reference;
-the scene library and the Bestiary fill the screen. A window's title is the name of the button
+the scene library fills the screen (the Bestiary became a free window, see below). A window's title is the name of the button
 that opens it, so "Scenes" became "Scene library" and "Add music" became "Add from YouTube".
 Rejected: the first round, which gave each window its own header, close and button sizes and read
 as inconsistent at a glance.
@@ -407,6 +407,10 @@ truth and the fight table a snapshot of it: a pick copies the entry, and nothing
 writes back except Save to Bestiary, which always adds a new entry. Sharing one block between
 copies was dropped because an edit to one copy is meant to reach that copy alone, which makes the
 sharing invisible. Max HP belongs to the copy and is not typable in the row.
+
+### The Bestiary is a free window, and a fight copy is a page in it · `SETTLED` (2026-11-20)
+
+Settled over two board rounds (BACKLOG 302). The Bestiary left its full-window dialog for a free window like the Notes window, with its own shell (`bestiaryWindow.js`); it switches among three widths, and the fight table's stat block popup is gone: the row's book button opens the row's copy as a page in the Bestiary. Save to Bestiary stays add-only. Supersedes "Every window outside the dock is one shell" where the Bestiary fills the screen, and varies the rejected floating list panel below (the list and page stay one window). Closes the parked stat block question of 5.17.0's fight table entry. Rejected: a "In fight" section of copies in the list (it hangs over prep outside a fight and repeats the table), a Bestiary|Fight switch above the list (two lists in one place), keeping the popup with the read view inside, a tabbed stat block panel with a pin. Rejected on product grounds for now: a shell shared with the Notes window (its own restructure). Not built: spellcasting rows by level (BACKLOG 304), a Bestiary/Notes merge (a discussion, BACKLOG 305).
 
 ### The bestiary is a table beside a one-column page · `SETTLED` (2026-09-25)
 

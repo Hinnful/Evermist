@@ -1,17 +1,23 @@
-// bestiary.js — the bestiary: every stat block the DM keeps, in a window over the map. A table
+// bestiary.js — the bestiary: every stat block the DM keeps, in a window of its own (bestiaryWindow.js). A table
 // with a name search and filters, several picked at once, imports from links or a file, and the
-// picked monster's page beside the table (bestiaryPage.js). bestiaryPlan.js holds the rules.
+// picked monster's page beside the table (bestiaryPage.js), or a fight row's copy (bestiaryCopy.js).
 
 const BS_COLS = [['cr', 'CR', 'num'], ['name', 'Name'], ['size', 'Size'], ['type', 'Type'], ['ac', 'AC', 'num'], ['hp', 'HP', 'num'], ['source', 'Source']];
-const BS_NARROW = ['cr', 'name', 'type'];
 
-const bs = { f: bsNoFilter(), more: false, sort: { k: 'name', d: 1 }, picked: new Set(), anchor: null, open: null,
+// `open` is the entry whose page shows, `copy` the fight row whose copy shows instead; never both.
+const bs = { f: bsNoFilter(), more: false, sort: { k: 'name', d: 1 }, picked: new Set(), anchor: null, open: null, copy: null,
   editing: false, importing: false, fresh: new Set(), pop: null };
 // Copies, not ids: a paste still works after the entries it came from are deleted.
 let _bsClip = [];
 
 const _bsEl = id => document.getElementById(id);
-function bsIsOpen() { const m = _bsEl('bs-modal'); return !!m && m.style.display !== 'none'; }
+// Its keys are its own only while the focus is inside it, or in one of its lists.
+function bsHasFocus() {
+  const a = document.activeElement;
+  return bsIsOpen() && !!a && (_bsEl('bs-panel').contains(a) || (!!bs.pop && bs.pop.contains(a)));
+}
+// A page being edited holds a synced bestiary back until the DM is done.
+function bsEditing() { return bsIsOpen() && (bs.editing || _bsEl('bs-page').contains(document.activeElement)); }
 function _bsAll() { return Object.values(cbState.blocks); }
 function _bsShown() { return bsSorted(_bsAll().filter(b => bsMatches(b, bs.f)), bs.sort.k, bs.sort.d); }
 
@@ -44,9 +50,10 @@ function _bsTableHtml(list) {
     return `<div class="bs-empty"><b>${_bsAll().length ? 'Nothing matches' : 'No monsters yet'}</b>${
       _bsAll().length ? 'Loosen a filter, or <button class="bs-link" data-a="clear">clear them all</button>.' : 'Import from a link or a PDF book, or add a new one.'}</div>`;
   }
-  const cols = bs.open ? BS_COLS.filter(c => BS_NARROW.includes(c[0])) : BS_COLS;
-  const arrow = k => bs.sort.k === k ? (bs.sort.d > 0 ? ' ↑' : ' ↓') : '';
-  return `<table class="bs-t"><thead><tr><th class="cbc"></th>${cols.map(([k, l, c]) => `<th class="${c || ''}" data-sort="${k}">${l}${arrow(k)}</th>`).join('')}</tr></thead>
+  const cols = bswdCols();
+  // The arrow in its own node: joined to the title it made "Name ↑" a text the translation has no key for.
+  const arrow = k => bs.sort.k === k ? `<span class="ar">${bs.sort.d > 0 ? ' ↑' : ' ↓'}</span>` : '';
+  return `<table class="bs-t"><thead data-no-i18n><tr><th class="cbc"></th>${cols.map(([k, l, c]) => `<th class="${c || ''}" data-sort="${k}">${_cbEsc(t(l))}${arrow(k)}</th>`).join('')}</tr></thead>
     <tbody data-no-i18n>${list.map(b => `<tr class="${bs.picked.has(b.id) ? 'sel' : ''} ${bs.open === b.id ? 'open' : ''}" data-id="${b.id}">
       <td class="cbc"><span class="bs-cb ${bs.picked.has(b.id) ? 'on' : ''}" data-tick></span></td>${cols.map(([k]) => _bsCell(b, k)).join('')}</tr>`).join('')}</tbody></table>`;
 }
@@ -77,7 +84,8 @@ function bestiaryRender() {
   if (bs.open && !cbState.blocks[bs.open]) { bs.open = null; bs.editing = false; }
   const panel = _bsEl('bs-panel'), list = _bsShown();
   panel.classList.toggle('selecting', bs.picked.size > 0);
-  panel.classList.toggle('paged', !!bs.open);
+  panel.classList.toggle('paged', bswdPaged());
+  bswdApply();
   panel.querySelector('.bs-picked').textContent = t('{n} selected', { n: bs.picked.size });
   const tick = _bsEl('bs-tickall'), all = list.length && list.every(b => bs.picked.has(b.id));
   tick.className = 'sm-tick' + (all ? ' on' : bs.picked.size ? ' part' : '');
@@ -97,10 +105,18 @@ function bestiaryRender() {
 
 // The page redraws only when what it shows changes, or typing in it would lose the caret.
 function _bsRenderPage() {
-  const page = _bsEl('bs-page'), b = cbState.blocks[bs.open];
-  page.innerHTML = b ? _bsPageHtml(b) : '';
-  if (b) bpMount(page, b);
-  page.style.display = b ? '' : 'none';
+  if (!bsIsOpen()) return;
+  const page = _bsEl('bs-page'), b = cbState.blocks[bs.open], row = bcRow();
+  if (bs.copy !== null && !row) bs.copy = null;
+  // The same page drawn again keeps its scroll: a table edit or a synced change redraws it while the DM reads.
+  const key = row ? 'c' + row.id : b ? 'e' + b.id : '', body = page.querySelector('.bs-page-body');
+  const top = key && key === page.dataset.key && body ? body.scrollTop : 0;
+  if (row) bcMount(page, row);
+  else { page.innerHTML = b ? _bsPageHtml(b) : ''; if (b) bpMount(page, b); }
+  page.dataset.key = key;
+  if (top) page.querySelector('.bs-page-body').scrollTop = top;
+  page.style.display = b || row ? '' : 'none';
+  bswCrumbs(row ? bcCrumbs(row) : [t('Bestiary')].concat(b ? [b.name] : []));
   bestiaryRender();
 }
 
@@ -108,14 +124,18 @@ function _bsRenderPage() {
 function _bsShow(id, editing) {
   searchRecentAdd('monster:' + id);
   bs.open = id;
+  bs.copy = null;
   bs.editing = !!editing;
+  bswRecord('e:' + id);
   _bsRenderPage();
+  cbRender();
 }
 
 function _bsClosePop() { if (bs.pop) { bs.pop.remove(); bs.pop = null; } }
 
 function _bsPlace(el, anchor) {
   document.body.appendChild(el);
+  el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { _bsClosePop(); _bsEl('bs-panel').focus(); } });
   const z = cbZoom(), r = anchor.getBoundingClientRect();
   el.style.left = (Math.max(8, Math.min(r.left, innerWidth - el.getBoundingClientRect().width - 8)) / z) + 'px';
   el.style.top = ((r.bottom + 6) / z) + 'px';
@@ -211,6 +231,7 @@ function _bsAdd(blocks) {
 
 // The picked entries, or else the one whose page is open.
 function _bsTargets() {
+  if (bs.copy !== null) return [];
   if (bs.picked.size) return [...bs.picked].map(id => cbState.blocks[id]);
   return bs.open ? [cbState.blocks[bs.open]] : [];
 }
@@ -276,14 +297,21 @@ function _bsPick(id, e) {
   bestiaryRender();
 }
 
-function bestiarySetOpen(open) {
-  _bsEl('bs-modal').style.display = open ? '' : 'none';
-  _bsEl('btn-bestiary').classList.toggle('active', open);
+// Answers whether it is open. Already open, it stays where it is; `fromFight` opens it beside the fight table.
+function bestiarySetOpen(open, fromFight) {
+  if (!!open === bsIsOpen()) return !!open;
+  if (open && !bswShow(fromFight)) return false;
+  if (!open) bswHide();
+  _bsEl('btn-bestiary').classList.toggle('active', !!open);
   dockRefreshRail();
   _bsClosePop();
-  if (!open) { bs.picked.clear(); bs.editing = false; return; }
+  if (!open) { bs.picked.clear(); bs.editing = false; bs.copy = null; cbRender(); return false; }
+  // Opened with no page, it shows the list's first monster rather than an empty half.
+  if (!fromFight && !bs.open && bs.copy === null) { const first = _bsShown()[0]; if (first) { bs.open = first.id; bswRecord('e:' + first.id); } }
   _bsRenderPage();
-  _bsEl('bs-search').focus();
+  const search = _bsEl('bs-search');
+  (search.offsetParent ? search : _bsEl('bs-panel')).focus();
+  return true;
 }
 
 // Escape steps back one thing per press, Figma-style: a list, the picks, editing, the page, the window.
@@ -292,55 +320,103 @@ function _bsEscape() {
   else if (bs.importing) { bs.importing = false; bestiaryRender(); }
   else if (bs.picked.size) { bs.picked.clear(); bestiaryRender(); }
   else if (bs.editing) { bs.editing = false; _bsRenderPage(); }
-  else if (bs.open) { bs.open = null; _bsRenderPage(); }
+  else if (bswdPaged() && !bswListHidden()) { bs.open = null; bs.copy = null; _bsRenderPage(); cbRender(); }
   else bestiarySetOpen(false);
 }
 
+// A copy is not an entry, so on its page the list's Delete, Copy and Duplicate have nothing to act on.
 function _bsKey(e) {
   if (e.key === 'Escape' && nePickerOpen()) return;
   if (e.key === 'Escape') { e.preventDefault(); _bsEscape(); return; }
   if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-  const mod = e.ctrlKey || e.metaKey;
+  const mod = e.ctrlKey || e.metaKey, del = e.code === 'Delete' || e.code === 'Backspace';
+  if (bs.copy !== null && (del || (mod && (e.code === 'KeyC' || e.code === 'KeyD')))) return;
   if (mod && e.code === 'KeyA') { e.preventDefault(); _bsShown().forEach(b => bs.picked.add(b.id)); bestiaryRender(); }
   else if (mod && e.code === 'KeyC') _bsClip = _bsTargets().map(combatSnapshot);
   else if (mod && e.code === 'KeyV') _bsAdd(_bsClip);
   else if (mod && e.code === 'KeyD') { e.preventDefault(); _bsAdd(_bsTargets()); }
-  else if ((e.code === 'Delete' || e.code === 'Backspace')) _bsDelete(_bsTargets().map(b => b.id));
+  else if (del) _bsDelete(_bsTargets().map(b => b.id));
+}
+
+function _bsClick(e) {
+  const t = e.target, a = t.closest('[data-a]'), act = a && a.dataset.a;
+  if (act === 'close') return bestiarySetOpen(false);
+  if (act === 'new') return _bsNew();
+  if (act === 'import') return _bsImportMenu(a);
+  if (act === 'go') return _bsStartImport();
+  if (act === 'no-import') { bs.importing = false; return bestiaryRender(); }
+  if (t.closest('#bs-tickall')) {
+    if (bs.picked.size) bs.picked.clear(); else _bsShown().forEach(b => bs.picked.add(b.id));
+    return bestiaryRender();
+  }
+  if (act === 'dup' || act === 'dup-open') return _bsAdd(act === 'dup' ? [...bs.picked].map(id => cbState.blocks[id]) : [cbState.blocks[bs.open]]);
+  if (act === 'del' || act === 'del-open') return _bsDelete(act === 'del' ? [...bs.picked] : [bs.open]);
+  if (act === 'export') return _bsExport();
+  if (act === 'edit') { bs.editing = !bs.editing; return _bsRenderPage(); }
+  if (act === 'unpage') { bs.open = null; bs.editing = false; return _bsRenderPage(); }
+  if (act === 'more') { bs.more = !bs.more; return bestiaryRender(); }
+  if (act === 'clear') { bs.f = bsNoFilter(); _bsEl('bs-search').value = ''; return bestiaryRender(); }
+  const q = t.closest('[data-q]');
+  if (q) {
+    if (q.dataset.q === 'retry') cbImportRetry(+q.dataset.qid, _bsImported);
+    else { cbImportDrop(+q.dataset.qid); bestiaryRender(); }
+    return;
+  }
+  const f = t.closest('#bs-panel .bs-fbtns [data-filter]');
+  if (f) return _bsFilterPop(f, f.dataset.filter);
+  const th = t.closest('[data-sort]');
+  if (th) {
+    const k = th.dataset.sort;
+    // A first press on CR shows the strongest first; everything else starts A to Z.
+    bs.sort = { k, d: bs.sort.k === k ? -bs.sort.d : (k === 'cr' ? -1 : 1) };
+    return bestiaryRender();
+  }
+  const row = t.closest('#bs-table tbody tr');
+  if (row) _bsPick(row.dataset.id, e);
+}
+
+// A history step: an entry's page, or a fight row's copy while that row is still in the open fight.
+function _bsGo(key) {
+  const id = key.slice(2);
+  if (key[0] === 'c') return bcShow(+id);
+  if (!cbState.blocks[id]) return false;
+  _bsShow(id);
+  return true;
 }
 
 function initBestiary() {
   const btn = document.getElementById('btn-bestiary');
-
-  const modal = document.createElement('div');
-  modal.id = 'bs-modal';
-  modal.style.display = 'none';
-  modal.innerHTML = `<div id="bs-panel" tabindex="-1">
-    <div class="bs-head">
-      <span class="bs-title">Bestiary</span><span class="bs-sp"></span>
-      <label class="sm-field">${uiIcon('search')}<input id="bs-search" placeholder="Search by name" spellcheck="false" autocomplete="off"></label>
-      <button class="sm-hbtn" data-a="new">${uiIcon('plus')}<span>New monster</span></button>
-      <button class="sm-hbtn primary" data-a="import"><span>Import</span><span class="sm-chev"></span></button>
-      <button class="sm-x" data-a="close" title="Close (Esc)">${uiIcon('x')}</button>
-    </div>
-    <div class="bs-importbar">
+  const panel = document.createElement('div');
+  panel.id = 'bs-panel';
+  panel.className = 'bsw';
+  panel.tabIndex = -1;
+  panel.hidden = true;
+  const ib = (a, icon, title) => `<button class="nw-ib bsw-ic" data-a="${a}" title="${title}">${uiIcon(icon)}</button>`;
+  panel.innerHTML = bswHtml(`<span class="bsw-hslot" id="bs-hslot"></span>
+      <button class="sm-hbtn bsw-lb" data-a="new">${uiIcon('plus')}<span>New monster</span></button>
+      <button class="sm-hbtn primary bsw-lb" data-a="import"><span>Import</span><span class="sm-chev"></span></button>
+      ${ib('new', 'plus', 'New monster')}${ib('import', 'download', 'Import')}`,
+  `<div class="bs-importbar">
       <textarea id="bs-links" spellcheck="false" placeholder="Paste one or more monster page links, one per line"></textarea>
       <div class="col"><button class="sm-hbtn primary" data-a="go"><span>Import</span></button><button class="sm-hbtn" data-a="no-import"><span>Cancel</span></button></div>
     </div>
+    <div class="bsw-top" id="bs-top">
     <div class="sm-ltb bs-filters">
       <span class="sm-tick" id="bs-tickall"></span>
       <span class="bs-fbtns"></span>
       <span class="bs-acts"><span class="cnt on bs-picked"></span>
-        <button class="sm-hbtn" data-a="dup">${uiIcon('dup')}<span>Duplicate</span></button>
-        <button class="sm-hbtn" data-a="export">${uiIcon('export')}<span>Export</span></button>
-        <button class="sm-hbtn danger" data-a="del">${uiIcon('trash')}<span>Delete</span></button></span>
+        <button class="sm-hbtn" data-a="dup" title="Duplicate">${uiIcon('dup')}<span>Duplicate</span></button>
+        <button class="sm-hbtn" data-a="export" title="Export">${uiIcon('export')}<span>Export</span></button>
+        <button class="sm-hbtn danger" data-a="del" title="Delete">${uiIcon('trash')}<span>Delete</span></button></span>
       <span class="end bs-shown"></span>
     </div>
-    <div id="bs-queue" class="bs-queue" style="display:none"></div>
-    <div class="bs-wrap"><div id="bs-table"></div><div id="bs-page" style="display:none"></div></div>
-    <input type="file" id="bs-file" accept=".json,.pdf,application/json,application/pdf" style="display:none">
-  </div>`;
-  document.body.appendChild(modal);
-  const panel = _bsEl('bs-panel');
+    <div id="bs-queue" class="bs-queue" style="display:none"></div></div>`,
+  `<div class="bsw-ltop" id="bs-ltop"><label class="sm-field">${uiIcon('search')}<input id="bs-search" placeholder="Search by name" spellcheck="false" autocomplete="off"></label>
+      <button class="sm-hbtn bsw-fold" id="bs-fold" title="Filters">${uiIcon('filter')}</button></div>
+    <div id="bs-table"></div>`,
+  `<div id="bs-page" style="display:none"></div>
+    <input type="file" id="bs-file" accept=".json,.pdf,application/json,application/pdf" style="display:none">`);
+  document.body.appendChild(panel);
 
   bpWire(_bsEl('bs-page'), {
     block: () => cbState.blocks[bs.open],
@@ -348,69 +424,31 @@ function initBestiary() {
     edited: field => {
       if (field !== 'name' && field !== 'source' && field !== 'meta' && field !== 'cr' && field !== 'ac' && field !== 'hp') return;
       const b = cbState.blocks[bs.open];
-      const h = _bsEl('bs-page').querySelector('.bs-page-head h2');
-      h.textContent = b.name;
+      _bsEl('bs-page').querySelector('.bs-page-head h2').textContent = b.name;
+      bswCrumbs([t('Bestiary'), b.name]);
       bestiaryRender();
     },
     redraw: _bsRenderPage,
   });
+  bcInit(_bsEl('bs-page'));
+  bswInit(_bsGo, bswdMode, bswdApply);
+  bswdInit();
 
   btn.addEventListener('click', () => bestiarySetOpen(!bsIsOpen()));
-  modal.addEventListener('mousedown', e => {
-    if (e.target === modal) { bestiarySetOpen(false); return; }
-    if (bs.pop && !bs.pop.contains(e.target) && !e.target.closest('[data-filter], [data-a="import"]')) _bsClosePop();
+  panel.addEventListener('mousedown', e => {
+    // The map's own handlers listen on the document; nothing pressed in here is theirs.
+    e.stopPropagation();
     // Shift+click picks a range; without this the browser selects the text between.
     if (e.shiftKey && e.target.closest('tbody tr')) e.preventDefault();
     // Keys go to the window, not to the map, whatever was clicked inside it.
     if (!e.target.closest('input, textarea, select, button, [contenteditable]')) setTimeout(() => panel.focus());
   });
-  // The map listens on the document; nothing pressed in here is the map's.
-  modal.addEventListener('keydown', e => { _bsKey(e); e.stopPropagation(); });
-  // A key pressed with nothing focused lands on the body, outside the window, while it is open.
-  // The fight table, its menus and a dialog sit above the veil and keep their own keys.
-  document.addEventListener('keydown', e => {
-    if (!bsIsOpen() || modal.contains(e.target) || (bs.pop && bs.pop.contains(e.target))) return;
-    if (e.target.closest && e.target.closest('#cb-fight, #cb-stat, #cf-menu, #cb-menu, #cd-anchor')) return;
-    _bsKey(e);
-    e.stopPropagation();
+  document.addEventListener('mousedown', e => {
+    if (bs.pop && !bs.pop.contains(e.target) && !e.target.closest('#bs-panel [data-filter], #bs-panel [data-a="import"], #bs-fold')) _bsClosePop();
   }, true);
-
-  modal.addEventListener('click', e => {
-    const t = e.target, a = t.closest('[data-a]'), act = a && a.dataset.a;
-    if (act === 'close') return bestiarySetOpen(false);
-    if (act === 'new') return _bsNew();
-    if (act === 'import') return _bsImportMenu(a);
-    if (act === 'go') return _bsStartImport();
-    if (act === 'no-import') { bs.importing = false; return bestiaryRender(); }
-    if (t.closest('#bs-tickall')) {
-      if (bs.picked.size) bs.picked.clear(); else _bsShown().forEach(b => bs.picked.add(b.id));
-      return bestiaryRender();
-    }
-    if (act === 'dup' || act === 'dup-open') return _bsAdd(act === 'dup' ? [...bs.picked].map(id => cbState.blocks[id]) : [cbState.blocks[bs.open]]);
-    if (act === 'del' || act === 'del-open') return _bsDelete(act === 'del' ? [...bs.picked] : [bs.open]);
-    if (act === 'export') return _bsExport();
-    if (act === 'edit') { bs.editing = !bs.editing; return _bsRenderPage(); }
-    if (act === 'unpage') { bs.open = null; bs.editing = false; return _bsRenderPage(); }
-    if (act === 'more') { bs.more = !bs.more; return bestiaryRender(); }
-    if (act === 'clear') { bs.f = bsNoFilter(); _bsEl('bs-search').value = ''; return bestiaryRender(); }
-    const q = t.closest('[data-q]');
-    if (q) {
-      if (q.dataset.q === 'retry') cbImportRetry(+q.dataset.qid, _bsImported);
-      else { cbImportDrop(+q.dataset.qid); bestiaryRender(); }
-      return;
-    }
-    const f = t.closest('[data-filter]');
-    if (f) return _bsFilterPop(f, f.dataset.filter);
-    const th = t.closest('[data-sort]');
-    if (th) {
-      const k = th.dataset.sort;
-      // A first press on CR shows the strongest first; everything else starts A to Z.
-      bs.sort = { k, d: bs.sort.k === k ? -bs.sort.d : (k === 'cr' ? -1 : 1) };
-      return bestiaryRender();
-    }
-    const row = t.closest('#bs-table tbody tr');
-    if (row) _bsPick(row.dataset.id, e);
-  });
+  // Only from inside the window: a key on the map or anywhere else is never the Bestiary's.
+  panel.addEventListener('keydown', e => { _bsKey(e); e.stopPropagation(); });
+  panel.addEventListener('click', _bsClick);
   _bsEl('bs-search').addEventListener('input', e => { bs.f.q = e.target.value; bestiaryRender(); });
   _bsEl('bs-links').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) _bsStartImport(); });
   // One input for both kinds: the extension says whether it is an export or a book.

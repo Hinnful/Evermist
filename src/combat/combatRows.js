@@ -54,7 +54,7 @@ function cbRender() {
   const list = document.getElementById('cb-list');
   if (!list) return;
   if (combatReviveRows(cbState.rows)) cbSaveSoon();
-  const shown = cbStatRowId(), ex = cbState.rows.filter(r => r.side !== 'ally' && !String(r.hp || '').trim() && combatFirstNum(cbRowBlock(r).hp)).slice(0, 2);   // the HP line's sample
+  const shown = bcRowId(), ex = cbState.rows.filter(r => r.side !== 'ally' && !String(r.hp || '').trim() && combatFirstNum(cbRowBlock(r).hp)).slice(0, 2);   // the HP line's sample
   const { live, gone } = combatRenderOrder(cbState.rows);
   list.innerHTML = (cbState.rows.length ? '' : '<div class="cb-empty">No creatures yet.</div>') + live.map(r => _cbRowHtml(r, shown, ex)).join('') +
     (gone.length ? `<div class="cb-fold${_cbFoldOpen ? ' open' : ''}" data-fold><span class="sm-chev"></span><span>Defeated</span><span class="n" data-no-i18n>${gone.length}</span></div>` +
@@ -123,7 +123,7 @@ function initCombatRows(fight, list) {
     const b = t.closest('[data-b]');
     if (b) {
       const a = b.dataset.b;
-      if (a === 'stat') cbOpenStat(r);
+      if (a === 'stat') bcOpen(r);
       if (a === 'dup') _cbDuplicateRow(r);
       if (a === 'side' && b.dataset.side !== (r.side === 'ally' ? 'ally' : 'enemy')) _cbSwitchSide(r);
       if (a === 'del') _cbRemoveRow(r);
@@ -150,7 +150,7 @@ function initCombatRows(fight, list) {
 
 function _cbRowItems(r) {
   return [
-    { label: 'Open stat block', pick: () => cbOpenStat(r) },
+    { label: 'Open stat block', pick: () => bcOpen(r) },
     { label: 'Duplicate', key: 'Ctrl+D', pick: () => _cbDuplicateRow(r) },
     { label: r.side === 'ally' ? 'Make enemy' : 'Make ally', pick: () => _cbSwitchSide(r) },
     { label: 'Conditions', key: '›', pick: rect => _cbCondMenu(r, rect) },

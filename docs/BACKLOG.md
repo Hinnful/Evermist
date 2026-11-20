@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 305."
+description: "Open work only. 8 open items; IDs run to 306."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.17.1**: a revealed room no longer slips back into the fog after a restart on a slow computer, and a backup restored right after a map delete keeps that map. **5.17.0**: the fight table is smaller and easier to run. **5.16.0**: a room can be made of separate parts, and a two-map column has the edit row. **5.15.0**: rooms and effects get their own edit row. **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.18.0**: the Bestiary is a free window beside the fight table, and a fight row's stat block opens as its copy's page there. **5.17.1**: a revealed room no longer slips back into the fog after a restart on a slow computer, and a backup restored right after a map delete keeps that map. **5.17.0**: the fight table is smaller and easier to run. **5.16.0**: a room can be made of separate parts, and a two-map column has the edit row. **5.15.0**: rooms and effects get their own edit row. **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -135,19 +135,6 @@ Edge squares grid rule and one colour per material (`docs/decisions/map-effects.
 **Needs prototype looks for the DM to pick from, one effect per round.**
 **Play · Player**
 
-### 302. The stat block from the fight table
-Filed 2026-11-20 from 296. The row's stat block button opens the editing popup beside the table, which reads as a cut-down
-stat block mid-fight (no lore, notes, saves column or dice highlights). The DM leans to opening the Bestiary window itself; the
-open condition is that it must show the row's own copy (a monster typed by hand has no Bestiary entry, and AC or HP changed in
-the fight live only in the copy). Direction picked 2026-11-20: the Bestiary itself stops being a full-window dialog and becomes a
-window like the Notes window, with a collapsible list on the left, and search, filters and controls that fit its width. The
-fight table opens that Bestiary on the row's page, and the popup goes. Its edit, Save to Bestiary and side switch must land
-somewhere. Board picks: one window at three widths (wide keeps today's filters and columns; medium moves search into
-the list, folds the filters into one button and turns New monster and Import into icons; narrow beside the fight hides the
-list). A fight copy is a page only, never a list entry: crumbs "Fight › Zombie 2", a strip naming what differs from the entry
-with Save to Bestiary, and a book icon to the entry. **Needs `/spec`.**
-**Play · DM only**
-
 ### 304. Spells and actions read better on the stat block
 Filed 2026-11-20 from the 302 board. Today a caster's Spellcasting trait is one paragraph: every spell level runs on in one
 block of text, which is hard to read mid-fight. Proposed: one row per spell level with its slots shown as boxes. May grow into
@@ -161,6 +148,13 @@ already lists monsters that have a note, so one monster's note shows in both. Th
 base for the campaign, with monsters as one more kind beside groups, maps, rooms, factions and lore. Not decided: the DM wants
 to talk it through first. **Discussion.**
 **Campaign · Prep · DM only**
+
+### 306. A change made just before closing the app can be lost
+Filed 2026-11-20 from 303. Autosave runs about 5 s after a change. Closing the app starts a last save but does not wait for
+it (`beforeunload` calls `doAutoSave` without awaiting it), so a reveal or a room edit made in the last seconds before the
+window closes may not reach the disk. Small, but it touches saving: the close must wait for the write without hanging a
+close when the store fails.
+**Bug · DM only**
 
 ---
 

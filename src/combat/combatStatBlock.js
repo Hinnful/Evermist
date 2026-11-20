@@ -1,16 +1,11 @@
-// combatStatBlock.js — the stat block editor, and the popup beside the fight table that holds it.
-// The popup edits that row's own copy, which reaches the bestiary only through Save to Bestiary;
-// bestiaryPage.js puts the same editor on an entry's page. combatTracker.js owns saving.
+// combatStatBlock.js — the stat block editor. bestiaryPage.js puts it on an entry's page and bestiaryCopy.js on a
+// fight row's copy, which reaches the bestiary only through Save to Bestiary. combatTracker.js owns saving.
 
 const CB_SECTIONS = ['Traits', 'Actions', 'Bonus actions', 'Reactions', 'Legendary actions', 'Mythic actions', 'Lair actions'];
 const CB_ABILITIES = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
 const CB_LINES = [['ac', 'Armor Class'], ['hp', 'Hit Points'], ['speed', 'Speed']];
 const CB_DETAILS = [['saves', 'Saving Throws'], ['skills', 'Skills'], ['vuln', 'Vulnerabilities'], ['resist', 'Damage Resistances'],
   ['immune', 'Immunities'], ['senses', 'Senses'], ['languages', 'Languages'], ['cr', 'Challenge']];
-
-const CB_STAT_MIN = { w: 320, h: 120 };
-
-let _cbStatRowId = null;
 
 function cbNewBlock(name) {
   const id = combatNextBlockId(cbState.blocks);
@@ -23,8 +18,6 @@ function cbRowBlock(row) {
   if (!row.sb) row.sb = combatSnapshot(combatBlankBlock('', combatBaseName(row.name)));
   return row.sb;
 }
-
-function cbStatRowId() { return _cbStatRowId; }
 
 function _cbEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -60,90 +53,6 @@ function cbEditorHtml(b) {
       ${secs}
       <div class="cb-sb-add cb-sb-addsec" data-addsec>+ Add section</div>
     </div>`;
-}
-
-function cbOpenStat(row) {
-  hintClose('stat-block');
-  _cbStatRowId = row.id;
-  const el = document.getElementById('cb-stat');
-  el.innerHTML = `
-    <div class="cb-head" data-drag>
-      <div class="cp-tabs cb-side-switch">
-        <button class="cp-segtab ${row.side === 'enemy' ? 'active' : ''}" data-side="enemy">Enemy</button>
-        <button class="cp-segtab ${row.side === 'ally' ? 'active' : ''}" data-side="ally">Ally</button>
-      </div>
-      <button class="sm-hbtn cb-save" data-save ${row.sbChanged ? '' : 'disabled'}><span>Save to Bestiary</span></button>
-      <button class="cb-iconbtn" data-close title="Close">${uiIcon('x')}</button>
-    </div>
-    ${cbEditorHtml(cbRowBlock(row))}
-    <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
-  if (el.style.display !== 'block') _cbPlaceBeside(el, document.getElementById('cb-fight'));
-  cbRender();
-}
-
-function cbCloseStat() {
-  document.getElementById('cb-stat').style.display = 'none';
-  _cbStatRowId = null;
-}
-
-function _cbPlaceBeside(el, beside) {
-  const z = cbZoom(), p = beside.getBoundingClientRect();
-  el.style.display = 'block';
-  const w = el.getBoundingClientRect().width;
-  let left = p.left - w - 10;
-  if (left < 8) left = p.right + 10 + w < innerWidth ? p.right + 10 : 8;
-  cbClampPanel(el, left / z, p.top / z);
-}
-
-// The popup resizes from its right edge, bottom edge and corner, and the next one opens at that size.
-function cbResizeStat(handle, e) {
-  const el = document.getElementById('cb-stat'), sb = el.querySelector('.cb-sb'), z = cbZoom();
-  const dir = handle.dataset.rs, x0 = e.clientX, y0 = e.clientY;
-  const box = el.getBoundingClientRect(), sbBox = sb.getBoundingClientRect();
-  const w0 = box.width / z, h0 = sbBox.height / z;
-  // Wider moves the popup left once its right edge reaches the window's; taller stops at the bottom edge.
-  const wMax = (innerWidth - 2 * CB_EDGE) / z, hMax = (innerHeight - CB_EDGE - sbBox.top - (box.bottom - sbBox.bottom)) / z;
-  let w = w0, h = h0;
-  const move = m => {
-    if (dir !== 'b') {
-      el.style.setProperty('--cb-stat-w', (w = Math.floor(Math.min(wMax, Math.max(CB_STAT_MIN.w, w0 + (m.clientX - x0) / z)))) + 'px');
-      cbClampPanel(el, parseFloat(el.style.left), parseFloat(el.style.top));
-    }
-    if (dir !== 'r') el.style.setProperty('--cb-stat-h', (h = Math.floor(Math.min(hMax, Math.max(CB_STAT_MIN.h, h0 + (m.clientY - y0) / z)))) + 'px');
-  };
-  const up = () => {
-    window.removeEventListener('mousemove', move);
-    _cbSaveCols(dir === 'r' ? { statW: w } : dir === 'b' ? { statH: h } : { statW: w, statH: h });
-  };
-  window.addEventListener('mousemove', move);
-  window.addEventListener('mouseup', up, { once: true });
-}
-
-function _cbStatRow() { return cbState.rows.find(r => r.id === _cbStatRowId); }
-
-// An edit to a row's copy lights Save to Bestiary, and its name, AC and max HP are the row's too.
-function _cbCopyEdited(row, field) {
-  const sb = row.sb;
-  if (field === 'name') {
-    const n = (row.name.match(/\s+\d+$/) || [''])[0];
-    row.name = sb.name.trim() + n;
-  }
-  if (field === 'ac') row.ac = combatFirstNum(sb.ac);
-  if (!row.sbChanged) {
-    row.sbChanged = true;
-    const btn = document.querySelector('#cb-stat [data-save]');
-    if (btn) { btn.disabled = false; btn.textContent = 'Save to Bestiary'; }
-  }
-  // An action's text and DEX feed the row's pills and Init hint.
-  if (field === 'name' || field === 'ac' || field === 'hp' || field === 'quick' || field === 'secs' || field === 'abil') cbRender();
-}
-
-function _cbSaveToBestiary(row) {
-  combatAddEntry(cbState.blocks, row.sb);
-  row.sbChanged = false;
-  cbSave();
-  cbOpenStat(row);
-  document.querySelector('#cb-stat [data-save]').textContent = 'Saved';
 }
 
 // The editor's typing and its section buttons, wherever it sits. `ed.block()` is what it edits,
@@ -186,25 +95,5 @@ function cbWireEditor(el, ed) {
       if (!open.length) return;
       cbMenu(open.map(s => ({ label: s, pick: () => { b.secs[s] = [{ n: '', t: '' }]; changed(); } })), t.getBoundingClientRect());
     }
-  });
-}
-
-function initCombatStatBlock() {
-  const el = document.getElementById('cb-stat');
-  const cols = cbCols();
-  if (cols.statW) el.style.setProperty('--cb-stat-w', cols.statW + 'px');
-  if (cols.statH) el.style.setProperty('--cb-stat-h', cols.statH + 'px');
-  cbWireEditor(el, {
-    block: () => { const row = _cbStatRow(); return row && cbRowBlock(row); },
-    edited: field => { const row = _cbStatRow(); if (row) _cbCopyEdited(row, field); },
-    redraw: () => { const row = _cbStatRow(); if (row) cbOpenStat(row); },
-  });
-  el.addEventListener('click', e => {
-    const t = e.target, row = _cbStatRow();
-    if (t.closest('[data-close]')) { cbCloseStat(); cbRender(); return; }
-    if (!row) return;
-    const side = t.closest('[data-side]');
-    if (side) { row.side = side.dataset.side; cbSave(); cbOpenStat(row); return; }
-    if (t.closest('[data-save]')) _cbSaveToBestiary(row);
   });
 }

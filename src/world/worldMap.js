@@ -550,12 +550,12 @@ function worldMapSelect(sel) {
 function _wmOwnKeys(target) {
   if (!target || !target.closest) return false;
   if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return true;
-  return !!target.closest('#cd-anchor, #bs-modal, #cl-anchor, .sm-toast, #mt-modal, #notes-window, .nw-menu, .cb-panel');
+  return !!target.closest('#cd-anchor, #bs-panel, .bs-pop, #cl-anchor, .sm-toast, #mt-modal, #notes-window, .nw-menu, .cb-panel');
 }
 
 function _wmOverlayUp() {
   const shown = id => { const el = document.getElementById(id); return !!el && el.style.display !== 'none' && el.style.display !== ''; };
-  return bsIsOpen() || shown('cd-anchor') || shown('cl-anchor') || shown('mt-modal');
+  return shown('cd-anchor') || shown('cl-anchor') || shown('mt-modal');
 }
 
 function worldMapKeys(e) {

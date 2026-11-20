@@ -61,6 +61,7 @@ function _cbLoad() {
   // Entries imported before statBlockJoinHp read a split HP as its first half.
   const copies = cbState.fights.flatMap(f => combatFightRows(cbState, f)).map(r => r.sb).filter(Boolean);
   for (const b of Object.values(cbState.blocks).concat(copies)) b.hp = statBlockJoinHp(b.hp);
+  if (combatBackfillUids(cbState.blocks, combatMintUid)) cbSaveSoon();
 }
 
 // Null when there is nothing to carry, and the zip then looks exactly as it always did.
@@ -106,19 +107,13 @@ function _cbDuplicateRow(r) {
 function _cbSwitchSide(r) {
   r.side = r.side === 'ally' ? 'enemy' : 'ally';
   cbSave();
-  if (cbStatRowId() === r.id) cbOpenStat(r); else cbRender();
+  cbRender();
 }
 
-// A row edit is an edit to its copy: the popup, if it shows this row, follows without redrawing.
+// A row edit is an edit to its copy, and the copy's page in the Bestiary follows it.
 function _cbRowEdited(r, field) {
   r.sbChanged = true;
-  if (cbStatRowId() !== r.id) return;
-  const pop = document.getElementById('cb-stat');
-  const f = pop.querySelector(`[data-p="${field}"]`);
-  if (f) f.textContent = r.sb[field];
-  const btn = pop.querySelector('[data-save]');
-  btn.disabled = false;
-  btn.textContent = 'Save to Bestiary';
+  bcRowEdited(r, field);
 }
 
 // A row with no max HP yet gives its first typed number to the stat block, which then holds it.
@@ -149,7 +144,7 @@ function _cbRemoveRow(r) {
   _cbDeleted.push({ fightId: cbState.openId, row: r, at: cbState.rows.indexOf(r) });
   cbState.rows = cbState.rows.filter(x => x !== r);
   document.getElementById('cb-fight').focus({ preventScroll: true });
-  if (cbStatRowId() === r.id) cbCloseStat();
+  bcClose(r.id);
   cbSave();
   cbRender();
   cbFightsTitle();
@@ -398,7 +393,7 @@ function _cbEditAttacks(cell, r) {
       if (t) sb.quick = t; else delete sb.quick;
       r.sbChanged = true;
       cbSave();
-      if (cbStatRowId() === r.id) cbOpenStat(r);
+      bcRefresh(r);
     }
     cbRender();
   };
@@ -456,7 +451,7 @@ function cbSetOpen(open) {
   dockRefreshRail();
   if (open) { cbRender(); cbFightsTitle(); _cbPlaceFight(el); hintsFightOpened(cbState.rows.length); return; }
   cbCloseMenu(); cbCloseFights(); hintsFightClosed();
-  if (cbStatRowId()) cbCloseStat();
+  bcClose();
 }
 
 function _cbColHead(label, col, attrs = '') {
@@ -475,34 +470,26 @@ function initCombatTracker() {
       _cbColHead('HP', 'hp')}${_cbColHead('AC', 'ac', ' class="c"')}<span><span class="lbl">Attacks</span></span></div>
     <div id="cb-list"></div>
     <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
-  const stat = document.createElement('div');
-  stat.id = 'cb-stat';
-  stat.className = 'cb-panel';
-  document.body.append(fight, stat);
+  document.body.append(fight);
   _cbApplyCols(fight);
-  window.addEventListener('resize', () => {
-    if (fight.style.display === 'block') _cbPlaceFight(fight);
-    if (stat.style.display === 'block') cbClampPanel(stat, parseFloat(stat.style.left), parseFloat(stat.style.top));
-  });
+  window.addEventListener('resize', () => { if (fight.style.display === 'block') _cbPlaceFight(fight); });
 
-  for (const el of [fight, stat]) {
-    // The map's own handlers listen on the document; nothing typed or clicked here is theirs.
-    el.addEventListener('keydown', e => {
-      if (e.key !== 'Escape') e.stopPropagation();
-      const text = e.target.matches('input, textarea, [contenteditable]:not([contenteditable="false"])');
-      if (el === fight && !text && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey && _cbUndoDelete()) e.preventDefault();
-    });
-    el.addEventListener('mousedown', e => {
-      e.stopPropagation();
-      const size = e.target.closest('.cb-colsize');
-      if (size) { e.preventDefault(); _cbDragCol(size, e); return; }
-      const rs = e.target.closest('.cb-rs');
-      if (rs) { e.preventDefault(); (el === stat ? cbResizeStat : _cbResizePanel)(rs, e); return; }
-      // A press on a control or a field is that control's; only the header's empty space drags.
-      const head = e.target.closest('[data-drag]');
-      if (head && !e.target.closest('button, input, label, .sm-field, [contenteditable]')) { e.preventDefault(); _cbDragPanel(el, e); }
-    });
-  }
+  // The map's own handlers listen on the document; nothing typed or clicked here is theirs.
+  fight.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') e.stopPropagation();
+    const text = e.target.matches('input, textarea, [contenteditable]:not([contenteditable="false"])');
+    if (!text && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey && _cbUndoDelete()) e.preventDefault();
+  });
+  fight.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    const size = e.target.closest('.cb-colsize');
+    if (size) { e.preventDefault(); _cbDragCol(size, e); return; }
+    const rs = e.target.closest('.cb-rs');
+    if (rs) { e.preventDefault(); _cbResizePanel(rs, e); return; }
+    // A press on a control or a field is that control's; only the header's empty space drags.
+    const head = e.target.closest('[data-drag]');
+    if (head && !e.target.closest('button, input, label, .sm-field, [contenteditable]')) { e.preventDefault(); _cbDragPanel(fight, e); }
+  });
 
   const list = document.getElementById('cb-list');
   list.addEventListener('input', e => {
@@ -578,7 +565,6 @@ function initCombatTracker() {
   document.getElementById('cb-close').addEventListener('click', () => cbSetOpen(false));
   document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
 
-  initCombatStatBlock();
   initBestiary();
   initCombatHead(); initCombatFights(); initCombatSort(); initInitiativeTv();
 }

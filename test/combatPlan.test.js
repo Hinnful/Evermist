@@ -285,3 +285,30 @@ describe('a monster or row from a file or backup', () => {
     assert.equal(combatCleanRow(null), null);
   });
 });
+
+describe('a fight copy and its entry', () => {
+  const { combatEntryOf, combatCopyDiffs, combatBackfillUids } = require('../src/combat/combatPlan.js');
+  const blocks = { b1: { id: 'b1', uid: 'u1', name: 'Zombie', source: 'SRD', ac: '8', hp: '22 (3d8+9)' },
+    b2: { id: 'b2', name: 'Goblin', source: 'SRD', ac: '15', hp: '7' } };
+  it('finds the entry by uid, and by base name and source for a copy with none', () => {
+    assert.equal(combatEntryOf(blocks, { uid: 'u1', name: 'Other' }).id, 'b1');
+    assert.equal(combatEntryOf(blocks, { name: 'Goblin 2', source: 'SRD' }).id, 'b2');
+    assert.equal(combatEntryOf(blocks, { name: 'Goblin', source: 'MM' }), null);
+    assert.equal(combatEntryOf(blocks, { uid: 'gone', name: 'Zombie', source: 'SRD' }), null);
+    assert.equal(combatEntryOf(blocks, null), null);
+    // A row typed by hand has a blank copy with no source: it never lands on a hand-made entry of its name.
+    assert.equal(combatEntryOf({ b9: { id: 'b9', name: 'Bandit', source: '', uid: 'u9' } }, { name: 'Bandit', source: '' }), null);
+  });
+  it('names only the AC and HP that differ', () => {
+    assert.deepEqual(combatCopyDiffs({ ac: '10', hp: '22' }, blocks.b1), { ac: ['10', '8'] });
+    assert.deepEqual(combatCopyDiffs({ ac: '8 (natural)', hp: '30' }, blocks.b1), { hp: ['30', '22'] });
+    assert.deepEqual(combatCopyDiffs({ ac: '8' }, null), {});
+  });
+  it('gives every entry without a uid a fresh one and leaves the rest', () => {
+    const b = { a: { uid: 'x' }, b: {}, c: {} };
+    let n = 0;
+    const mint = () => ['x', 'y', 'y', 'z'][n++];
+    assert.equal(combatBackfillUids(b, mint), 2);
+    assert.deepEqual([b.a.uid, b.b.uid, b.c.uid], ['x', 'y', 'z']);
+  });
+});

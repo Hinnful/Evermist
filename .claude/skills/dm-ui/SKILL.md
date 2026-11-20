@@ -382,13 +382,16 @@ slider** (`.cp-slider`'s markup, never a styled native range).
 
 ## Windows
 
-The Bestiary opens from the rail as a centred window over a veil; the
-fight table stays a free window. Backup Export and Import are in Settings' Campaign section.
+The Bestiary and the fight table are free windows. The Bestiary has its own shell
+(`bestiaryWindow.js`): a header with a list toggle, back/forward, crumbs and close, moved by the
+header, resized by its corner, kept 8px inside the app, place and size in `evermist.bestiaryWin`.
+It sits below the fight table and above Notes, and switches by its own width (`bestiaryWidths.js`:
+wide, medium, narrow). A fight row's stat block opens as a copy page in it (`bestiaryCopy.js`). Backup Export and Import are in Settings' Campaign section.
 
 - **Every window is built from the parts in `sceneManager.css`**: `.sm-win` with `.w-s`
   (360, a question or progress), `.w-m` (480, a list) or `.w-l` (720, a reference);
   `.sm-whead` 48px with a 14px title and the `.sm-x` close last; `.sm-wbody`, `.sm-wfoot`.
-  The Bestiary fills the screen. A free window's title is the dock's 12px bold.
+  A free window's title is the dock's 12px bold.
 - **The title repeats the label of its opening button**, word for word.
 - **Controls in a window are 28px with no outline**, a focus ring only on keyboard focus.
   `.sm-hbtn` is secondary, `.primary` the one action the window exists for, `.danger` the
