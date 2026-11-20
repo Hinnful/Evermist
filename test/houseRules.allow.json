@@ -17,7 +17,6 @@
     "src/state.js": 11
   },
   "fileLines": {
-    "src/combat/combatTracker.js": 647,
     "src/fog/fog.js": 740,
     "src/fog/fogGeometry.js": 757,
     "src/rooms/vttPlan.js": 621

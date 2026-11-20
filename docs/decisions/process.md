@@ -536,3 +536,8 @@ sharing the checkout have worked without trouble. See "All work happens in the o
 ### A pre-mortem in /redteam · `REJECTED` (2026-11-15)
 `/redteam` rarely runs, and each run costs time and tokens with no way to measure the gain. `/spec` keeps its red-team
 recommendation line, which decides whether `/redteam` runs.
+
+### Mockups use the app's real markup, and a UI build is driven before it is shown · `SETTLED` (2026-11-20)
+Ten boards for the fight table were redrawn by eye and drifted from the real window. A mockup of an existing window is now built on the
+app's own CSS and markup. A UI build is checked with real CDP input in Russian and close-up screenshots before the DM sees it, and a fix
+to one handle is checked on every sibling control.

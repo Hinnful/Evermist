@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 301."
+description: "Open work only. 7 open items; IDs run to 302."
 metadata: 
   node_type: memory
   type: project
@@ -142,18 +142,13 @@ Edge squares grid rule and one colour per material (`docs/decisions/map-effects.
 **Needs prototype looks for the DM to pick from, one effect per round.**
 **Play · Player**
 
-### 296. Monsters at the fight table are awkward to handle
-Filed 2026-11-19. The fight table lost a proper interface for its monsters. Deleting a monster and opening its stat
-block both take far too much effort now. The monster rows need simplifying or a rework. **Waits on the DM's call; needs
-mockups.**
+### 302. The stat block from the fight table
+Filed 2026-11-20 from 296. The row's stat block button opens the editing popup beside the table, which reads as a cut-down
+stat block mid-fight (no lore, notes, saves column or dice highlights). The DM leans to opening the Bestiary window itself; the
+open condition is that it must show the row's own copy (a monster typed by hand has no Bestiary entry, and AC or HP changed in
+the fight live only in the copy). Board: Bestiary opened on the fight's copy with a "From the fight" strip, the popup removed.
+**Waits on the DM's call.**
 **Play · DM only**
-
-### 301. Edit every part of a room at once, as Figma does
-Filed 2026-11-19 from 300. A double-click on a room of several parts opens corners on its clicked part only; a click on another
-part moves the edit there. The DM wants it exactly as Figma: the edit shows every part's corners at once, and any corner drags
-with no extra click. Reverses the departure from Figma recorded in "A room can be made of separate pieces"
-(`docs/decisions/ui-and-control-panel.md`). **Patch-sized; no open decision.**
-**Prep · DM only**
 
 ---
 

@@ -4,7 +4,7 @@
 // that keeps it off the TV. No DOM. Tested.
 
 const MP = (typeof module !== 'undefined' && module.exports) ? require('../combat/combatPlan.js')
-  : { combatRowFromEntry, combatSearchBlocks, combatBaseName, combatDuplicateRow };
+  : { combatRowFromEntry, combatSearchBlocks, combatBaseName, combatDuplicateRow, combatAddIndex };
 
 const MCP_PLACE_W = 360, MCP_PLACE_H = 260, MCP_GAP = 60;
 const MCP_MAX_COUNT = 20;
@@ -156,7 +156,7 @@ function mcpEditRows(blocks, rows, ops, nextId) {
     out.changed = hit.length > 0 || out.changed;
   }
   const built = mcpFightRows(blocks, o.add, id, list);
-  list.push(...built.rows);
+  list.splice(MP.combatAddIndex(list), 0, ...built.rows);   // above the Defeated line
   id = built.nextId;
   out.missing = built.missing;
   out.changed = out.changed || built.rows.length > 0;

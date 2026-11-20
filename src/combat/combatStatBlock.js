@@ -92,8 +92,7 @@ function _cbPlaceBeside(el, beside) {
   const w = el.getBoundingClientRect().width;
   let left = p.left - w - 10;
   if (left < 8) left = p.right + 10 + w < innerWidth ? p.right + 10 : 8;
-  el.style.left = (left / z) + 'px';
-  el.style.top = (Math.max(8, p.top) / z) + 'px';
+  cbClampPanel(el, left / z, p.top / z);
 }
 
 // The popup resizes from its right edge, bottom edge and corner, and the next one opens at that size.
@@ -102,11 +101,15 @@ function cbResizeStat(handle, e) {
   const dir = handle.dataset.rs, x0 = e.clientX, y0 = e.clientY;
   const box = el.getBoundingClientRect(), sbBox = sb.getBoundingClientRect();
   const w0 = box.width / z, h0 = sbBox.height / z;
-  const wMax = (innerWidth - box.left) / z - 8, hMax = (innerHeight - sbBox.top) / z - 8;
+  // Wider moves the popup left once its right edge reaches the window's; taller stops at the bottom edge.
+  const wMax = (innerWidth - 2 * CB_EDGE) / z, hMax = (innerHeight - CB_EDGE - sbBox.top - (box.bottom - sbBox.bottom)) / z;
   let w = w0, h = h0;
   const move = m => {
-    if (dir !== 'b') el.style.setProperty('--cb-stat-w', (w = Math.round(Math.min(wMax, Math.max(CB_STAT_MIN.w, w0 + (m.clientX - x0) / z)))) + 'px');
-    if (dir !== 'r') el.style.setProperty('--cb-stat-h', (h = Math.round(Math.min(hMax, Math.max(CB_STAT_MIN.h, h0 + (m.clientY - y0) / z)))) + 'px');
+    if (dir !== 'b') {
+      el.style.setProperty('--cb-stat-w', (w = Math.floor(Math.min(wMax, Math.max(CB_STAT_MIN.w, w0 + (m.clientX - x0) / z)))) + 'px');
+      cbClampPanel(el, parseFloat(el.style.left), parseFloat(el.style.top));
+    }
+    if (dir !== 'r') el.style.setProperty('--cb-stat-h', (h = Math.floor(Math.min(hMax, Math.max(CB_STAT_MIN.h, h0 + (m.clientY - y0) / z)))) + 'px');
   };
   const up = () => {
     window.removeEventListener('mousemove', move);
@@ -188,8 +191,7 @@ function cbWireEditor(el, ed) {
 
 function initCombatStatBlock() {
   const el = document.getElementById('cb-stat');
-  let cols = {};
-  try { cols = JSON.parse(localStorage.getItem(CB_COLS_KEY) || '{}') || {}; } catch (_) {}
+  const cols = cbCols();
   if (cols.statW) el.style.setProperty('--cb-stat-w', cols.statW + 'px');
   if (cols.statH) el.style.setProperty('--cb-stat-h', cols.statH + 'px');
   cbWireEditor(el, {

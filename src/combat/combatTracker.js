@@ -4,12 +4,15 @@
 const CB_KEY = 'evermist.combat';
 const CB_FIGHTS_KEY = 'evermist.combatFights';
 const CB_POS_KEY = 'evermist.combatPos';
-const CB_COLS_KEY = 'evermist.combatCols';
-const CB_COL_MIN = { name: 90, hp: 80, cond: 70, atk: 110 };
+// The widths moved to a new key when Conditions joined the Name column; the old key stays as the previous release left it.
+const CB_COLS_KEY = 'evermist.fightCols';
+const CB_COLS_OLD_KEY = 'evermist.combatCols';
+const CB_COL_MIN = { init: 36, name: 90, hp: 80, ac: 36, atk: 110 };
+// The table's margin from the window's edges, in window px.
+const CB_EDGE = 8;
 const CB_CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible',
   'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Concentrating'];
 const CB_ICON_X = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>';
-const CB_ICON_DUP = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><path d="M8.5 1.5h-6a1 1 0 0 0-1 1v6"/></svg>';
 
 let _cbSaveTimer = null;
 let _cbSaveFailed = false;
@@ -77,59 +80,15 @@ function cbMergePayload(json) {
   cbFightsTitle();
   return { ok: true };
 }
-
-// ── The table ────────────────────────────────────────────────────────────────
-
-function _cbRowOf(el) {
-  const r = el.closest('.cb-row');
-  return r && cbState.rows.find(x => x.id === Number(r.dataset.id));
-}
-
-function _cbSumText(v) { return v === null ? '' : Number.isNaN(v) ? '?' : String(v); }
-
-function _cbCondCell(r) {
-  return r.conds.map(c => `<span class="cb-chip">${_cbEsc(c)}</span>`).join('');
-}
-
-function _cbHpClass(hp) { return hp.down ? 'dead' : hp.bloodied ? 'low' : ''; }
-
-// The DM's own line once written, else what the stat block's actions read as.
-function _cbAtkCell(sb) {
-  if (sb.quick !== undefined) return `<span class="cb-atk own" data-no-i18n>${_cbEsc(sb.quick)}</span>`;
-  return `<span class="cb-atk pills" data-no-i18n>${combatAttacks(sb).map(cbAttackPill).join('')}</span>`;
-}
-
-function cbRender() {
-  const list = document.getElementById('cb-list');
-  if (!list) return;
-  const shown = cbStatRowId(), ex = cbState.rows.filter(r => r.side !== 'ally' && !String(r.hp || '').trim() && combatFirstNum(cbRowBlock(r).hp)).slice(0, 2);   // the HP line's sample
-  list.innerHTML = (cbState.rows.length ? '' : '<div class="cb-empty">No creatures yet.</div>') + cbState.rows.map(r => {
-    const sb = cbRowBlock(r), max = combatFirstNum(sb.hp), ac = combatFirstNum(sb.ac);
-    const hp = combatRowHpState(max, r.hp), hint = max || ac ? combatAbilityMod(sb.abil[1]) : '';
-    const cls = ['cb-row', 'side-' + (r.side === 'ally' ? 'ally' : 'enemy'), _cbHpClass(hp), r.id === shown ? 'shown' : ''].join(' ');
-    return `<div class="${cls}" data-id="${r.id}">
-      <div class="cb-cell num init"><input data-f="init" value="${_cbEsc(r.init)}" placeholder="${_cbEsc(hint)}" inputmode="numeric" spellcheck="false"></div>
-      <div class="cb-cell name"><input data-f="name" value="${_cbEsc(r.name)}" placeholder="Name" spellcheck="false"></div>
-      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"${ex.includes(r) ? ` class="ex" placeholder="${t(ex[0] === r ? '-12 damage' : '+5 healing')}"` : ''}><span class="sum">${_cbSumText(hp.value)}</span></div>
-      <div class="cb-cell num ac"><input data-f="ac" value="${_cbEsc(r.ac || ac)}" inputmode="numeric" spellcheck="false"${ac ? ' class="sbn"' : ''}></div>
-      <div class="cb-cell cond" data-cond>${_cbCondCell(r)}</div>
-      <div class="cb-cell atk" title="Double-click to write your own line">${_cbAtkCell(sb)}
-        <span class="cb-acts">
-          <span class="cp-tabs cb-side-switch">${['enemy', 'ally'].map(s => `<button class="cp-segtab${(r.side === 'ally') === (s === 'ally') ? ' active' : ''}" data-b="side" data-side="${s}" title="${s === 'ally' ? 'Ally' : 'Enemy'}">${uiIcon(s === 'ally' ? 'angel' : 'devil', 14)}</button>`).join('')}</span>
-          <button class="cb-iconbtn" data-b="dup" title="Duplicate (Ctrl+D)">${CB_ICON_DUP}</button>
-          <button class="cb-iconbtn" data-b="more" title="More">${uiIcon('more', 14)}</button>
-        </span></div>
-    </div>`;
-  }).join('');
-  cbSortRefresh();
-}
+// ── Row edits ────────────────────────────────────────────────────────────────
 
 function _cbAddRow(side) {
   const r = { id: cbState.nextId++, init: '', name: '', hp: '', ac: '', conds: [], side, sbChanged: false };
-  cbState.rows.push(r);
+  const before = cbState.rows.length;
+  cbState.rows.splice(combatAddIndex(cbState.rows), 0, r);
   cbSave();
   cbRender();
-  cbFightsTitle(); hintsFightRowAdded(cbState.rows.length - 1, r.id);
+  cbFightsTitle(); hintsFightRowAdded(before, r.id);
   const inp = document.querySelector(`#cb-list .cb-row[data-id="${r.id}"] [data-f="name"]`);
   inp.focus();
   inp.scrollIntoView({ block: 'nearest' });
@@ -173,27 +132,38 @@ function _cbTakeMax(r) {
   _cbRowEdited(r, 'hp');
 }
 
+// Ctrl+Z in the table puts a deleted row back where it was, while its fight is still the open one.
+let _cbDeleted = [];   // [{ fightId, row, at }]
+
+function _cbRenderKeepFocus(to) {
+  const rowEl = to && to.closest && to.closest('#cb-list .cb-row'), f = to && to.dataset && to.dataset.f;
+  cbRender();
+  if (!rowEl || !f) return;
+  const inp = document.querySelector(`#cb-list .cb-row[data-id="${rowEl.dataset.id}"] [data-f="${f}"]`);
+  if (!inp) return;
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
 function _cbRemoveRow(r) {
+  _cbDeleted.push({ fightId: cbState.openId, row: r, at: cbState.rows.indexOf(r) });
   cbState.rows = cbState.rows.filter(x => x !== r);
+  document.getElementById('cb-fight').focus({ preventScroll: true });
   if (cbStatRowId() === r.id) cbCloseStat();
   cbSave();
   cbRender();
   cbFightsTitle();
 }
 
-function _cbRowItems(r) {
-  return [
-    { label: 'Open stat block', pick: () => cbOpenStat(r) },
-    { label: 'Duplicate', key: 'Ctrl+D', pick: () => _cbDuplicateRow(r) },
-    { label: r.side === 'ally' ? 'Make enemy' : 'Make ally', pick: () => _cbSwitchSide(r) },
-    { sep: true },
-    ..._cbAddItems(),
-    { sep: true },
-    { label: 'Delete', danger: true, pick: () => _cbRemoveRow(r) },
-  ];
-}
-function _cbAddItems() {
-  return [{ label: 'Add enemy', pick: () => _cbAddRow('enemy') }, { label: 'Add ally', pick: () => _cbAddRow('ally') }];
+function _cbUndoDelete() {
+  const d = _cbDeleted.pop();
+  if (!d) return false;
+  if (d.fightId !== cbState.openId) { _cbDeleted = []; return false; }
+  cbState.rows.splice(Math.min(d.at, cbState.rows.length), 0, d.row);
+  cbSave();
+  cbRender();
+  cbFightsTitle();
+  return true;
 }
 
 // ── Menus ────────────────────────────────────────────────────────────────────
@@ -221,7 +191,7 @@ function cbMenu(items, rect, owner) {
     const it = items[+d.dataset.i];
     if (multi) { it.pick(); draw(); return; }
     cbCloseMenu();
-    it.pick();
+    it.pick(rect);
   });
   document.body.appendChild(m);
   const z = cbZoom();
@@ -260,27 +230,12 @@ function cbCloseMenu() {
   document.removeEventListener('keydown', _cbMenuKey, true);
 }
 
-function _cbCondMenu(cell, r) {
-  cbMenu(CB_CONDITIONS.map(c => ({
-    label: c,
-    checked: () => r.conds.includes(c),
-    pick: () => {
-      r.conds = r.conds.includes(c) ? r.conds.filter(x => x !== c) : r.conds.concat(c);
-      cell.innerHTML = _cbCondCell(r);
-      cbSave();
-    },
-  })), cell.getBoundingClientRect(), cell);
-}
-
 // ── Dragging: the panels by their head, a row by a press that travels ────────
 
 function _cbDragPanel(el, e) {
   const z = cbZoom();
   const sx = e.clientX / z - parseFloat(el.style.left || 0), sy = e.clientY / z - parseFloat(el.style.top || 0);
-  const move = m => {
-    el.style.left = (m.clientX / z - sx) + 'px';
-    el.style.top = Math.max(0, m.clientY / z - sy) + 'px';
-  };
+  const move = m => (el.id === 'cb-fight' ? _cbClampFight : cbClampPanel)(el, m.clientX / z - sx, m.clientY / z - sy);
   const up = () => {
     window.removeEventListener('mousemove', move);
     if (el.id === 'cb-fight') {
@@ -314,7 +269,7 @@ function _cbDragRow(rowEl) {
   const move = m => {
     clear();
     target = null;
-    const rows = [...list.querySelectorAll('.cb-row')];
+    const rows = [...list.querySelectorAll('.cb-row:not(.cleaned)')];   // drag never reaches into the Defeated line
     for (const el of rows) {
       const rc = el.getBoundingClientRect();
       if (m.clientY >= rc.top && m.clientY < rc.bottom) { target = el; below = m.clientY > rc.top + rc.height / 2; break; }
@@ -343,16 +298,23 @@ function _cbDragRow(rowEl) {
 }
 
 // A column's width is a viewing preference, so it is kept apart from the fight and out of backups.
+function cbCols() {
+  let raw = null, old = null;
+  try { raw = localStorage.getItem(CB_COLS_KEY); old = localStorage.getItem(CB_COLS_OLD_KEY); } catch (_) {}
+  return combatReadCols(raw, old);
+}
+
+// A column _cbFitWidth shrank on a narrower window goes back to its saved or default width first.
 function _cbApplyCols(el) {
-  let cols = {};
-  try { cols = JSON.parse(localStorage.getItem(CB_COLS_KEY) || '{}') || {}; } catch (_) {}
-  for (const k of Object.keys(CB_COL_MIN)) if (cols[k]) el.style.setProperty('--cb-' + k, cols[k] + 'px');
+  const cols = cbCols();
+  for (const k of Object.keys(CB_COL_MIN)) {
+    if (cols[k]) el.style.setProperty('--cb-' + k, cols[k] + 'px'); else el.style.removeProperty('--cb-' + k);
+  }
   if (cols.listH) el.style.setProperty('--cb-list-h', cols.listH + 'px');
 }
 
 function _cbSaveCols(set) {
-  let cols = {};
-  try { cols = JSON.parse(localStorage.getItem(CB_COLS_KEY) || '{}') || {}; } catch (_) {}
+  const cols = cbCols();
   try { localStorage.setItem(CB_COLS_KEY, JSON.stringify(Object.assign(cols, set))); } catch (_) {}
 }
 
@@ -365,8 +327,11 @@ function _cbResizePanel(handle, e) {
   const h0 = list.getBoundingClientRect().height / z;
   let atk = atk0, h = h0;
   const move = m => {
-    if (dir !== 'b') fight.style.setProperty('--cb-atk', (atk = Math.round(Math.max(CB_COL_MIN.atk, atk0 + (m.clientX - x0) / z))) + 'px');
-    if (dir !== 'r') fight.style.setProperty('--cb-list-h', (h = Math.round(Math.max(40, h0 + (m.clientY - y0) / z))) + 'px');
+    if (dir !== 'b') atk = _cbSetCol(fight, 'atk', atk0 + (m.clientX - x0) / z);
+    if (dir !== 'r') {
+      h = Math.min(Math.floor(_cbFitList(fight)), Math.round(Math.max(40, h0 + (m.clientY - y0) / z)));
+      fight.style.setProperty('--cb-list-h', h + 'px');
+    }
   };
   const up = () => {
     window.removeEventListener('mousemove', move);
@@ -377,14 +342,34 @@ function _cbResizePanel(handle, e) {
   window.addEventListener('mouseup', up, { once: true });
 }
 
+// A wider column never takes the table past the window: a right edge that would pass it pins there and the table
+// moves left, and at the window's width less both margins the column stops. Returns the width written.
+function _cbSetCol(fight, col, want) {
+  const z = cbZoom();
+  let width = Math.round(Math.max(CB_COL_MIN[col], want));
+  fight.style.setProperty('--cb-' + col, width + 'px');
+  const over = fight.getBoundingClientRect().width - (innerWidth - 2 * CB_EDGE);
+  if (over > 0) fight.style.setProperty('--cb-' + col, (width = Math.max(CB_COL_MIN[col], Math.floor(width - over / z))) + 'px');
+  _cbClampFight(fight, parseFloat(fight.style.left), parseFloat(fight.style.top));
+  return width;
+}
+
+// Widths saved on a wider window give way, Attacks first, without touching what is saved.
+function _cbFitWidth(el) {
+  const z = cbZoom(), spans = el.querySelectorAll('.cb-colhdr > span');
+  for (const k of ['atk', 'name', 'hp', 'ac', 'init']) {
+    const over = el.getBoundingClientRect().width - (innerWidth - 2 * CB_EDGE);
+    if (over <= 0) return;
+    const w = spans[Object.keys(CB_COL_MIN).indexOf(k)].getBoundingClientRect().width / z;
+    el.style.setProperty('--cb-' + k, Math.max(CB_COL_MIN[k], Math.floor(w - over / z)) + 'px');
+  }
+}
+
 function _cbDragCol(handle, e) {
   const fight = document.getElementById('cb-fight'), col = handle.dataset.col, z = cbZoom();
   const start = handle.parentElement.getBoundingClientRect().width / z, x0 = e.clientX;
   let width = start;
-  const move = m => {
-    width = Math.round(Math.max(CB_COL_MIN[col], start + (m.clientX - x0) / z));
-    fight.style.setProperty('--cb-' + col, width + 'px');
-  };
+  const move = m => { width = _cbSetCol(fight, col, start + (m.clientX - x0) / z); };
   const up = () => {
     window.removeEventListener('mousemove', move);
     _cbSaveCols({ [col]: width });
@@ -429,15 +414,39 @@ function _cbEditAttacks(cell, r) {
 
 // ── Open, close, wiring ──────────────────────────────────────────────────────
 
+// The list grows down to the window's bottom edge from wherever the panel sits; a taller saved height scrolls in it.
+function _cbFitList(el) {
+  const z = cbZoom(), list = document.getElementById('cb-list'), lr = list.getBoundingClientRect();
+  const room = (innerHeight - CB_EDGE - lr.top - (el.getBoundingClientRect().bottom - lr.bottom)) / z;
+  list.style.maxHeight = Math.max(0, Math.floor(room)) + 'px';
+  return room;
+}
+
+// A panel stays CB_EDGE inside the window. `keepH` is the height, in window px, that must stay in view
+// downwards; the whole panel's when omitted.
+function cbClampPanel(el, left, top, keepH) {
+  const z = cbZoom(), r = el.getBoundingClientRect(), m = CB_EDGE / z;
+  el.style.left = Math.max(m, Math.min(innerWidth / z - r.width / z - m, left)) + 'px';
+  el.style.top = Math.max(m, Math.min(innerHeight / z - m - (keepH === undefined ? r.height : keepH) / z, top)) + 'px';
+}
+
+// Downwards the fight table keeps its header, column titles and one row in view, and the list gives up the rest.
+function _cbClampFight(el, left, top) {
+  const z = cbZoom(), list = document.getElementById('cb-list');
+  const r = el.getBoundingClientRect(), lr = list.getBoundingClientRect();
+  const row = list.firstElementChild ? list.firstElementChild.getBoundingClientRect().height : 40 * z;
+  cbClampPanel(el, left, top, lr.top - r.top + row + r.bottom - lr.bottom);
+  _cbFitList(el);
+}
+
 function _cbPlaceFight(el) {
   const z = cbZoom();
   let pos = null;
   try { pos = JSON.parse(localStorage.getItem(CB_POS_KEY) || 'null'); } catch (_) {}
-  const rect = el.getBoundingClientRect(), w = rect.width / z, h = rect.height / z;
-  const maxL = innerWidth / z - w - 8, maxT = innerHeight / z - Math.min(h, 120);
-  const left = pos ? pos.left : maxL - 8, top = pos ? pos.top : 64 / z;
-  el.style.left = Math.max(8, Math.min(maxL, left)) + 'px';
-  el.style.top = Math.max(8, Math.min(maxT, top)) + 'px';
+  _cbApplyCols(el);
+  _cbFitWidth(el);
+  const w = el.getBoundingClientRect().width / z;
+  _cbClampFight(el, pos ? pos.left : innerWidth / z - w - CB_EDGE / z, pos ? pos.top : 64 / z);
 }
 
 function cbSetOpen(open) {
@@ -450,8 +459,8 @@ function cbSetOpen(open) {
   if (cbStatRowId()) cbCloseStat();
 }
 
-function _cbColHead(label, col) {
-  return `<span><span class="lbl">${label}</span><i class="cb-colsize" data-col="${col}"></i></span>`;
+function _cbColHead(label, col, attrs = '') {
+  return `<span${attrs}><span class="lbl">${label}</span><i class="cb-colsize" data-col="${col}"></i></span>`;
 }
 
 function initCombatTracker() {
@@ -459,12 +468,11 @@ function initCombatTracker() {
   const fight = document.createElement('div');
   fight.id = 'cb-fight';
   fight.className = 'cb-panel';
+  fight.tabIndex = -1;
   fight.innerHTML = `
-    <div class="cb-head" data-drag><span id="cb-fightslot"></span>
-      <button class="sm-hbtn primary" id="cb-add" data-add>${uiIcon('plus')}<span>Add creature</span></button>
-      <button class="cb-iconbtn" id="cb-close" title="Close">${uiIcon('x')}</button></div>
-    <div class="cb-colhdr"><span class="c">Init</span>${_cbColHead('Name', 'name')}${
-      _cbColHead('HP', 'hp')}<span class="c">AC</span>${_cbColHead('Conditions', 'cond')}${_cbColHead('Attacks', 'atk')}</div>
+    ${cbHeadHtml()}
+    <div class="cb-colhdr">${_cbColHead('Init', 'init', ' class="c cb-initsort" title="Sort by initiative"')}${_cbColHead('Name', 'name')}${
+      _cbColHead('HP', 'hp')}${_cbColHead('AC', 'ac', ' class="c"')}<span><span class="lbl">Attacks</span></span></div>
     <div id="cb-list"></div>
     <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
   const stat = document.createElement('div');
@@ -472,18 +480,27 @@ function initCombatTracker() {
   stat.className = 'cb-panel';
   document.body.append(fight, stat);
   _cbApplyCols(fight);
+  window.addEventListener('resize', () => {
+    if (fight.style.display === 'block') _cbPlaceFight(fight);
+    if (stat.style.display === 'block') cbClampPanel(stat, parseFloat(stat.style.left), parseFloat(stat.style.top));
+  });
 
   for (const el of [fight, stat]) {
     // The map's own handlers listen on the document; nothing typed or clicked here is theirs.
-    el.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') e.stopPropagation();
+      const text = e.target.matches('input, textarea, [contenteditable]:not([contenteditable="false"])');
+      if (el === fight && !text && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey && _cbUndoDelete()) e.preventDefault();
+    });
     el.addEventListener('mousedown', e => {
       e.stopPropagation();
       const size = e.target.closest('.cb-colsize');
       if (size) { e.preventDefault(); _cbDragCol(size, e); return; }
       const rs = e.target.closest('.cb-rs');
       if (rs) { e.preventDefault(); (el === stat ? cbResizeStat : _cbResizePanel)(rs, e); return; }
+      // A press on a control or a field is that control's; only the header's empty space drags.
       const head = e.target.closest('[data-drag]');
-      if (head && !e.target.closest('button')) { e.preventDefault(); _cbDragPanel(el, e); }
+      if (head && !e.target.closest('button, input, label, .sm-field, [contenteditable]')) { e.preventDefault(); _cbDragPanel(el, e); }
     });
   }
 
@@ -498,6 +515,7 @@ function initCombatTracker() {
       e.target.nextElementSibling.textContent = _cbSumText(hp.value);
       rowEl.classList.remove('low', 'dead');
       if (_cbHpClass(hp)) rowEl.classList.add(_cbHpClass(hp));
+      cbHpWiden(e.target);
     }
     if (f === 'ac') { sb.ac = combatSetFirstNum(sb.ac, r.ac.trim()); _cbRowEdited(r, 'ac'); }
     if (f === 'name') {
@@ -510,6 +528,7 @@ function initCombatTracker() {
   list.addEventListener('focusin', e => {
     if (e.target.dataset.f !== 'hp') return;
     const i = e.target;
+    cbHpFocus(i);
     setTimeout(() => i.setSelectionRange(i.value.length, i.value.length));
   });
   list.addEventListener('keydown', e => {
@@ -530,112 +549,36 @@ function initCombatTracker() {
     if (!e.target.dataset.f) return;
     _cbSuggestClose();
     const r = _cbRowOf(e.target);
-    if (r && e.target.dataset.f === 'hp') _cbTakeMax(r);
+    if (r && e.target.dataset.f === 'hp') {
+      _cbTakeMax(r);
+      const cell = e.target.closest('.cb-cell.hp');
+      cell.classList.remove('wide');
+      cell.style.marginRight = '';
+      const revived = combatReviveRows([r]);
+      e.target.closest('.cb-row').classList.toggle('gone', combatIsDefeated(r));
+      cbHeadRefresh();
+      // A row that leaves the Defeated line moves at once, and the field the DM moved to keeps the focus.
+      if (revived) {
+        cbSave();
+        _cbRenderKeepFocus(e.relatedTarget);
+        return;
+      }
+    }
     cbSave();
     setTimeout(() => { if (!list.contains(document.activeElement)) cbRender(); });
   });
   list.addEventListener('mousedown', e => {
-    const rowEl = e.target.closest('.cb-row');
+    const rowEl = e.target.closest('.cb-row:not(.cleaned)');
     // A focused action button would light the Attacks cell's :focus-within ring as if it were being edited.
-    if (e.target.closest('.cb-acts button')) e.preventDefault();
+    if (e.target.closest('.cb-acts button, .cb-addcond')) e.preventDefault();
     if (rowEl && e.button === 0 && !e.target.closest('button, .cb-atk.editing')) _cbPressRow(rowEl, e);
   });
-  list.addEventListener('click', e => {
-    const t = e.target;
-    const r = _cbRowOf(t);
-    if (!r) return;
-    const b = t.closest('[data-b]');
-    if (b) {
-      const a = b.dataset.b;
-      if (a === 'dup') _cbDuplicateRow(r);
-      if (a === 'side' && b.dataset.side !== (r.side === 'ally' ? 'ally' : 'enemy')) _cbSwitchSide(r);
-      if (a === 'more') { if (_cbClosedOn === b) _cbClosedOn = null; else cbMenu(_cbRowItems(r), b.getBoundingClientRect(), b); }
-      return;
-    }
-    const cell = t.closest('[data-cond]');
-    if (!cell) return;
-    if (_cbClosedOn === cell) _cbClosedOn = null;
-    else _cbCondMenu(cell, r);
-  });
-  list.addEventListener('dblclick', e => {
-    const cell = e.target.closest('.cb-cell.atk');
-    if (cell && !e.target.closest('.cb-acts')) _cbEditAttacks(cell, _cbRowOf(cell));
-  });
-  fight.addEventListener('contextmenu', e => {
-    if (e.target.closest('.cb-head') || e.target.closest('.cb-atk.editing')) return;
-    e.preventDefault();
-    const r = _cbRowOf(e.target);
-    cbMenu(r ? _cbRowItems(r) : _cbAddItems(), { left: e.clientX, top: e.clientY, bottom: e.clientY });
-  });
+  initCombatRows(fight, list);
 
   document.getElementById('cb-close').addEventListener('click', () => cbSetOpen(false));
-  document.getElementById('cb-add').addEventListener('click', () => _cbAddRow('enemy'));
   document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
 
   initCombatStatBlock();
   initBestiary();
-  initCombatFights(); initCombatSort(); initInitiativeTv();
-}
-
-// ── The name field's suggestions from the bestiary ───────────────────────────
-
-let _cbSug = null;   // { row, items, at, el }
-
-function _cbSuggest(input, row) {
-  _cbSuggestClose();
-  const q = input.value.trim();
-  const items = q ? combatSearchBlocks(cbState.blocks, q).slice(0, 8) : [];
-  if (!items.length) return;
-  const el = document.createElement('div');
-  el.className = 'cb-menu';
-  el.id = 'cb-suggest';
-  el.dataset.noI18n = ''; el.dataset.keepsFocus = '';
-  const at = combatRowIsFresh(row) ? 0 : -1;   // Enter picks only once the DM moves onto one, unless a pick wipes nothing
-  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i === at ? 'on' : ''}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
-  // mousedown, not click: the field's blur would close the list first.
-  el.addEventListener('mousedown', e => {
-    e.preventDefault(); e.stopPropagation();
-    const d = e.target.closest('[data-i]');
-    if (d) _cbSuggestPick(+d.dataset.i);
-  });
-  el.addEventListener('mousemove', e => {
-    const d = e.target.closest('[data-i]');
-    if (!d || !_cbSug) return;
-    _cbSug.at = +d.dataset.i;
-    el.querySelectorAll('[data-i]').forEach((x, i) => x.classList.toggle('on', i === _cbSug.at));
-  });
-  document.body.appendChild(el);
-  const z = cbZoom(), r = input.getBoundingClientRect();
-  el.style.left = (r.left / z) + 'px';
-  el.style.top = ((r.bottom + 4) / z) + 'px';
-  _cbSug = { row, items, at, el };
-}
-
-function _cbSuggestClose() {
-  if (_cbSug) _cbSug.el.remove();
-  _cbSug = null;
-}
-
-function _cbSuggestKey(e) {
-  if (!_cbSug) return false;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    _cbSug.at = ((_cbSug.at < 0 && e.key === 'ArrowUp' ? 0 : _cbSug.at) + (e.key === 'ArrowDown' ? 1 : -1) + _cbSug.items.length) % _cbSug.items.length;
-    _cbSug.el.querySelectorAll('[data-i]').forEach((d, i) => d.classList.toggle('on', i === _cbSug.at));
-    return true;
-  }
-  if (e.key === 'Enter' && _cbSug.at >= 0) { e.preventDefault(); _cbSuggestPick(_cbSug.at); return true; }
-  if (e.key === 'Escape') { e.stopPropagation(); _cbSuggestClose(); return true; }
-  return false;
-}
-
-// A pick replaces the row with a fresh copy of the entry, dropping whatever the row held.
-function _cbSuggestPick(i) {
-  const { row, items } = _cbSug;
-  _cbSuggestClose();
-  Object.assign(row, combatRowFromEntry(items[i], cbState.rows.filter(r => r !== row)));
-  cbSave();
-  if (cbStatRowId() === row.id) cbOpenStat(row);
-  document.activeElement.blur();
-  cbRender();
+  initCombatHead(); initCombatFights(); initCombatSort(); initInitiativeTv();
 }

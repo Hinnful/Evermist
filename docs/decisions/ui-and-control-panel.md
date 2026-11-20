@@ -1533,8 +1533,8 @@ leading; a Pen piece or bar Room tool drawn in an open edit away from the room b
 separate: a Split crossing any piece makes every part and every other piece a room of its own, the largest keeping name, notes
 and uid; a line crossing no piece changes nothing. One label per room, on its largest piece; a click on any piece picks the room,
 and drag, Delete, copy/paste, Alt-drag copy and fog act on every piece.
-- **Departure from Figma, rejected:** Edit works on one piece at a time (Figma edits every part at once), a click on another
-  piece moving the open edit there. The DM rejected it; BACKLOG 301 removes it. Out of scope: floor-plan rooms, lights and the Campaign's groups.
+- **Edit shows every piece at once, as Figma** (BACKLOG 301): any corner, wall or hole of any piece drags on the first press,
+  which makes its piece the open one. One piece at a time was rejected. Out of scope: floor-plan rooms, lights, the Campaign.
 - Effects follow the rules; one with pieces reads "By hand", Size greyed, and cannot become a light. Merge of apart effects takes
   the main's material. Lights have no pieces: Merge of apart lights and a Pen piece apart from one stay refused.
 - Stored as records with `pieceOf: <uid of the first record>`, linked by uid because sync and Import renumber ids; a head

@@ -14,55 +14,9 @@ function _cfCount(f) {
   return [en ? t.plural(en, '{n} enemy', '{n} enemies') : '', al ? t.plural(al, '{n} ally', '{n} allies') : ''].filter(Boolean).join(' · ');
 }
 
-// "Appears in" under the rows: the notes that mention the open fight. Rebuilt only when the fight or the notes changed.
-let _cfApSig = '';
-function _cfApBox() {
-  let box = document.getElementById('cb-appears');
-  const panel = document.getElementById('cb-list');
-  if (box || !panel) return box;
-  box = document.createElement('div');
-  box.id = 'cb-appears';
-  box.className = 'cb-appears';
-  box.hidden = true;
-  box.addEventListener('click', e => {
-    const row = e.target.closest('.ap');
-    if (row) { nwShow(); ntGoKey(row.dataset.key); }
-  });
-  panel.after(box);
-  return box;
-}
-function _cfAppears() {
-  const f = _cfOpen(), box = _cfApBox();
-  if (!box || !f) return;
-  const sig = f.id + '|' + mxRev() + '|' + (searchReading() ? 1 : 0);
-  if (sig === _cfApSig) return;
-  _cfApSig = sig;
-  const rows = mxAppearsIn(mpRef('fight', f.id), null);
-  box.textContent = '';
-  box.hidden = !rows.length;
-  if (!rows.length) return;
-  const head = document.createElement('div'), n = document.createElement('span');
-  head.className = 'aph';
-  n.className = 'n';
-  n.textContent = String(rows.length);
-  head.append(t('Appears in') + ' ', n);
-  box.append(head);
-  for (const r of rows) {
-    const row = document.createElement('div'), small = document.createElement('small');
-    row.className = 'ap';
-    row.dataset.key = r.key;
-    row.dataset.noI18n = '';
-    row.append(r.name);
-    small.textContent = t(r.word) + (r.where ? ' · ' + r.where : '');
-    row.append(small);
-    box.append(row);
-  }
-}
-
 function cbFightsTitle() {
   const t = document.querySelector('#cb-fightpick .nm');
   if (t) t.textContent = _cfName(_cfOpen());
-  _cfAppears();
   if (_cfMenu) _cfDraw();
 }
 
@@ -196,8 +150,9 @@ function _cfToggle() {
 function initCombatFights() {
   const b = document.createElement('button');
   b.id = 'cb-fightpick';
+  b.className = 'sm-hbtn';
   b.title = 'Your fights';
-  b.innerHTML = '<span class="nm" data-no-i18n></span><span class="car">▾</span>';
+  b.innerHTML = '<span class="nm" data-no-i18n></span><span class="sm-chev"></span>';
   document.getElementById('cb-fightslot').appendChild(b);
   b.addEventListener('click', _cfToggle);
   b.addEventListener('dblclick', e => { e.preventDefault(); cbCloseFights(); _cfRename(b.querySelector('.nm'), _cfOpen()); });

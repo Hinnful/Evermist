@@ -26,7 +26,7 @@
 //   9. Open a room's notes in the Notes window.
 //  10. Search jumps to a room, and finds the other map.
 //  11. Switch to the second map. The TV shows it, and the first map's reveals do not carry over. Switch the music track.
-//  12. A fight: open the fight table, add two monsters from the bestiary, change an HP.
+//  12. A fight: open the fight table, add two monsters from the bestiary through its search, change an HP.
 //      (The fight table has no turn to advance, so "next turn" is left to the eye.)
 //
 // ⚠ NO TIMING CLAIMS AND NO PIXEL TOLERANCES. Every wait is a bounded state; the TV's fog is read as fogged
@@ -81,11 +81,10 @@ globalThis.__cbType = (name, f, v) => {
   return 0;
 };
 globalThis.__cbPickTyped = typed => {
-  document.getElementById('cb-add').click();
-  const inp = [...document.querySelectorAll('#cb-list .cb-row')].pop().querySelector('[data-f=name]');
+  const inp = document.getElementById('cb-search');
   inp.focus(); inp.value = typed;
   inp.dispatchEvent(new Event('input', { bubbles: true }));
-  const offered = [...document.querySelectorAll('#cb-suggest [data-i]')].map(d => d.firstChild.textContent);
+  const offered = [...document.querySelectorAll('#cb-suggest [data-i]:not(.new)')].map(d => d.firstChild.textContent);
   const first = document.querySelector('#cb-suggest [data-i]');
   if (first) first.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
   return offered;
@@ -413,10 +412,9 @@ module.exports = async function tableSession(rig) {
     rig.check(open, '12: the Combat button did not open the fight table');
     const offered = await dm.evaluate('__cbPickTyped("Гоб")');
     await dm.evaluate('__cbPickTyped("Вол"); 0');
-    // RED BY DESIGN: written against the feature, never re-proved
-    const rows = await dm.evaluate('cbState.rows.map(r => r.name)');
-    rig.check(JSON.stringify(offered) === '["Гоблин"]' && rows.join() === 'Гоблин,Волк',
-              '12: two monsters picked from the bestiary did not become two rows: offered ' + JSON.stringify(offered) + ', rows ' + JSON.stringify(rows));
+    const rows = await dm.evaluate('cbState.rows.map(r => r.name)'), left = await dm.evaluate('document.getElementById("cb-search").value');
+    rig.check(JSON.stringify(offered) === '["Гоблин"]' && rows.join() === 'Гоблин,Волк' && left === '',
+              '12: two monsters picked in the search did not become two rows: offered ' + JSON.stringify(offered) + ', rows ' + JSON.stringify(rows) + ', search left ' + JSON.stringify(left));
     await dm.evaluate('__cbType("Гоблин", "hp", "-3"); 0');
     const readHp = () => dm.evaluate('({ typed: cbState.rows.find(r => r.name === "Гоблин").hp, sum: __cbRow("Гоблин").querySelector(".sum").textContent })');
     const hp = (await lib.poll(async () => { const h = await readHp(); return h.typed === '-3' && /^4$/.test(h.sum) ? h : null; }, 15000)) || await readHp();

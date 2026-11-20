@@ -264,3 +264,18 @@ describe('a backup merged in twice', () => {
     assert.equal(m.nextId, 7);
   });
 });
+
+describe('a cleaned row in a save and a backup', () => {
+  const st = () => ({ rows: [{ id: 1, name: 'Goblin', hp: '-7', conds: [], side: 'enemy', sb: { name: 'Goblin', hp: '7' }, cleaned: true }],
+    blocks: {}, nextId: 2, openId: 'f1', fights: [{ id: 'f1', name: 'Fight' }] });
+  it('keeps the flag on disk, where the previous release reads the row as an ordinary row', () => {
+    const p = combatSavedParts(st());
+    assert.equal(p.combat.rows[0].cleaned, true);
+    assert.equal(p.combat.rows[0].name, 'Goblin');
+  });
+  it('carries the flag through a backup into a fresh library', () => {
+    const fresh = { rows: [], blocks: {}, nextId: 1, openId: 'e', fights: [{ id: 'e', name: 'Fight' }] };
+    const got = combatMerge(fresh, JSON.parse(JSON.stringify(combatBackupData(st()))), ids(), 1000);
+    assert.equal(got.rows[0].cleaned, true);
+  });
+});

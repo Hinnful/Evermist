@@ -179,9 +179,10 @@ function selectMouseDown(raw, e) {
   if (cornerRoundDown(boxed, raw, e)) return;
 
   if (selPoly && shapeEditMode) {
-    // A curve handle, vertex or wall first (shapeEdit.js), then a hole's middle.
-    if (editMouseDown(selPoly, raw, e)) return;
-    const hi = holeEditMode ? -1 : findHoleAt(selPoly, raw.x, raw.y);
+    // A curve handle, vertex or wall of any piece first (shapeEdit.js), then a hole's middle.
+    const part = editPartAt(raw), poly = part ? editTakePiece(part.poly) : selPoly;
+    if (part && part.kind !== 'hole' && editMouseDown(poly, raw, e)) return;
+    const hi = part && part.kind === 'hole' ? findHoleAt(poly, raw.x, raw.y) : -1;
     if (hi >= 0) {
       armDragUndo();
       selectedHoleIndex = hi;
@@ -190,8 +191,8 @@ function selectMouseDown(raw, e) {
       copyOnDrag = !!(e && e.altKey);
       holeDragStartMapX = raw.x;
       holeDragStartMapY = raw.y;
-      holeDragOrigRing = polyHoleRings(selPoly)[hi].map(v => ({ x: v.x, y: v.y }));
-      holeDragWasStuck = !holeStaysOnRoom(selPoly, holeDragOrigRing);
+      holeDragOrigRing = polyHoleRings(poly)[hi].map(v => ({ x: v.x, y: v.y }));
+      holeDragWasStuck = !holeStaysOnRoom(poly, holeDragOrigRing);
       return;
     }
   }
@@ -238,8 +239,8 @@ function selectHandleHit(pos) {
   const selPoly = findActiveShape();
   if (!selPoly) return false;
   if (boxedShape() && _cornerHitAt(selPoly, pos)) return true;
-  return shapeEditMode && (!!findHandleAt(selPoly, pos.x, pos.y) || findVertexAt(selPoly, pos.x, pos.y) >= 0 ||
-    findEdgeAt(selPoly, pos.x, pos.y) >= 0);
+  const part = editPartAt(pos);
+  return !!part && part.kind !== 'hole';
 }
 
 function selectHoverCursor(pos, e) {
@@ -250,12 +251,8 @@ function selectHoverCursor(pos, e) {
     if (bc) return bc;
   }
   if (cc) return cc;
-  if (selPoly && shapeEditMode) {
-    if (findHandleAt(selPoly, pos.x, pos.y)) return 'pointer';
-    if (findVertexAt(selPoly, pos.x, pos.y) >= 0) return 'pointer';
-    if (findEdgeAt(selPoly, pos.x, pos.y) >= 0) return 'grab';
-    if (!holeEditMode && findHoleAt(selPoly, pos.x, pos.y) >= 0) return 'move';
-  }
+  const part = selPoly && editPartAt(pos);
+  if (part) return part.kind === 'edge' ? 'grab' : part.kind === 'hole' ? 'move' : 'pointer';
   return findPolygonAt(pos.x, pos.y) ? 'move' : 'arrow';
 }
 
@@ -317,8 +314,7 @@ function selectMouseMove(pos, screenX, screenY, e) {
 // What an Alt+press would grab on the map. Anything else, Alt+drag pans as it always has.
 function selectGrabsAt(raw) {
   if (findPolygonAt(raw.x, raw.y)) return true;
-  const selPoly = findActiveShape();
-  return !!selPoly && shapeEditMode && !holeEditMode && findHoleAt(selPoly, raw.x, raw.y) >= 0;
+  return shapeEditMode && !holeEditMode && editRecords().some(p => findHoleAt(p, raw.x, raw.y) >= 0);
 }
 
 function selectDragging() {
@@ -367,7 +363,7 @@ function selectDblClick(raw) {
     scheduleRender();
     return;
   }
-  const poly = findActiveShape();
+  const part = editPartAt(raw), poly = part ? editTakePiece(part.poly) : findActiveShape();
   if (!poly) return;
   // A boxed hole opens the same way its room did: one more double-click, one level down.
   if (selectedHoleIndex >= 0 && !holeEditMode &&
@@ -427,7 +423,8 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed, extra) {
   if (poly.material && !held) return;
   if (poly.open) { drawOpenLineChrome(poly, isSelected, selectedVertIdx); return; }
   const holeRings = polyHoleRings(poly);
-  const editing = isSelected && shapeEditMode;
+  // The open room's other pieces are edited with it, as Figma's islands (editRecords); `extra` is only those in edit.
+  const editing = shapeEditMode && (isSelected || (!!extra && selectedHoleIndex < 0));
   const holeSel = editing && selectedHoleIndex >= 0 && selectedHoleIndex < holeRings.length
                 ? selectedHoleIndex : -1;
 
@@ -530,7 +527,7 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed, extra) {
     drawCorner(x, y, true, isSelVert, isSelVert ? SHAPE_PART_SELECTED : '#ffffff');
   }
 
-  drawHandleMarkers(poly);
+  if (isSelected) drawHandleMarkers(poly);
   cursorCtx.restore();
 }
 

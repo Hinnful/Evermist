@@ -191,6 +191,15 @@ describe('mcpEditRows', () => {
     assert.equal(r.changed, false);
     assert.match(r.notes[0], /Dragon/);
   });
+  it('adds above the Defeated line, and a raised count copies without the cleaned flag', () => {
+    const rows = start.rows.map(r => Object.assign({}, r));
+    Object.assign(rows[3], { hp: '-99', sb: Object.assign({}, rows[3].sb, { hp: '11' }), cleaned: true });
+    assert.equal(names(mcpEditRows(blocks, rows, { add: [{ name: 'Owlbear' }] }, start.nextId).rows), 'Goblin,Goblin 2,Goblin 3,Owlbear,Wolf');
+    const r = mcpEditRows(blocks, rows, { counts: [{ name: 'Wolf', count: 2 }] }, start.nextId);
+    assert.equal(names(r.rows), 'Goblin,Goblin 2,Goblin 3,Wolf,Wolf 2');
+    assert.equal(r.rows.find(x => x.name === 'Wolf 2').cleaned, undefined);
+    assert.equal(r.rows.find(x => x.name === 'Wolf').cleaned, true);
+  });
   it('leaves the rows it was given untouched', () => {
     const before = JSON.stringify(start.rows);
     mcpEditRows(blocks, start.rows, { remove: [{ name: 'Goblin' }], sides: [{ name: 'Wolf', side: 'ally' }] }, start.nextId);

@@ -218,7 +218,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/multiattack.js` | Pure: Multiattack reading. Tested |
 | `combat/attackPills.js` | Attack pills and glyphs |
 | `combat/bestiaryPlan.js` | Pure bestiary kernel. Tested |
-| `combat/combatTracker.js` | The fight table: rows, name search, saving |
+| `combat/combatTracker.js` | The fight table: saving, row edits, menus, drag, columns, wiring |
+| `combat/combatRows.js` | The fight table's rows: the cells, conditions in the Name cell, the hover toolbar, the row's menu, the Defeated line |
+| `combat/combatHead.js` | The fight table's header: search, Clean up, close; the bestiary suggestions the search and a row's Name share |
 | `combat/combatStatBlock.js` | The stat block popup |
 | `combat/combatFights.js` | The fight picker and its list |
 | `combat/combatSort.js` | The fight table's Sort button, lit while the rows are out of initiative order |
@@ -335,6 +337,6 @@ ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js �
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
-combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js → combat/combatSort.js → combat/initiativeTv.js →
+combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatRows.js → combat/combatHead.js → combat/combatFights.js → combat/combatSort.js → combat/initiativeTv.js →
 mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapFilePlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpShrink.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpSoundsPlan.js → mcp/mcpSounds.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

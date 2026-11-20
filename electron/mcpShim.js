@@ -154,7 +154,7 @@ const TOOLS = [
   { name: 'set_backdrop', annotations: EDIT, description: 'Set the picture behind the Campaign from an image file (up to 30 MB). It replaces the current backdrop; undo_last_change brings that back. Without a path, change the current backdrop: scale (percent, 5 to 400), opacity (0.05 to 1), and x, y (Campaign units, the picture\'s centre).',
     inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'The full path of an image file. Optional when only the numbers change.' },
       scale: { type: 'number', description: 'Size in percent, 5 to 400.' }, opacity: { type: 'number', description: '0.05 to 1.' }, x: { type: 'number' }, y: { type: 'number' } } } },
-  { name: 'read_fight', annotations: READ, description: 'Read a fight: its monsters with side, AC, maxHp (from the row\'s stat block), hp (current HP) and damage (the damage and healing line typed so far).',
+  { name: 'read_fight', annotations: READ, description: 'Read a fight: its monsters with side, AC, maxHp (from the row\'s stat block), hp (current HP) damage (the damage and healing line typed so far) and cleanedUp (a defeated monster the DM put away in the Defeated line at the end of the table).',
     inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string', description: 'The fight\'s name.' } } } },
   { name: 'edit_fight', annotations: EDIT, description: 'Change a fight: rename it, remove monsters, set a monster\'s count, change a side, or add monsters from the bestiary. On the fight open at the table only adding monsters and raising a count are allowed; the rest is refused. Monsters are named without their number ("Goblin", not "Goblin 2").',
     inputSchema: { type: 'object', required: ['name'], properties: {

@@ -10,23 +10,24 @@ let _itvTimer = 0;
 
 function initInitiativeTv() {
   const b = document.createElement('button');
-  b.className = 'sm-hbtn';
+  b.className = 'sm-hbtn ic';
   b.id = 'cb-tv';
-  document.querySelector('#cb-fight .cb-head').insertBefore(b, document.getElementById('cb-add'));
+  document.querySelector('#cb-fight .cb-head').insertBefore(b, document.getElementById('cb-close'));
   b.addEventListener('click', () => initiativeTvSet(!_itvOn));
   _itvButton();
 }
 
-// ⚠ Written through t(): the i18n pass runs once over static text, and this label changes with the state.
+// An icon alone; the tooltip carries the words. ⚠ Written through t(): the i18n pass runs once over static text.
 function _itvButton() {
   const b = document.getElementById('cb-tv');
   b.classList.toggle('on', _itvOn);
   b.setAttribute('aria-pressed', String(_itvOn));
-  b.title = t(_itvOn ? 'Take the turn order off the TV'
-    : 'Show the turn order on the TV. Players and monsters with an initiative roll appear there. Dead monsters leave it.');
-  b.innerHTML = uiIcon(_itvOn ? 'stop' : 'play') + '<span></span>';
-  b.querySelector('span').textContent = t(_itvOn ? 'End fight' : 'Start fight');
+  b.title = t(_itvOn ? 'End fight: take the turn order off the TV'
+    : 'Start fight: show the turn order on the TV. Players and monsters with an initiative roll appear there. Dead monsters leave it.');
+  b.innerHTML = uiIcon(_itvOn ? 'stop' : 'play');
 }
+
+function initiativeTvOn() { return _itvOn; }
 
 // The table has many writers (typing, drag, sort, a fight picked, a backup merged), so the slots are
 // read on a clock while the fight is started and sent only when they change.

@@ -110,27 +110,28 @@ function hintsMusicStarted() {
 // The table was opened (cbSetOpen), with this many creatures in the open fight.
 function hintsFightOpened(creatures) {
   if (!_hcLive() || !hintFightDue({ open: true, creatures })) return;
-  _hintShow('fight', 'Run a fight here', 'Add creatures from the Bestiary, then sort by initiative. HP takes sums like 45-12.',
-    null, _hintNear(_hintRectOf('cb-add'), 'below'));
+  _hintShow('fight', 'Run a fight here', 'Type a name here to add a creature from the Bestiary, then sort by initiative. HP takes sums like 45-12.',
+    null, _hintNear(_hintRectOf('cb-search'), 'below'));
 }
 
 function hintsFightClosed() { hintClose('fight'); hintClose('stat-block'); }
 
-// The row's ⋯, which shows only under the pointer: its own box, else where it will be, at the row's end.
-const _hcRowMore = id => () => {
-  const row = document.querySelector('#cb-list .cb-row[data-id="' + id + '"]'), b = row && row.querySelector('[data-b="more"]');
+// The row toolbar's stat block button, which shows only under the pointer: its own box, else where it will be, four
+// buttons in from the row's end.
+const _hcRowStat = id => () => {
+  const row = document.querySelector('#cb-list .cb-row[data-id="' + id + '"]'), b = row && row.querySelector('[data-b="stat"]');
   const r = b && b.getBoundingClientRect();
   if (r && r.width) return r;
   const w = row && row.getBoundingClientRect();
-  return w && w.width ? { left: w.right - 26, right: w.right, top: w.top, bottom: w.bottom } : null;
+  return w && w.width ? { left: w.right - 150, right: w.right - 124, top: w.top, bottom: w.bottom } : null;
 };
 
 // A creature was added (_cbAddRow); `before` is how many the fight held.
 function hintsFightRowAdded(before, rowId) {
   hintClose('fight');
   if (!_hcLive() || !hintStatBlockDue({ before, after: before + 1 })) return;
-  _hintShow('stat-block', 'Its stat block is in the row\'s ⋯ menu', 'Press ⋯ on a row, or right-click it, to read or edit that creature.',
-    null, _hintNear(_hcRowMore(rowId), 'below'));
+  _hintShow('stat-block', 'Its stat block is on the row', 'Point at a row and press the book, or right-click the row, to read or edit that creature.',
+    null, _hintNear(_hcRowStat(rowId), 'below'));
 }
 
 // ─── Panes closing under a toast ─────────────────────────────────────────────

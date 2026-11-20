@@ -123,9 +123,15 @@ function combatRowFromEntry(entry, rows) {
     hp: '', conds: [], sb: combatSnapshot(entry), sbChanged: false };
 }
 
-// A row with no damage, conditions or stat edits loses nothing when a pick replaces it.
+// A row with no damage, conditions or stat edits loses nothing when a pick replaces it. A blank
+// copy edited only in its name counts as fresh: typing the name is what opens the list.
 function combatRowIsFresh(row) {
-  return !String(row.hp || '').trim() && !(row.conds || []).length && !row.sbChanged;
+  if (String(row.hp || '').trim() || (row.conds || []).length) return false;
+  if (!row.sbChanged) return true;
+  if (!row.sb) return false;
+  const blank = combatSnapshot(combatBlankBlock('', row.sb.name));
+  const keys = new Set([...Object.keys(blank), ...Object.keys(row.sb)]);
+  return [...keys].every(k => JSON.stringify(row.sb[k]) === JSON.stringify(blank[k]));
 }
 
 // A monster from a file or a backup laid over the blank shape, so a part missing or of the wrong
@@ -160,6 +166,7 @@ function combatCleanRow(r) {
 // A row's copy with full HP and no conditions, meant to sit straight after it.
 function combatDuplicateRow(row, rows, id) {
   const c = Object.assign(JSON.parse(JSON.stringify(row)), { id, hp: '', conds: [] });
+  delete c.cleaned;
   c.name = combatNextName(combatBaseName(row.name), rows);
   return c;
 }
@@ -171,6 +178,93 @@ function combatRowHpState(max, rest) {
   if (!max) return combatHpState(r);
   if (r && !/^[+-]/.test(r)) return { value: NaN, share: null, bloodied: false, down: false };
   return combatHpState(max + r);
+}
+
+// ── The Defeated line ──
+// `cleaned` marks a defeated enemy the DM put away with Clean up. It is a render grouping only: the row keeps its
+// place in the array, and the previous release, which never reads the flag, shows it as an ordinary row.
+
+// An enemy with a max HP at 0 HP or below; an ally never is, it rolls death saves. With no max, a line such as
+// "-5" would read its own 5 as the max.
+function combatIsDefeated(row) {
+  const max = combatFirstNum(row.sb && row.sb.hp);
+  return row.side !== 'ally' && !!max && combatRowHpState(max, row.hp).down;
+}
+
+function combatIsCleaned(row) {
+  return !!row.cleaned && combatIsDefeated(row);
+}
+
+// How many defeated enemies Clean up would put away.
+function combatToClean(rows) {
+  return rows.filter(r => combatIsDefeated(r) && !r.cleaned).length;
+}
+
+function combatCleanUp(rows) {
+  let n = 0;
+  for (const r of rows) if (combatIsDefeated(r) && !r.cleaned) { r.cleaned = true; n++; }
+  return n;
+}
+
+function combatRenderOrder(rows) {
+  return { live: rows.filter(r => !combatIsCleaned(r)), gone: rows.filter(combatIsCleaned) };
+}
+
+// A row back above 0 HP or made an ally, however it got there (the table, Claude, sync, the previous release),
+// drops the flag. Returns how many did.
+function combatReviveRows(rows) {
+  let n = 0;
+  for (const r of rows) if ('cleaned' in r && !combatIsCleaned(r)) { delete r.cleaned; n++; }
+  return n;
+}
+
+function combatReturnRow(row) {
+  delete row.cleaned;
+}
+
+// A suggestion pick replaces the row with a fresh copy of the entry, dropping whatever the row held.
+function combatPickInto(row, entry, rows) {
+  Object.assign(row, combatRowFromEntry(entry, rows));
+  delete row.cleaned;
+  return row;
+}
+
+function combatLiveSorted(rows) {
+  return combatIsSortedByInit(combatRenderOrder(rows).live);
+}
+
+// The live rows sorted into the places live rows held; a cleaned row keeps its own.
+function combatSortLive(rows) {
+  const sorted = combatSortByInit(combatRenderOrder(rows).live);
+  let i = 0;
+  return rows.map(r => (combatIsCleaned(r) ? r : sorted[i++]));
+}
+
+// Every add lands right after the last live row, above the Defeated line.
+function combatAddIndex(rows) {
+  for (let i = rows.length - 1; i >= 0; i--) if (!combatIsCleaned(rows[i])) return i + 1;
+  return 0;
+}
+
+// The HP line's hits, "- 18 - 4 + 5" as ["- 18", "- 4", "+ 5"], and the form a cell too narrow for them shows:
+// "…" and the last `k` hits.
+function combatHpHits(hp) {
+  return (String(hp || '').match(/[+-][^+-]*/g) || []).map(h => h.trim()).filter(h => h.length > 1);
+}
+
+function combatHpTail(hp, k) {
+  return '… ' + combatHpHits(hp).slice(-k).join(' ');
+}
+
+// The fight table's widths. A width saved under the old key belonged to six columns, so the new key starts at the
+// new defaults; only the list's height and the stat block's size carry over from the old one.
+function combatReadCols(raw, oldRaw) {
+  const read = s => { try { const v = JSON.parse(s || 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch (_) { return null; } };
+  const now = read(raw);
+  if (now) return now;
+  const old = read(oldRaw) || {}, out = {};
+  for (const k of ['listH', 'statW', 'statH']) if (Number(old[k]) > 0) out[k] = Number(old[k]);
+  return out;
 }
 
 // A book or module's file name without its extension, so both imports of one file share a source.
@@ -201,5 +295,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatIsSortedByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid,
     combatAddEntry, combatRowFromEntry, combatRowIsFresh, combatCleanBlock, combatCleanRow, combatRowHpState, combatSourceName, combatNewBlocks,
-    combatSearchBlocks, combatNextName, combatDuplicateRow };
+    combatSearchBlocks, combatNextName, combatDuplicateRow, combatIsDefeated, combatIsCleaned, combatToClean, combatCleanUp,
+    combatRenderOrder, combatReviveRows, combatReturnRow, combatPickInto, combatLiveSorted, combatSortLive, combatAddIndex,
+    combatHpHits, combatHpTail, combatReadCols };
 }

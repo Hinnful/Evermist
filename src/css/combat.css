@@ -11,10 +11,16 @@
     user-select: none;
   }
   .cb-panel input, .cb-panel [contenteditable] { user-select: text; }
-  /* The table decides the panel's width, so a wider column widens the panel. */
-  #cb-fight { width: max-content; }
+  /* The columns decide the panel's width, so a wider column widens it; the header's own width is its floor, and
+     Attacks takes whatever the header leaves over. The rows add nothing to the width themselves. */
+  #cb-fight {
+    width: max-content; outline: none;
+    /* + 2px: the panel's own 1px border, which border-box counts inside min-width. */
+    min-width: calc(var(--cb-init, 64px) + var(--cb-name, 180px) + var(--cb-hp, 130px) + var(--cb-ac, 52px) + var(--cb-atk, 250px) + 2px);
+  }
+  #cb-fight .cb-colhdr, #cb-list { contain: inline-size; }
   /* A width saved on a wider screen still fits a narrower one. */
-  #cb-stat { width: min(var(--cb-stat-w, 380px), calc(100vw / var(--ui-zoom, 1.2) - 16px)); z-index: 161; }
+  #cb-stat { width: min(var(--cb-stat-w, 380px), calc((100vw - 16px) / var(--ui-zoom, 1.2))); z-index: 161; }
   #cb-stat .cb-sb { height: var(--cb-stat-h, auto); }
 
   .cb-head {
@@ -29,14 +35,6 @@
   .cb-iconbtn:hover { background: rgba(255,255,255,0.06); color: #d5d8dd; }
 
   /* ===== The fight picker (combatFights.js) ===== */
-  #cb-fightpick {
-    display: flex; align-items: center; gap: 6px; margin: 0 auto 0 -6px; min-width: 0; max-width: 360px;
-    border: 0; background: none; padding: 4px 6px; border-radius: 6px; cursor: var(--cur-pointer);
-    font: 600 13px/1 system-ui, sans-serif; color: #d5d8dd;
-  }
-  #cb-fightpick:hover, #cb-fightpick.open { background: rgba(255,255,255,0.06); }
-  #cb-fightpick .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #cb-fightpick .car { font-size: 8px; color: #7f858e; }
   #cf-menu {
     position: fixed; z-index: 200; zoom: var(--ui-zoom, 1.2); width: 320px;
     background: #232327; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
@@ -62,9 +60,11 @@
   .cf-new:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
 
   /* ===== The table: a spreadsheet grid, edge to edge inside the panel ===== */
+  /* Attacks has no floor of its own here: #cb-fight's min-width holds it, and a floor would push the rows past the
+     list's scrollbar into a sideways scroll. */
   .cb-colhdr, .cb-row {
     display: grid;
-    grid-template-columns: 64px var(--cb-name, 200px) var(--cb-hp, 150px) 52px var(--cb-cond, 150px) var(--cb-atk, 250px);
+    grid-template-columns: var(--cb-init, 64px) var(--cb-name, 180px) var(--cb-hp, 130px) var(--cb-ac, 52px) minmax(0, 1fr);
   }
   .cb-colhdr {
     background: #232327; border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -72,14 +72,17 @@
   }
   .cb-colhdr > span { position: relative; min-width: 0; padding: 9px 9px 8px; white-space: nowrap; }
   .cb-colhdr .lbl { display: block; overflow: hidden; text-overflow: ellipsis; }
-  /* The grab strip for a column's width sits on its right-hand divider. */
+  /* The grab strip for a column's width sits on its right-hand divider. Attacks has none: the panel's right edge resizes it. */
   .cb-colsize { position: absolute; right: -4px; top: 0; bottom: 0; width: 8px; z-index: 1; cursor: var(--cur-col); }
   .cb-colsize:hover { background: linear-gradient(90deg, transparent 3px, #6ea8ff 3px, #6ea8ff 5px, transparent 5px); }
   .cb-colhdr > span + span { border-left: 1px solid rgba(255,255,255,0.08); }
   .cb-colhdr .c { text-align: center; }
+  .cb-colhdr .cb-initsort { cursor: var(--cur-pointer); }
+  .cb-colhdr .cb-initsort:hover { color: var(--g-text, #d5d8dd); }
 
-  /* A height the DM set holds whatever the rows need; with none set, the list grows to its rows. */
-  #cb-list { height: var(--cb-list-h, auto); max-height: calc(100vh / var(--ui-zoom, 1.2) - 200px); overflow-y: auto; }
+  /* A height the DM set holds whatever the rows need; with none set, the list grows to its rows. Its ceiling is
+     the room down to the window's bottom, set live by _cbFitList (combatTracker.js). */
+  #cb-list { height: var(--cb-list-h, auto); overflow-y: auto; }
   .cb-rs { position: absolute; z-index: 4; }
   .cb-rs[data-rs="r"] { top: 0; right: 0; bottom: 8px; width: 6px; cursor: var(--cur-ew); }
   .cb-rs[data-rs="b"] { left: 0; right: 8px; bottom: 0; height: 6px; cursor: var(--cur-ns); }
@@ -123,13 +126,12 @@
   .cb-cell.hp .sum:not(:empty)::before { content: '='; color: #5c6168; margin-right: 5px; }
   .cb-row.low .cb-cell.hp .sum { color: #f0c24e; }
   .cb-row.dead .cb-cell.hp .sum { color: #f26a60; }
-  .cb-cell.cond { cursor: var(--cur-pointer); display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 4px; padding: 6px; }
   .cb-chip {
     flex: none; padding: 3px 7px; border-radius: 6px; white-space: nowrap;
     background: rgba(224,160,96,0.14); color: #e0a060; font: 500 12px/1.2 system-ui, sans-serif;
   }
-  /* The Attacks cell is the one nobody clicks, so the row's actions sit inside it on hover. */
-  .cb-cell.atk { display: flex; align-items: center; padding: 8px 10px; overflow: hidden; cursor: var(--cur-arrow); }
+  /* The Attacks cell is the one nobody clicks, so the row's actions hang from it on hover. */
+  .cb-cell.atk { display: flex; align-items: center; padding: 8px 10px; cursor: var(--cur-arrow); }
   .cb-cell.atk:has(.pills:not(.editing)) { padding: 6px; }
   .cb-atk { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.4; color: #9aa0aa; }
   .cb-atk.own { color: #d5d8dd; }
@@ -157,10 +159,14 @@
   .cb-grp .gsw { display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 2px; color: #9aa0aa; font: 500 11px/1.2 system-ui, sans-serif; white-space: nowrap; }
   .cb-pill.fb { border: 1px dashed rgba(255,255,255,0.22); }
   .cb-pill.fb > span { background: transparent; color: #9aa0aa; padding: 2px 6px; }
+  /* A plate over the hovered row's right end, centred on the row and no taller than it, so every click on it is
+     that row's. The cell lets it out; the pills clip themselves instead. */
+  .cb-atk { min-width: 0; overflow: hidden; }
   .cb-acts {
-    position: absolute; right: 0; top: 0; bottom: 0; display: none; align-items: center; gap: 1px; padding: 0 6px 0 22px;
-    background: linear-gradient(90deg, rgba(30,31,34,0), #1e1f22 18px);
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%); z-index: 1; display: none; align-items: center; gap: 2px; padding: 1px;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   }
+  .cb-row:hover, .cb-row:has(.cb-acts .open) { z-index: 2; }
   .cb-row:hover .cb-acts, .cb-row:has(.cb-acts .open) .cb-acts { display: flex; }
   .cb-row:has(.cb-atk.editing) .cb-acts { display: none; }
   .cb-acts .cb-iconbtn { width: 26px; height: 26px; }
@@ -436,7 +442,7 @@
   .cb-iconbtn:focus-visible, .bs-ib:focus-visible, .bs-f:focus-visible, .cb-save:focus-visible {
     outline: 2px solid var(--b-solid); outline-offset: 2px;
   }
-  .bs-f .car, #cb-fightpick .car {
+  .bs-f .car {
     display: inline-block; flex: none; width: 10px; height: 10px; font-size: 0; opacity: 0.7;
     background: currentColor; -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
     transform: translateY(var(--icon-nudge));
@@ -508,26 +514,34 @@
 
   /* ── Fight table and stat block: chrome ── */
   .cb-panel { border: 1px solid var(--g-line); box-shadow: var(--win-shadow); }
-  .cb-head { gap: 6px; padding: 0 10px 0 12px; }
-  /* The slot stretches, so the picker sits left and the header's buttons reach the right edge. */
-  #cb-fightslot { flex: 1; min-width: 0; display: flex; }
-  /* A free window's title is the dock's 12px bold; a centred window's is 14px. */
-  #cb-fightpick {
-    height: 28px; margin: 0 0 0 -6px; padding: 0 8px; gap: 6px; border-radius: 6px; min-width: 0;
-    font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text);
-  }
-  #cb-fightpick:hover, #cb-fightpick.open { background: var(--g-field); }
+  /* One header row (combatHead.js): the picker, a fixed search, the actions pushed right; as much space left as above. */
+  .cb-head { gap: 6px; padding: 0 10px; }
+  #cb-fightslot { flex: none; display: flex; min-width: 0; }
+  #cb-fightpick { max-width: 220px; min-width: 0; }
+  #cb-fightpick.open { background: var(--g-hover); }
+  /* ⚠ Untrimmed: the button's cap-height trim would cut the descenders off inside the ellipsis's clip. A 16px line
+     box centres on the caps as closely as the trim did. */
+  #cb-fightpick .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-box: none; line-height: 16px; }
+  .cb-head .sm-field { width: 200px; flex: none; margin-left: 2px; box-sizing: border-box; }
+  .cb-head .cb-sp { flex: 1; }
+  .cb-head .sm-hbtn.ic { width: 28px; padding: 0; justify-content: center; gap: 4px; }
+  .cb-head .sm-hbtn.ic.n { width: auto; padding: 0 9px 0 8px; }
+  .cb-head .sm-hbtn.ic > svg:first-child { margin-left: 0; }
+  /* An icon alone sits on the button's centre: the nudge is for an icon beside a label. */
+  .cb-head .sm-hbtn.ic:not(.n) svg { transform: none; }
+  #cb-clean[hidden] { display: none; }
+  #cb-suggest div.new { color: var(--g-dim); }
   .cb-colhdr { background: var(--g-bg); border-bottom: 1px solid var(--g-line); }
   .cb-cell:focus-within, .cb-cell.open { box-shadow: inset 0 0 0 2px var(--b-solid); background: rgba(12,140,233,0.06); }
   .cb-colsize:hover { background: linear-gradient(90deg, transparent 3px, var(--b-solid) 3px, var(--b-solid) 5px, transparent 5px); }
   .cb-row.drop-above { box-shadow: inset 0 2px 0 var(--b-solid); }
   .cb-row.drop-below { box-shadow: inset 0 -2px 0 var(--b-solid); }
-  .cb-acts { padding: 0 6px 0 22px; gap: 0; }
-  .cb-acts .cb-iconbtn { width: 28px; height: 28px; }
+  .cb-acts .cb-iconbtn { width: 28px; height: 28px; color: var(--g-text); }
   .cb-acts .cb-side-switch { margin: 0 4px; }
   .cb-acts .cb-side-switch.cp-tabs { height: 24px; }
   .cb-acts .cb-side-switch .cp-segtab { height: 20px; padding: 0 5px; }
   .cb-acts .cb-side-switch svg { display: block; }
+  .cb-acts .cb-iconbtn.del:hover { background: var(--r-tint); color: var(--r-text); }
   /* Enemy / Ally keeps its colours: they are the colours of the names in the table. */
   .cb-side-switch.cp-tabs { height: 28px; padding: 2px; gap: 2px; border: 0; border-radius: 6px; background: var(--g-field); }
   .cb-side-switch .cp-segtab { height: 24px; border: 0; border-radius: 4px; color: #9aa0aa; font: 500 12px/16px system-ui, sans-serif; }
@@ -547,13 +561,8 @@
   #bs-panel.selecting .bs-acts { display: flex; }
   .bs-f { padding: 0 10px 0 12px; }
   .bs-f.on { background: var(--b-tint); color: var(--b-icon); }
-  /* Start fight / End fight on the fight table's title row (initiativeTv.js): tinted while the turn order is on the TV. */
+  /* Start fight / End fight (initiativeTv.js): tinted while the turn order is on the TV, the header's one "on". */
   #cb-tv.on, #cb-tv.on:hover { background: var(--b-tint); color: var(--b-icon); }
-  /* Sort (combatSort.js): blue while the rows are out of order, greyed once they are in it. */
-  #cb-sort.lit { background: var(--b-tint); color: var(--b-icon); }
-  #cb-sort.lit:hover { background: var(--b-tint-h); }
-  #cb-sort[aria-disabled="true"] { opacity: 0.4; cursor: var(--cur-arrow); }
-  #cb-sort[aria-disabled="true"]:hover { background: var(--g-field); }
   .bs-f.on:hover { background: var(--b-tint-h); }
   .bs-f .v { color: var(--b-icon); font-weight: 600; }
   .bs-shown { color: var(--g-dim); font-size: 12px; }
@@ -590,8 +599,38 @@
   .cb-cell.hp input.ex::placeholder { color: #4b5057; font-style: italic; font-size: 11px; }
   .cb-cell.hp .max { padding-left: 8px; color: var(--g-text); font: 600 12px/1 system-ui, sans-serif; }
   .cb-cell.hp .sum { color: #c8ccd3; font: 400 12px/1 system-ui, sans-serif; }
-  .cb-cell.cond { padding: 5px 6px; }
-  .cb-chip { height: 20px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 4px; font: 500 11px/1 system-ui, sans-serif; }
+  /* Conditions sit after the name: the first as a chip, the rest as "+N", and a square + on the row's hover. */
+  .cb-cell.name { display: flex; align-items: center; gap: 4px; padding-right: 30px; }
+  .cb-cell.name input { field-sizing: content; width: auto; min-width: 2ch; max-width: 100%; flex: 0 1 auto; padding-right: 2px; }
+  .cb-conds { display: contents; }
+  .cb-chip { height: 20px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 4px; font: 500 11px/1 system-ui, sans-serif; cursor: var(--cur-pointer); }
+  .cb-cell.name .cb-chip { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 20px; }
+  .cb-chip.more { flex: none !important; background: var(--g-field); color: var(--g-text); }
+  /* A 20px square over the cell's right edge, on the cell's own background, so the name and the chips never move for it
+     and it covers no more than its own width and the cell's padding. */
+  .cb-addcond {
+    display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); z-index: 1;
+    width: 20px; height: 20px; padding: 0; box-sizing: border-box; border: 1px dashed rgba(255, 255, 255, 0.22); border-radius: 4px;
+    --cb-cellbg: var(--g-bg); background: var(--cb-cellbg); color: var(--g-dim); cursor: var(--cur-pointer);
+  }
+  .cb-addcond svg { display: block; flex: none; }
+  .cb-row:hover .cb-addcond { --cb-cellbg: color-mix(in srgb, #fff 2.5%, var(--g-bg)); }
+  .cb-row:hover .cb-addcond, .cb-addcond.open { display: inline-flex; align-items: center; justify-content: center; }
+  .cb-addcond:hover, .cb-addcond.open { border-style: solid; color: var(--g-text); }
+  /* Defeated: dimmed and struck through in place until Clean up puts it in the Defeated line, folded at the end. */
+  .cb-row.gone > .cb-cell:not(.atk), .cb-row.gone .cb-atk { opacity: 0.45; }
+  .cb-row.gone .cb-cell.name input { text-decoration: line-through; }
+  .cb-fold {
+    display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-bottom: 1px solid var(--g-line);
+    background: rgba(255, 255, 255, 0.02); color: var(--g-dim); cursor: var(--cur-pointer);
+  }
+  .cb-fold:hover { color: var(--g-text); }
+  .cb-fold .sm-chev { transform: rotate(-90deg); transition: transform .12s; }
+  .cb-fold.open .sm-chev { transform: none; }
+  .cb-fold .n { color: var(--g-text); }
+  /* HP: a line too long for the cell widens over AC and Attacks while it is typed in. */
+  .cb-cell.hp.wide { z-index: 3; background: var(--g-bg); }
+  .cb-cell.hp input.short { color: #9aa0aa; }
   .cb-cell.atk { padding: 6px 8px; }
   .cb-cell.atk:has(.pills:not(.editing)) { padding: 5px 6px; }
   .cb-atk { font-size: 12px; line-height: 1.45; }
@@ -602,14 +641,7 @@
   .cb-pill .ph { background: var(--g-pick); color: #fff; font-weight: 600; }
   .cb-grp { border: 1px solid var(--g-pick); border-radius: 6px; }
   .cb-grp .gx { font: 500 12px/1 system-ui, sans-serif; }
-  .cb-acts { background: linear-gradient(90deg, rgba(30, 30, 33, 0), var(--g-bg) 18px); }
   .cb-empty { color: var(--g-dim); border-bottom: 1px solid var(--g-line); }
-  .cb-appears { padding: 8px 16px 12px; border-top: 1px solid var(--g-divider); }
-  .cb-appears .aph { margin: 0 0 4px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  .cb-appears .aph .n { font-weight: 500; color: var(--g-dim); }
-  .cb-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: var(--cur-pointer); display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
-  .cb-appears .ap:hover { background: var(--g-hover); }
-  .cb-appears .ap small { color: var(--g-dim); }
 
   /* ── One stat block: the popup reads at the Bestiary page's sizes. The book's order and
      blocks stay. ── */

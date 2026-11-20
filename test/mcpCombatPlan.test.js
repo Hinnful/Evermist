@@ -10,6 +10,18 @@ const rows = () => [
   { id: 2, init: '', name: 'Goblin 2', hp: '', ac: '15', conds: [], side: 'enemy', sb: { name: 'Goblin', ac: '15 (leather)' } },
 ];
 
+describe('a cleaned row through Claude', () => {
+  const gone = () => [{ id: 1, name: 'Goblin', hp: '-7', conds: [], side: 'enemy', sb: { name: 'Goblin', hp: '7' }, cleaned: true }];
+  it('reads as defeated and cleaned up', () => {
+    assert.equal(mcpFightRowRead(gone()[0]).cleanedUp, true);
+    assert.equal(mcpFightRowRead(rows()[0]).cleanedUp, false);
+  });
+  it('drops the flag when an edit puts it back above 0 HP', () => {
+    assert.equal(mcpRowEdits(gone(), [{ row: 'Goblin', hp: '-3' }]).rows[0].cleaned, undefined);
+    assert.equal(mcpRowEdits(gone(), [{ row: 'Goblin', ac: '12' }]).rows[0].cleaned, true);
+  });
+});
+
 describe('mcpRowsRefusal', () => {
   it('refuses row details on the open fight', () => {
     assert.ok(mcpRowsRefusal({ rows: [{ row: 'Goblin', hp: '7' }] }));
@@ -59,7 +71,7 @@ describe('mcpRowEdits: HP', () => {
 describe('mcpFightRowRead', () => {
   it('reports max HP and current HP apart, with the damage line', () => {
     const r = { name: 'Ogre', side: 'enemy', ac: '', hp: '-9 -12', sb: { hp: '59 (7d10+21)', ac: '11 (hide)' } };
-    assert.deepEqual(mcpFightRowRead(r), { name: 'Ogre', side: 'enemy', ac: '11', maxHp: 59, hp: 38, damage: '-9 -12' });
+    assert.deepEqual(mcpFightRowRead(r), { name: 'Ogre', side: 'enemy', ac: '11', maxHp: 59, hp: 38, damage: '-9 -12', cleanedUp: false });
   });
   it('reads full HP when nothing is typed and null when there is no max', () => {
     assert.equal(mcpFightRowRead({ name: 'Ogre', hp: '', sb: { hp: '59' } }).hp, 59);

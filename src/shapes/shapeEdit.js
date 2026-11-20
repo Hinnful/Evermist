@@ -146,6 +146,36 @@ function straightenBentEdge(poly) {
   setShapeHandle(poly, bendEndFlat, 'in', 0, 0);
 }
 
+// ─── Every piece of the open room ────────────────────────────────────────────
+// Figma's edit of a shape with several islands: every piece of the open room shows and answers its corners and
+// walls. The open record comes first; a boxed or opened hole narrows the edit to it alone, as ringIsLive does.
+function editRecords() {
+  const p = findActiveShape();
+  if (!p || !shapeEditMode || worldMapOpen || selectedHoleIndex >= 0) return p ? [p] : [];
+  return [p, ...piecesOf(activeShapeList(), p).filter(r => r !== p)];
+}
+
+// The part of the open room under pos, { poly, kind: handle | vertex | edge | hole }, in the press's priority.
+function editPartAt(pos) {
+  const recs = shapeEditMode ? editRecords() : [];
+  if (!recs.length) return null;
+  if (findHandleAt(recs[0], pos.x, pos.y)) return { poly: recs[0], kind: 'handle' };
+  for (const p of recs) if (findVertexAt(p, pos.x, pos.y) >= 0) return { poly: p, kind: 'vertex' };
+  for (const p of recs) if (findEdgeAt(p, pos.x, pos.y) >= 0) return { poly: p, kind: 'edge' };
+  if (!holeEditMode) for (const p of recs) if (findHoleAt(p, pos.x, pos.y) >= 0) return { poly: p, kind: 'hole' };
+  return null;
+}
+
+// A press on another piece makes it the open record, silently, before the single-record code runs.
+function editTakePiece(poly) {
+  if (poly.id !== selectedPolygonId) {
+    selectedPolygonId = poly.id;
+    selectedVertexIndex = -1;
+    selectedHoleIndex = -1;
+  }
+  return poly;
+}
+
 // ─── Mouse ────────────────────────────────────────────────────────────────────
 // The edit-mode press on the open shape's own parts. True when it took the press.
 // Priority: a curve handle, then vertex, then edge; a hole's middle is shapeSelect.js's.

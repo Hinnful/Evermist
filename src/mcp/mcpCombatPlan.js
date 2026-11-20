@@ -3,7 +3,8 @@
 // the open-fight refusal for them, and how a bestiary monster is found, replaced, copied and put back. No DOM. Tested.
 
 const MCC = (typeof module !== 'undefined' && module.exports) ? require('../combat/combatPlan.js')
-  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid, combatFirstNum, combatRowHpState, combatBlankBlock };
+  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid, combatFirstNum, combatRowHpState, combatBlankBlock,
+    combatIsCleaned, combatReviveRows };
 
 const MCP_ROW_FIELDS = ['name', 'hp', 'maxHp', 'ac', 'init'];
 const _key = s => String(s || '').trim().toLowerCase();
@@ -39,6 +40,7 @@ function mcpRowEdits(rows, edits) {
       out.changed = true;
     }
   }
+  MCC.combatReviveRows(list);
   return out;
 }
 
@@ -78,7 +80,8 @@ function hpProblem(hp) {
 function mcpFightRowRead(r) {
   const max = MCC.combatFirstNum(r.sb && r.sb.hp), value = MCC.combatRowHpState(max, r.hp).value;
   return { name: r.name, side: r.side || 'enemy', ac: r.ac || MCC.combatFirstNum(r.sb && r.sb.ac) || null,
-    maxHp: max ? Number(max) : null, hp: Number.isFinite(value) ? value : null, damage: String(r.hp || '').trim() || null };
+    maxHp: max ? Number(max) : null, hp: Number.isFinite(value) ? value : null, damage: String(r.hp || '').trim() || null,
+    cleanedUp: MCC.combatIsCleaned(r) };
 }
 
 // One bestiary monster by name, narrowed by source when two share a name: { entry } or { error }.

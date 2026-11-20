@@ -30,7 +30,7 @@ jobs:
           # receive is universal; the older build is only something to walk back to, so the
           # runner's own arch is enough.
           - label: Mac
-            os: macos-latest
+            os: macos-15
             new: --mac zip --universal
             old: --mac zip --arm64
             script: tools/mac-update-proof.js

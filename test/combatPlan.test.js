@@ -249,6 +249,15 @@ describe('a pick replacing a row', () => {
     assert.equal(combatRowIsFresh({ name: 'Ork', hp: '', conds: ['Poisoned'] }), false);
     assert.equal(combatRowIsFresh({ name: 'Ork', hp: '', conds: [], sbChanged: true }), false);
   });
+  it('counts a blank row whose only edit is its typed name as fresh', () => {
+    const { combatBlankBlock: blank, combatSnapshot: snap } = require('../src/combat/combatPlan.js');
+    const named = { name: 'Gob', hp: '', conds: [], sbChanged: true, sb: snap(blank('', 'Gob')) };
+    assert.equal(combatRowIsFresh(named), true);
+    assert.equal(combatRowIsFresh({ ...named, hp: '7' }), false);
+    assert.equal(combatRowIsFresh({ ...named, sb: { ...named.sb, ac: '15' } }), false);
+    assert.equal(combatRowIsFresh({ ...named, sb: { ...named.sb, quick: 'Bite +4' } }), false);
+    assert.equal(combatRowIsFresh({ ...named, sb: { ...named.sb, meta: 'Small humanoid' } }), false);
+  });
 });
 
 describe('a monster or row from a file or backup', () => {

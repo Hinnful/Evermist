@@ -550,7 +550,7 @@ function worldMapSelect(sel) {
 function _wmOwnKeys(target) {
   if (!target || !target.closest) return false;
   if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return true;
-  return !!target.closest('#cd-anchor, #bs-modal, #cl-anchor, .sm-toast, #mt-modal, #notes-window, .nw-menu');
+  return !!target.closest('#cd-anchor, #bs-modal, #cl-anchor, .sm-toast, #mt-modal, #notes-window, .nw-menu, .cb-panel');
 }
 
 function _wmOverlayUp() {
