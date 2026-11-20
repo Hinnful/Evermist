@@ -4,6 +4,7 @@
 let smPending = null;            // deferred delete: { items:[{id,index,meta}], ids:[…] }
 let smUndoTimer = null;
 let smToastUndo = null;          // the undo a toast not from a delete runs (Claude's changes, mcpHistory.js)
+let smTrashing = Promise.resolve();   // every committed delete still moving into the Trash
 
 // ── Delete with undo ──────────────────────────────────────────────────────────
 // A delete removes scenes from the list at once but DEFERS the move into the Trash so Undo
@@ -90,8 +91,10 @@ function undoDelete() {
   sceneListChanged();
 }
 
+// Resolves once every committed delete is in the Trash. ⚠ An import awaits it: a move still running when the file
+// brings the same map back takes the restored record and its file with it.
 function commitPendingDelete() {
-  if (!smPending) return;
+  if (!smPending) return smTrashing;
   const ids = smPending.ids;
   smPending = null;
   clearTimeout(smUndoTimer);
@@ -99,10 +102,11 @@ function commitPendingDelete() {
   // An end on a deleted scene opens only once the toast can no longer bring it back; Restore from the trash reattaches it.
   const roads = sceneTrash.roadsOf(ids);
   worldRoadsSceneGone(ids);
-  sceneTrash.put(ids, Date.now(), roads).catch(console.error);
+  smTrashing = Promise.all([smTrashing, sceneTrash.put(ids, Date.now(), roads).catch(console.error)]);
   for (const id of ids) {
     if (thumbURLs.has(id)) { URL.revokeObjectURL(thumbURLs.get(id)); thumbURLs.delete(id); }
   }
+  return smTrashing;
 }
 
 // The undo toast's two buttons, and the delete that is still pending when the window goes.

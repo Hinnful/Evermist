@@ -70,11 +70,10 @@ module.exports = async function keepsWork(rig) {
   rig.check(fs.existsSync(zip) && fs.statSync(zip).size > 0, 'B: the backup wrote no zip');
 
   const restored = await dm.evaluate(`(async () => {
-    const ids = allScenes.map(s => s.id);
-    deleteScenesWithUndo(ids);
-    commitPendingDelete();
-    for (const id of ids) { await sceneStore.deleteScene(id); await window.electronAPI.deleteVideoFile(id).catch(() => {}); }
-    const emptied = allScenes.length;
+    // The DM's own delete, awaited into the Trash: a move still running would race the restore of the same map.
+    deleteScenesWithUndo(allScenes.map(s => s.id));
+    await commitPendingDelete();
+    const emptied = allScenes.length + (await sceneStore.listScenes()).length;
     await restoreFromZipPath(${JSON.stringify(zip)});
     const out = [];
     for (const meta of allScenes) {

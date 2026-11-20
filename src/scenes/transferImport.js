@@ -309,7 +309,7 @@ async function restoreFromZipPath(zipPath, say) {
   // one is about to replace. Back to one map first.
   if (typeof panesActive !== 'undefined' && panesActive) await exitPanes(panes[panesSelected].sceneId);
   // ⚠ A pending delete is finished and the open scene saved first, so the plan reads what the store holds.
-  commitPendingDelete();
+  await commitPendingDelete();
   await doAutoSave();
 
   setMapProgressRun('', zipPath.split(/[\\/]/).pop());

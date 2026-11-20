@@ -111,6 +111,9 @@ async function _sameBlob(a, b) {
 // be written over, an import's, awaits these.
 const _autoSavesInFlight = new Set();
 function autoSavesSettled() { return Promise.all([..._autoSavesInFlight]); }
+// ⚠ EACH SAVE WRITES AFTER THE ONE BEFORE IT. An encode can outlast the next save's on a busy machine, and the
+// older snapshot landing last put a room revealed in between back in the fog on disk.
+let _autoSaveTail = Promise.resolve();
 
 // Non-blocking auto-save: captures a snapshot of current state synchronously,
 // then encodes fog asynchronously via toBlob so the main thread is never blocked.
@@ -139,35 +142,35 @@ function doAutoSave() {
     timeOfDay:     timeOfDayId,
     fogTheme,
   };
-  const run = new Promise(resolve => {
-    baseFogCanvas.toBlob(async blob => {
-      // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
-      if (!blob || (currentScene !== null && currentScene !== scene)) { fogEditedSinceSave = fogEditedSinceSave || fogEdited; resolve(); return; }
-      // Every undo step raises the flag, room names and notes included. A picture that did not change
-      // keeps its edit time, or an import keeps this machine's fog over the other's newer reveals.
-      const fogChanged = fogEdited && !(await _sameBlob(blob, scene.baseFogBlob).catch(() => false));
-      scene.polygons      = snap.polygons;
-      scene.nextPolygonId = snap.nextPolygonId;
-      scene.pictureBlobs  = snap.pictureBlobs;
-      scene.effects       = snap.effects;
-      scene.nextEffectId  = snap.nextEffectId;
-      Object.assign(scene, snap.lights);
-      scene.baseFogBlob   = blob;
-      scene.gridConfig    = snap.gridConfig;
-      scene.fogSettings   = snap.fogSettings;
-      // Absent means none, so a map without weather keeps the record the previous release wrote. A value
-      // this build cannot read (a newer release's, after /rollback) stays until the DM picks another.
-      if (snap.weather !== weatherNormalize(scene.weather)) { if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather; }
-      timeOfDayWrite(scene, snap.timeOfDay);
-      // The same for the fog theme: absent is Default, which the previous release never reads.
-      if (snap.fogTheme !== fogThemeNormalize(scene.fogTheme)) { if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme; }
-      if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
-      // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
-      if (typeof scene.notes !== 'string') scene.notes = '';
-      // ⚠ Settles even when the store throws: an import and a switch wait on this.
-      Promise.resolve().then(() => sceneStore.saveScene(scene, { fogEdited: fogChanged })).catch(console.error).then(resolve, resolve);
-    }, 'image/png');
-  });
+  const encoded = new Promise(resolve => baseFogCanvas.toBlob(resolve, 'image/png'));
+  const run = _autoSaveTail.then(() => encoded).then(async blob => {
+    // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
+    if (!blob || (currentScene !== null && currentScene !== scene)) { fogEditedSinceSave = fogEditedSinceSave || fogEdited; return; }
+    // Every undo step raises the flag, room names and notes included. A picture that did not change
+    // keeps its edit time, or an import keeps this machine's fog over the other's newer reveals.
+    const fogChanged = fogEdited && !(await _sameBlob(blob, scene.baseFogBlob).catch(() => false));
+    scene.polygons      = snap.polygons;
+    scene.nextPolygonId = snap.nextPolygonId;
+    scene.pictureBlobs  = snap.pictureBlobs;
+    scene.effects       = snap.effects;
+    scene.nextEffectId  = snap.nextEffectId;
+    Object.assign(scene, snap.lights);
+    scene.baseFogBlob   = blob;
+    scene.gridConfig    = snap.gridConfig;
+    scene.fogSettings   = snap.fogSettings;
+    // Absent means none, so a map without weather keeps the record the previous release wrote. A value
+    // this build cannot read (a newer release's, after /rollback) stays until the DM picks another.
+    if (snap.weather !== weatherNormalize(scene.weather)) { if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather; }
+    timeOfDayWrite(scene, snap.timeOfDay);
+    // The same for the fog theme: absent is Default, which the previous release never reads.
+    if (snap.fogTheme !== fogThemeNormalize(scene.fogTheme)) { if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme; }
+    if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
+    // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
+    if (typeof scene.notes !== 'string') scene.notes = '';
+    await sceneStore.saveScene(scene, { fogEdited: fogChanged });
+  // ⚠ Settles even when the store throws: an import, a switch and the next save wait on this.
+  }).catch(console.error);
+  _autoSaveTail = run;
   _autoSavesInFlight.add(run);
   run.then(() => _autoSavesInFlight.delete(run));
   return run;

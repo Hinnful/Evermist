@@ -11,7 +11,8 @@
 //   2. On a picture map with one room, at Night the TV's ground outside the room is darker and bluer than at None,
 //      and a dark interior stays within a small tolerance of None.
 //   3. The DM screen moves about a third as far as the TV; holding H shows the full way.
-//   4. A change made in Manual reaches the TV without Send, is still mid-way at about 4 s, and settled by 9 s.
+//   4. A change made in Manual reaches the TV without Send, is still mid-way at about 4 s by the TV's own clock, and
+//      settles once that clock runs on.
 //   5. Weather draws on top: Rain over Night changes the TV's pixel again.
 //   6. Day lifts a dark pixel on the TV, inside the room and out.
 //   7. The pick saves with the map and survives reopening it; None writes no field.
@@ -152,20 +153,27 @@ module.exports = async function timeOfDay(rig) {
     const t0 = Date.now();
     await pick('night');
     await since(t0 + 4000);
-    // ⚠ THE PICTURE IS TAKEN SOMEWHERE BETWEEN THESE TWO TIMES, and a screenshot takes seconds on a slow runner: judged
-    // against the time it returned, a TV exactly on the curve read as late.
-    const tA = Date.now() - t0;
+    // ⚠ THE TV'S FADE CLOCK IS HELD AT 4 S WHILE THE PICTURE IS TAKEN. A screenshot takes up to seven seconds on a
+    // slow runner, so a running fade could be read anywhere between 4 s and its end.
+    const at4 = await player.evaluate(`(() => {
+      const k = (performance.now() - _todAt) / WEATHER_FADE_MS, fading = _todFading, id = timeOfDayId;
+      window.__rigTodHold = () => { _todAt = performance.now() - WEATHER_FADE_MS / 2; };
+      pixiApp.ticker.add(window.__rigTodHold, null, PIXI.UPDATE_PRIORITY.INTERACTION);
+      return { k, fading, id };
+    })()`);
+    rig.check(at4.id === 'night' && at4.fading && at4.k < 0.8,
+      '4: the TV was not mid-way at about 4 s: ' + JSON.stringify(at4) + ' at ' + (Date.now() - t0) + ' ms');
     const mid = await pixel(rig, player, A);
-    const tB = Date.now() - t0;
-    await since(t0 + 9000);
+    await player.evaluate('pixiApp.ticker.remove(window.__rigTodHold); 0');
+    await lib.settle(player, '!_todFading', 15000);
+    rig.check(await player.evaluate('!_todFading'), '4: the TV\'s fade never ended');
     tv.A1 = await pixel(rig, player, A); tv.B1 = await pixel(rig, player, B);
     const fNow = (lum(tv.A0) - lum(mid)) / Math.max(1, lum(tv.A0) - lum(tv.A1));
-    const curve = ms => { const k = Math.min(1, ms / 8000); return k * k * (3 - 2 * k); };
-    const lo = curve(tA), hi = curve(tB);
-    rig.note('4: between ' + tA + ' and ' + tB + ' ms the TV was ' + (fNow * 100).toFixed(0) + '% of the way (the curve says ' + (lo * 100).toFixed(0) + '-' + (hi * 100).toFixed(0) + '%)');
-    rig.check(tA < 6500 && fNow > 0.1 && fNow < 0.9 && fNow > lo - 0.3 && fNow < hi + 0.3, '4: the TV was not mid-way at about 4 s: ' + (fNow * 100).toFixed(0) + '% between ' + tA + ' and ' + tB + ' ms');
+    const half = await player.evaluate('weatherFadeCurve(0.5)');
+    rig.note('4: held at 4 s the TV was ' + (fNow * 100).toFixed(0) + '% of the way (the curve says ' + (half * 100).toFixed(0) + '%)');
+    rig.check(fNow > 0.1 && fNow < 0.9 && Math.abs(fNow - half) < 0.3, '4: the TV was not mid-way at about 4 s: ' + (fNow * 100).toFixed(0) + '% held at 4 s');
     const later = await pixel(rig, player, A);
-    rig.check(Math.abs(lum(later) - lum(tv.A1)) < 2, '4: the TV was still moving after 9 s: ' + fmt(tv.A1) + ' then ' + fmt(later));
+    rig.check(Math.abs(lum(later) - lum(tv.A1)) < 2, '4: the TV was still moving after its fade ended: ' + fmt(tv.A1) + ' then ' + fmt(later));
     rig.note('2: TV outside the room ' + fmt(tv.A0) + ' → ' + fmt(tv.A1) + '; inside the dark room ' + fmt(tv.B0) + ' → ' + fmt(tv.B1));
     rig.check(lum(tv.A1) < lum(tv.A0) - 30 && tv.A1[2] - tv.A1[0] > tv.A0[2] - tv.A0[0] + 5,
       '2: at Night the TV\'s ground outside the room is not darker and bluer: ' + fmt(tv.A0) + ' → ' + fmt(tv.A1));
