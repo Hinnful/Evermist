@@ -540,7 +540,7 @@ follows them. A publisher's legal footer is dropped by its wording.
 Machine-read text misreads 13 as "l3" and 1d6 as "ld6". Scores, HP and damage could be checked
 against their modifiers and dice, but AC, attack bonus, save DC and challenge rating have nothing
 to check against, so a misread one reaches the fight table looking whole. Reading scans with those
-checks was rejected; a book with real text and the sites cover the same monsters.
+checks was rejected; a book with real text and the sites cover the same monsters. Standing in 5.19.0: the 2014 Monster Manual in English reads 383 blocks and the import refuses all 383; English test coverage comes from SRD 5.1 and SRD 5.2.1.
 
 ### A site's missing average is worked out from its dice · `SETTLED` (2026-09-28)
 A page printing "Hit: (2d6 + 5)" gets the average every book prints, the dice's average rounded

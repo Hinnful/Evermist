@@ -55,13 +55,14 @@ function _cbRead(key) {
 }
 
 function _cbLoad() {
-  const d = _cbRead(CB_KEY) || {};
+  const read = _cbRead(CB_KEY), d = read || {};
   cbState = Object.assign({ rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {}, nextId: d.nextId || 1, edits: d.edits },
     combatFightsFrom(_cbRead(CB_FIGHTS_KEY), combatFightId));
   // Entries imported before statBlockJoinHp read a split HP as its first half.
   const copies = cbState.fights.flatMap(f => combatFightRows(cbState, f)).map(r => r.sb).filter(Boolean);
   for (const b of Object.values(cbState.blocks).concat(copies)) b.hp = statBlockJoinHp(b.hp);
   if (combatBackfillUids(cbState.blocks, combatMintUid)) cbSaveSoon();
+  if (read) bpPruneEntrySpent(cbState.blocks);   // never on a save that failed to read
 }
 
 // Null when there is nothing to carry, and the zip then looks exactly as it always did.

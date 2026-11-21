@@ -167,6 +167,16 @@ function _bkLoreFonts(lines, anchors) {
   return fonts;
 }
 
+// A spell list's label, a 2014 slot count included: "1-й уровень (4 ячейки): …".
+const BK_LIST_LABEL = /^[\p{Lu}\d][\p{L}\d/ ,–-]{0,39}(?:\([^)]{0,30}\))?:\s/u;
+
+// The bracket a line leaves open, or ''.
+function _bkOpenBracket(s) {
+  const st = [];
+  for (const c of s) if (c === '(' || c === '[') st.push(c); else if ((c === ')' || c === ']') && st.length) st.pop();
+  return st.length ? st[st.length - 1] : '';
+}
+
 // A closing bracket is no full stop: "Hit: 10 (2d6 + 3)" goes on with its damage type.
 const _bkEnds = t => /[.!?…»]$/.test(t);
 
@@ -260,9 +270,17 @@ function statBlocksInText(text) {
       return 0;
     };
     const used = new Set();
+    let lastFont = '';
     for (let k = top; k < lines.length && k < top + BK_MAX_LINES; k++) {
       const l = lines[k], t = l.t;
       if (k > a + 3 && (_bkAnchor(texts, k) || statBlockHeadAt(texts, k))) break;
+      // A short line closing the bracket the last one left open is its tail, whatever its font: "Insect Plague (level" / "7 version)".
+      const shut = !head && body.length > 1 && t.length <= 40 && _bkOpenBracket(last);
+      if (shut && (t.match(/[()[\]]/) || [])[0] === (shut === '(' ? ')' : ']')) {
+        body[body.length - 1] += ' ' + t;
+        last = body[body.length - 1]; end = k; used.add(l.f).add(l.lead); lastFont = l.f;
+        continue;
+      }
       // The next monster's name over its lore: a short line in the font this block's name is set in.
       if (!head && nameFont && l.f === nameFont && t.length <= 60 && !_bkEnds(t) && !/\.\s/.test(t) &&!SBB._sbSection(t) && !SBB._sbLabel(t)) {
         const back = resumes(k);
@@ -305,9 +323,17 @@ function statBlocksInText(text) {
       if (!head && !heading) {
         // "Hit: 2 (1d4) piercing damage." set in its own font goes on with the attack above it.
         const hit = /^(?:Hit|Miss|Попадание|Промах):/.test(t);
-        const list = /^[\p{Lu}\d][\p{L}\d/ ,–-]{0,39}:\s/u.test(t) || /^[•\-–]/.test(t);
+        const list = BK_LIST_LABEL.test(t) || /^[•\-–]/.test(t);
+        // A list's wrapped line in the list's own font is no lore, even in a lore font: "[prestidigitation], луч холода…".
+        // An upper-case line after a list line that looks finished is lore.
+        const wrap = lastList && !_bkEnds(last) && l.f && l.f === lastFont && (/^[\p{Ll}[(]/u.test(t) || /[,\-‑[(]$/.test(last));
+        // An entry starting in a name font this block already used is its own, whatever font the rest of the line takes,
+        // unless it runs on into lore: then it is lore's lead-in.
+        const nx = lines[k + 1];
+        const ownEntry = knownEntry(k) && (!nx || !foreign(nx) ||
+          _bkEnds(t) && (knownEntry(k + 1) || !!SBB._sbSection(nx.t) || BK_LIST_LABEL.test(nx.t)));
         // A quote set between two entries: the block goes on at a name in a font it already used.
-        if (foreign(l) && !list) {
+        if (foreign(l) && !list && !wrap && !ownEntry) {
           let m = k;
           while (m < lines.length && m - k < BK_ASIDE_LINES && foreign(lines[m])) m++;
           const r = lines[m];
@@ -315,8 +341,8 @@ function statBlocksInText(text) {
           const back = resumes(k);
           if (back > 0) { k = back - 1; continue; }
         }
-        // Lore after the block's last line; a lone line in another font just before it was a sidebar's lead-in.
-        if (foreign(l) && !list) { if (from === k - 1 && lines[from].f !== bodyFont && fresh && body.length > 2 && !SBB._sbSection(body[body.length - 2])) body.pop(); break; }
+        // Lore after the block's last line; a lone line in another font just before it was a sidebar's lead-in, unless it is a spell list's.
+        if (foreign(l) && !list && !wrap && !ownEntry) { if (from === k - 1 && !lastList && lines[from].f !== bodyFont && fresh && body.length > 2 && !SBB._sbSection(body[body.length - 2])) body.pop(); break; }
         if (/^(Время накладывания|Накладывание более высокой|Casting Time|Using a Higher-Level)/.test(t)) break;
         if (/^(?:вариант|разновидность|variant)\s*:/i.test(t) || sidebar.has(l.f) && /^\p{Ll}/u.test(t)) break;
         const marked = l.lead ? l.lead !== bodyFont : null;
@@ -327,9 +353,9 @@ function statBlocksInText(text) {
         const shape = (!long && !prose && e) || named;
         // A habitat line, or a short heading after a full stop or a spell list: the next monster.
         const lab = SBB._sbLabel(t);
-        // A list's wrapped line keeps its font: "1/Day Each: …, Power" / "Word Kill, Scrying".
+        // A list's wrapped line keeps its font: "1/Day Each: …, Power" / "Word Kill, Scrying". The last line read, not a skipped page head.
         const listDone = lastList && !/[,;:]$/.test(last) &&
-          !(l.f && l.f === lines[k - 1].f && l.f !== bodyFont) && !/^[\p{Lu}\d][\p{L}\d/ ,–-]{0,39}:\s/u.test(texts[k + 1] || '') &&
+          !(l.f && l.f === lastFont && l.f !== bodyFont) && !BK_LIST_LABEL.test(texts[k + 1] || '') &&
           !(/\p{L}$/u.test(last) && /[,()]/.test(t));
         // A line after a heading printed twice over, "CreditsCredits", once the last sentence ended.
         if (l.cut && _bkEnds(last) && !shape && !list) break;
@@ -357,6 +383,7 @@ function statBlocksInText(text) {
       last = body[body.length - 1];
       end = k;
       used.add(l.f).add(l.lead);
+      lastFont = l.f;
     }
     const b = SBB.statBlockFromLines(body);
     // A number set as its own text run arrives fused: "пассивное Внимание24".

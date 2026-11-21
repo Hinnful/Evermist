@@ -70,7 +70,7 @@ function bcHtml(row) {
     : `<div class="bs-page-head"><div class="t">${name}</div><div class="bs-tools">
         <button class="bs-ib" data-c="edit" title="Edit">${BS_ICONS.edit}</button>${
   e ? `<button class="bs-ib" data-c="book" title="Open the Bestiary entry">${uiIcon('book')}</button>` : ''}</div></div>`;
-  return `${head}<div class="bc-strip">${_bcStripHtml(row, e)}</div><div class="bs-page-body">${bpHtml(cbRowBlock(row), bs.editing, !e)}</div>`;
+  return `${head}<div class="bc-strip">${_bcStripHtml(row, e)}</div><div class="bs-page-body">${bpHtml(cbRowBlock(row), bs.editing, !e, row.spent)}</div>`;
 }
 
 function bcMount(page, row) {

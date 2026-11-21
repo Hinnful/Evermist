@@ -48,7 +48,8 @@ function combatAddFight(st, newId) {
 
 function combatDuplicateFight(st, id, newId) {
   const f = st.fights.find(x => x.id === id);
-  const rows = combatFightRows(st, f).map(r => Object.assign(JSON.parse(JSON.stringify(r)), { id: st.nextId++ }));
+  // A copied fight starts with every spell crystal back.
+  const rows = combatFightRows(st, f).map(r => { const c = Object.assign(JSON.parse(JSON.stringify(r)), { id: st.nextId++ }); delete c.spent; return c; });
   st.fights.splice(st.fights.indexOf(f) + 1, 0, { id: newId(), name: f.name + ' copy', rows });
   return st;
 }

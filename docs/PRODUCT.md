@@ -89,7 +89,7 @@ the empty HP field of the first two enemy rows, AC editable in the row, and a si
 and names the players only so the turn order can be read out; a player's character sheet is the
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
 rounds until something counts turns. The bestiary holds every stat block and is the source the
-fight copies from; nothing in a fight changes it unless saved back as a new entry. Stat blocks
+fight copies from; nothing in a fight changes it unless saved back as a new entry. The one exception is a caster's spell crystals, spent and returned on an entry outside any fight, which write no stat. Stat blocks
 import from any monster page, and every one a book or module prints reads in at once; one that
 does not read clean is left out and named; one printed with no actions reads in as printed. A misprint imports as printed:
 Evermist never corrects a book or a site. Notes for a scene with no rooms

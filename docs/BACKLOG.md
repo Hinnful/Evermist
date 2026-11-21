@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 306."
+description: "Open work only. 9 open items; IDs run to 309."
 metadata: 
   node_type: memory
   type: project
@@ -135,19 +135,41 @@ Edge squares grid rule and one colour per material (`docs/decisions/map-effects.
 **Needs prototype looks for the DM to pick from, one effect per round.**
 **Play · Player**
 
-### 304. Spells and actions read better on the stat block
-Filed 2026-11-20 from the 302 board. Today a caster's Spellcasting trait is one paragraph: every spell level runs on in one
-block of text, which is hard to read mid-fight. Proposed: one row per spell level with its slots shown as boxes. May grow into
-a rework of the stat block parser and page, so more of what the Player's Handbook and the books print reads as structure, not
-as plain text. Spell descriptions on hover need a spell database the app does not have. **Needs a design round.**
-**Play · Prep · DM only**
-
 ### 305. Bestiary and Notes as one campaign knowledge base
 Filed 2026-11-20 from 302. Once the Bestiary is a window like the Notes window, the two share a shell, and the Notes tree
 already lists monsters that have a note, so one monster's note shows in both. The idea: merge them into one window, a knowledge
 base for the campaign, with monsters as one more kind beside groups, maps, rooms, factions and lore. Not decided: the DM wants
 to talk it through first. **Discussion.**
 **Campaign · Prep · DM only**
+
+### 307. One design language for every control
+Filed 2026-11-21 from the 304 boards. The same meaning is drawn in different ways across the app, and it confuses the DM:
+"picked" has four looks and a picked list row five; secondary buttons come in four heights; a close button comes in five
+sizes; hover uses six greys; some disabled buttons fade and some do not change; no button shows a pressed state; delete,
+rename and right-click work differently from one list to the next. The goal is one language that every control follows: all
+primary buttons alike, all secondary alike, all tertiary alike. A palette change is out: it would not change how the app reads.
+The selection colours stay as they are. A picked value is the grey plate; a mode or a tool in hand is the blue
+tint. Must be fixed and the item closed, not parked. Research and boards (private):
+audit https://claude.ai/artifact/NrFPPCX81HPh63X2yosicy,
+design-system study https://claude.ai/artifact/WM63r1TroEmkzD1CNKvXGP,
+boards https://claude.ai/artifact/PfjEdLTDCPbvr2z2apZ5uu, https://claude.ai/artifact/PgLu5BcDoca4Tkv8kR3zs6,
+https://claude.ai/artifact/FTNyKDV83M5oToJW3ggUZH, https://claude.ai/artifact/ERwnPQXYqRmJBfDCxVr3JH.
+Board 4 is the closest to the agreed direction: actions and sizes made consistent, selection colours unchanged. Rejected on
+the way: every control on a plate at rest (too noisy), and a palette change. **Needs `/spec`.**
+**Polish · DM only**
+
+### 308. Legendary actions and recharge as cells on the fight copy
+Filed 2026-11-21, split out of 304, which covers spells only. A legendary creature's pool of legendary actions and an
+action that recharges on a roll of 5–6 get cells on the fight copy of the stat block, the same crystal cells 304 gives
+spell slots, with a way to refill them. The 304 boards drew a legendary pool beside the section title; it was left out
+to keep 304 to spells.
+**Play · DM only**
+
+### 309. Refill every spent crystal at once
+Filed 2026-11-21, left out of 304. 304 lets the DM spend and return spell crystals one at a time; a control that fills
+every crystal of a creature in one press, after a long rest or for a new fight, is not in it. It has no picked place or
+look yet. **Needs a design round.**
+**Play · Polish · DM only**
 
 ---
 

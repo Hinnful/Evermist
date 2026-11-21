@@ -397,6 +397,24 @@
   .bp-sec-b p { margin: 0 0 10px; }
   .bp-sec-b p .n { font-weight: 700; font-style: italic; color: #eceef1; }
   .bp-sec-b .bp-none { color: #62676e; }
+  /* Spells as rows (BACKLOG 304): no panel behind a level; the chip and its crystals on a grey plate, spells as soft
+     labels with no hover, since hovering one does nothing. */
+  .sp-cast { margin: 0 0 14px; }
+  .sp-cast .lead { margin: 0 0 10px; }
+  .sp-grp { display: flex; flex-wrap: wrap; gap: 4px 5px; }
+  .sp-grp + .sp-grp { margin-top: 14px; }
+  .sp-lv, .sp-sp { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; box-sizing: border-box; border-radius: 6px; white-space: nowrap; font: 400 12.5px/1 system-ui, -apple-system, sans-serif; }
+  .sp-lv .tx, .sp-sp .tx { text-box: trim-both cap alphabetic; }
+  .sp-lv { gap: 7px; font-weight: 700; background: var(--g-hover); color: var(--g-text); }
+  .sp-sp { background: rgba(255, 255, 255, 0.045); color: #d5d8dd; }
+  .sp-sp .tag { color: var(--g-dim); }
+  .sp-sp.done { color: #6f747c; }
+  .sp-pp { display: inline-flex; gap: 3px; align-items: center; }
+  .sp-pp > i { display: block; flex: none; width: 9px; height: 13px; cursor: var(--cur-pointer); }
+  .sp-pp > i:hover { filter: brightness(1.3); }
+  .sp-pp > i svg { display: block; width: 9px; height: 13px; }
+  .sp-pp > i .f { fill: #3d8fe0; } .sp-pp > i .t { fill: #8cc8ff; } .sp-pp > i .o { fill: none; stroke: none; }
+  .sp-pp > i.off .f, .sp-pp > i.off .t { fill: transparent; } .sp-pp > i.off .o { stroke: #5d626b; stroke-width: 1.3; }
   .bp-notes {
     width: 100%; min-height: 80px; resize: vertical; padding: 10px 12px; border-radius: 8px; outline: none;
     border: 1.5px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.025); color: #d5d8dd; font: 500 14px/1.55 system-ui, sans-serif;

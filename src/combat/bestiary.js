@@ -74,7 +74,7 @@ function _bsPageHtml(b) {
           <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${uiIcon('dup')}</button>
           <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${uiIcon('trash')}</button></div>
         <span class="bs-div"></span><button class="bs-ib" data-a="unpage" title="Close the page (Esc)">${uiIcon('collapse')}</button></div>`;
-  return `${head}<div class="bs-page-body">${bpHtml(b, bs.editing)}</div>`;
+  return `${head}<div class="bs-page-body">${bpHtml(b, bs.editing, false, bpEntrySpent(b))}</div>`;
 }
 
 function bestiaryRender() {
@@ -431,6 +431,7 @@ function initBestiary() {
     redraw: _bsRenderPage,
   });
   bcInit(_bsEl('bs-page'));
+  bpWireSpells(_bsEl('bs-page'));
   bswInit(_bsGo, bswdMode, bswdApply);
   bswdInit();
 

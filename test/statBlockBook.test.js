@@ -478,3 +478,113 @@ describe('statBlocksInText keeps page text out of the last entry', () => {
     assert.deepEqual(y.secs.Actions.map(e => e.n), ['Bite', 'Chilling Gaze']);
   });
 });
+
+describe('statBlocksInText on a spell list that ends a page', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const head = [['N', 'N', 'костяной дьявол'], ['S', 'S', 'Большое исчадие (дьявол), законно-злое'], ['B', 'B', 'Класс Доспеха 19'],
+    ['B', 'B', 'Хиты 142 (15к10 + 60)'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['B', 'B', '18 ( +4 ) 16 ( +3 ) 18 ( +4 ) 13 ( +1 ) 14 ( +2 ) 16 ( +3 )'],
+    ['B', 'B', 'Опасность 9 (5000 опыта)'], ['H', 'H', 'Действия'],
+    ['B', 'E', 'Коготь. Рукопашная атака оружием: +8 к попаданию. Попадание: Рубящий урон 8 (1к8+4).'],
+    ['B', 'E', 'Заклинания. Дьявол сотворяет одно из заклинаний:'], ['W', 'X', 'Неограниченно: Обнаружение магии, Свет']];
+  const prose = Array.from({ length: 12 }, (_, i) => ['L', 'L', `Личи веками ищут бессмертия, строка ${i}.`]);
+  const last = b => b.secs.Actions[b.secs.Actions.length - 1].t;
+
+  it('ends at the last spell, not at the next monster’s heading set in the running head’s font', () => {
+    const [b] = statBlocksInText(pdf([...head, ['W', 'X', '1 в день каждое: Огненный шар, Каменная стена'],
+      ['T', 'T', 'дьявол98'], ['T', 'T', 'Демилич'], ['G', 'G', 'Конец пути лича'], ...prose]));
+    assert.match(last(b), /Каменная стена$/);
+  });
+  it('joins a wrapped list line past a running head set in the list’s own font', () => {
+    const [b] = statBlocksInText(pdf([...head, ['W', 'X', '1 в день каждое: Огненный шар, Слово'],
+      ['W', 'W', 'дьявол98'], ['W', 'W', 'Силы, Наблюдение'], ['H', 'H', 'Реакции'], ['B', 'E', 'Защитная магия. Дьявол сотворяет Щит.'], ...prose]));
+    assert.match(last(b), /Слово Силы, Наблюдение$/);
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+  });
+});
+
+describe('statBlocksInText on a spell list with brackets', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const head = [['N', 'N', 'костяной дьявол'], ['S', 'S', 'Большое исчадие (дьявол), законно-злое'], ['B', 'B', 'Класс Доспеха 19'],
+    ['B', 'B', 'Хиты 142 (15к10 + 60)'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['B', 'B', '18 ( +4 ) 16 ( +3 ) 18 ( +4 ) 13 ( +1 ) 14 ( +2 ) 16 ( +3 )'],
+    ['B', 'B', 'Опасность 9 (5000 опыта)'], ['H', 'H', 'Действия'],
+    ['B', 'E', 'Коготь. Рукопашная атака оружием: +8 к попаданию. Попадание: Рубящий урон 8 (1к8+4).'],
+    ['B', 'E', 'Заклинания. Дьявол сотворяет одно из заклинаний:']];
+  const prose = n => Array.from({ length: n }, (_, i) => ['L', 'L', `Дьяволы веками служат Асмодею, строка ${i}.`]);
+  const tail = [['H', 'H', 'Реакции'], ['B', 'E', 'Защитная магия. Дьявол сотворяет Щит.']];
+  const spells = b => b.secs.Actions.find(e => e.n === 'Заклинания').t;
+
+  it('reads a slot list whose labels carry a bracket, set in a font the book uses for lore', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ...head,
+      ['L', 'X', 'Заговоры (неограниченно): дружба [friends], свет [light]'],
+      ['L', 'X', '1-й уровень (4 ячейки): щит [shield], усыпление [sleep]'], ...tail, ...prose(30)]));
+    assert.match(spells(b), /дружба \[friends\], свет \[light\]\s+1-й уровень \(4 ячейки\): щит \[shield\], усыпление \[sleep\]$/);
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+  });
+  it('joins a lone line in another font that closes the bracket a list line left open', () => {
+    const [b] = statBlocksInText(pdf([...prose(12), ...head, ['W', 'X', '1/Day Each: Animate Dead, Harm, Insect Plague (level'],
+      ['Q', 'Q', '7 version)'], ...tail, ...prose(12)]));
+    assert.match(spells(b), /Insect Plague \(level 7 version\)$/);
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+  });
+  it('joins a bracket’s tail set in a lore font, and keeps the list line after it', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ...head,
+      ['W', 'X', '3/день: туманный шаг [misty step], призрачный скакун [phantom'], ['L', 'L', 'steed]'],
+      ['W', 'X', '1/день: магическое оружие [magic weapon], необнаружимость'], ...tail, ...prose(30)]));
+    assert.match(spells(b), /призрачный скакун \[phantom steed\]\s+1\/день: магическое оружие \[magic weapon\], необнаружимость$/);
+  });
+  it('reads a slot list wrapped in a lore font, past a running head between two levels', () => {
+    // The running head sits on every page, so the book has it beside every page of lore.
+    const paged = from => prose(30).flatMap((l, i) => i % 5 ? [l] : [l, ['R', 'R', `${from + i} Приложение D: Монстры и НИП`]]);
+    // Actions before the list keep its lines out of the header, where a font cannot be learned as lore.
+    const acts = ['Укус', 'Хвост', 'Рога', 'Жало'].map(n => ['B', 'E', `${n}. Рукопашная атака оружием: +8 к попаданию. Попадание: Колющий урон 8 (1к8+4).`]);
+    const [b] = statBlocksInText(pdf([...paged(200), ...head.slice(0, -1), ...acts, head[head.length - 1],
+      ['L', 'X', 'Заговоры (неограниченно): волшебная рука [mage hand], фокусы'], ['L', 'L', '[prestidigitation], луч холода [ray of frost]'],
+      ['L', 'X', '1-й уровень (4 ячейки): понимание языков [comprehend'], ['L', 'L', 'languages], туманное облако [fog cloud], усыпление [sleep]'],
+      ['R', 'R', '236 Приложение D: Монстры и НИП'], ['L', 'X', '2-й уровень (3 ячейки): обнаружение мыслей [detect thoughts]'],
+      ['B', 'E', 'Паучье лазание. Дьявол лазает по стенам без проверок.'], ...tail, ...paged(240)]));
+    assert.match(spells(b), /фокусы \[prestidigitation\], луч холода \[ray of frost\]\s+1-й уровень \(4 ячейки\): понимание языков \[comprehend languages\], туманное облако \[fog cloud\], усыпление \[sleep\]\s+2-й уровень \(3 ячейки\): обнаружение мыслей \[detect thoughts\]$/);
+    assert.ok(!JSON.stringify(b).includes('Приложение'));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Коготь', 'Укус', 'Хвост', 'Рога', 'Жало', 'Заклинания', 'Паучье лазание']);
+  });
+  it('keeps an entry set in a lore font but started in a name font the block uses, past a heading', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ...head, ['W', 'X', 'Неограниченно: Обнаружение магии, Свет'],
+      ['H', 'H', 'Реакции'], ['L', 'E', 'Парирование. Дьявол добавляет 3 к КД против одной атаки.'],
+      ['B', 'E', 'Защитная магия. Дьявол сотворяет Щит.'], ...prose(30)]));
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Парирование', 'Защитная магия']);
+  });
+  it('stops at lore in the list’s own font after a list that ends without a comma', () => {
+    // Actions before the list keep its lines out of the header, where a font cannot be learned as lore.
+    const acts = ['Укус', 'Хвост', 'Рога', 'Жало'].map(n => ['B', 'E', `${n}. Рукопашная атака оружием: +8 к попаданию. Попадание: Колющий урон 8 (1к8+4).`]);
+    const [b] = statBlocksInText(pdf([...prose(30), ...head.slice(0, -1), ...acts, head[head.length - 1],
+      ['L', 'X', 'Заговоры (неограниченно): дружба [friends], свет [light]'],
+      ['L', 'X', '1-й уровень (4 ячейки): щит [shield], усыпление [sleep]'],
+      ['L', 'L', 'Дьяволы веками служат Асмодею и не знают покоя'], ...prose(30)]));
+    assert.match(spells(b), /усыпление \[sleep\]$/);
+    const [c] = statBlocksInText(pdf([...prose(30), ...head.slice(0, -1), ...acts, head[head.length - 1],
+      ['L', 'X', '1-й уровень (4 ячейки): щит [shield], огнен-'], ['L', 'L', 'ный шар [fireball], усыпление'],
+      ['L', 'L', '[sleep]'], ...tail, ...prose(30)]));
+    assert.match(spells(c), /огненный шар \[fireball\], усыпление \[sleep\]$/);
+  });
+  it('stops at a lore lead-in set in an entry’s name font after the last entry', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ...head.slice(0, -1), ...tail,
+      ['L', 'E', 'Логово. Дьяволы строят логова в безднах и стерегут их веками'], ...prose(30)]));
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+    assert.ok(!JSON.stringify(b).includes('Логово'));
+  });
+  it('keeps an entry whose line is set in a lore font when the next line is the body’s', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ...head.slice(0, -1), ...tail,
+      ['L', 'E', 'Предсказание. Ева читает судьбу по картам и видит то, что'], ['B', 'B', 'скрыто от других.'], ...prose(30)]));
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия', 'Предсказание']);
+    assert.match(b.secs.Reactions[1].t, /скрыто от других\.$/);
+  });
+  it('joins no page footer or running head after an open bracket', () => {
+    // The SRD's footer sits on every page, so the book has it beside every page of prose.
+    const paged = from => prose(6).flatMap((l, i) => [l, ['F', 'F', `${from + i}System Reference Document 5.2.1`]]);
+    for (const foot of [['F', 'F', '310System Reference Document 5.2.1'], ['T', 'T', 'дао89']]) {
+      const [b] = statBlocksInText(pdf([...paged(300), ...head, ['W', 'X', '1/Day Each: Harm, Insect Plague (level'],
+        foot, ...tail, ...paged(311)]));
+      assert.ok(!JSON.stringify(b).includes(foot[2]), foot[2]);
+      assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+    }
+  });
+});

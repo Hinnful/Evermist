@@ -163,10 +163,11 @@ function combatCleanRow(r) {
   return c;
 }
 
-// A row's copy with full HP and no conditions, meant to sit straight after it.
+// A row's copy with full HP, no conditions and every spell crystal back, meant to sit straight after it.
 function combatDuplicateRow(row, rows, id) {
   const c = Object.assign(JSON.parse(JSON.stringify(row)), { id, hp: '', conds: [] });
   delete c.cleaned;
+  delete c.spent;
   c.name = combatNextName(combatBaseName(row.name), rows);
   return c;
 }
@@ -226,6 +227,7 @@ function combatReturnRow(row) {
 function combatPickInto(row, entry, rows) {
   Object.assign(row, combatRowFromEntry(entry, rows));
   delete row.cleaned;
+  delete row.spent;
   return row;
 }
 
