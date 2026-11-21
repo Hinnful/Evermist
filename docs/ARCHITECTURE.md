@@ -209,6 +209,8 @@ One unreadable map costs that map and nothing else.
 
 Close the app halfway through and the maps that finished are there. The rest simply never existed.
 
+Closing the DM window from outside (close button, quit, updater, idle quit) is held in `main.js` until the page has flushed the open note, autosave, a pending delete and the two-map panes, capped at 5 s; a page's own `window.close()` skips the hold and relies on `beforeunload`.
+
 A backup zip is the exception: on its own it still restores the library, but one sitting inside a
 multi-file selection imports nothing at all and says why. Restoring adds to the library rather than
 replacing it and carries the module text, of which the app holds one - so it is a question, and a

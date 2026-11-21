@@ -159,6 +159,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   purgeTrashedSound: (token) => ipcRenderer.invoke('sound-own-purge-trash', token),
   musicYtdlpLatest: () => ipcRenderer.invoke('music-ytdlp-latest'),
   musicYtdlpUpdate: () => ipcRenderer.invoke('music-ytdlp-update'),
+  // Closing the DM window waits for its last save (main.js); the window answers once it has landed (scenes.js).
+  onCloseFlush: (callback) => ipcRenderer.on('close-flush', () => callback()),
+  closeFlushed: () => ipcRenderer.send('close-flushed'),
   // The Claude connection (src/mcp/mcpTools.js): main asks, the DM window answers by the request's id.
   onMcpRequest: (callback) => {
     const handler = (_event, req) => callback(req);

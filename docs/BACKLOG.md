@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 306."
+description: "Open work only. 7 open items; IDs run to 306."
 metadata: 
   node_type: memory
   type: project
@@ -148,13 +148,6 @@ already lists monsters that have a note, so one monster's note shows in both. Th
 base for the campaign, with monsters as one more kind beside groups, maps, rooms, factions and lore. Not decided: the DM wants
 to talk it through first. **Discussion.**
 **Campaign · Prep · DM only**
-
-### 306. A change made just before closing the app can be lost
-Filed 2026-11-20 from 303. Autosave runs about 5 s after a change. Closing the app starts a last save but does not wait for
-it (`beforeunload` calls `doAutoSave` without awaiting it), so a reveal or a room edit made in the last seconds before the
-window closes may not reach the disk. Small, but it touches saving: the close must wait for the write without hanging a
-close when the store fails.
-**Bug · DM only**
 
 ---
 

@@ -83,6 +83,34 @@ function createSplashWindow() {
   return splash;
 }
 
+// ⚠ THE DM WINDOW'S CLOSE WAITS FOR ITS LAST SAVE. beforeunload only starts the write, and the page is gone
+// before it lands. The cap closes it anyway, so a store that never answers cannot hold a close or a quit.
+// A renderer's own window.close() never reaches 'close'; its beforeunload is the fallback.
+const CLOSE_SAVE_CAP_MS = 5000;
+let quitAsked = false;
+app.on('before-quit', () => { quitAsked = true; });
+function holdCloseForSave(win) {
+  let asked = false, flushed = false;
+  win.on('close', e => {
+    if (flushed || win.webContents.isLoading() || win.webContents.isCrashed()) return;
+    e.preventDefault();
+    if (asked) return;
+    asked = true;
+    const done = (event) => {
+      if (flushed || (event && event.sender !== win.webContents)) return;
+      flushed = true;
+      ipcMain.removeListener('close-flushed', done);
+      clearTimeout(cap);
+      if (win.isDestroyed()) return;
+      // A held quit (Cmd+Q, the unseen app's idle quit, an update) was cancelled by preventDefault, so it is asked again.
+      if (quitAsked) app.quit(); else win.close();
+    };
+    ipcMain.on('close-flushed', done);
+    const cap = setTimeout(done, CLOSE_SAVE_CAP_MS);
+    sendTo(win, 'close-flush');
+  });
+}
+
 function createDMWindow() {
   const splash = inBackground ? null : createSplashWindow();
   const splashShownAt = Date.now();
@@ -122,6 +150,7 @@ function createDMWindow() {
   dmWin = win;
   // A Mac keeps running with no window, and a Claude call sent to this one would wait out its timer.
   win.once('closed', () => { if (dmWin === win) { dmWin = null; ipcMcp.notReady(); } });
+  holdCloseForSave(win);
   // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
   // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
   win.on('minimize', () => sendTo(win, 'window-visibility', { visible: false }));

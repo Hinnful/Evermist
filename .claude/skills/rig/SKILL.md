@@ -65,6 +65,18 @@ them to re-test correctness is asking them to do your job.
 - **Backup, export and restore still get the DM's own hand test**, whatever the rig reports. Its
   save dialog is native and cannot be driven, so that half of the path is mirrored, not exercised.
 
+## The browser preview is not the app
+
+`.claude/launch.json`'s preview serves the DM page in a plain browser tab, with no Electron behind it: no
+`electronAPI`, no Player window (its prewarm `window.open` takes over the tab unless stubbed), no files on disk, no
+video maps, no restart, no packaged build. A feature that needs any of those fails there silently or not at all.
+
+- **The preview is for DOM-only questions**: a window's markup dumped for a mockup board, a layout measured, one
+  button's state checked, a real click on a pane that reads only page state.
+- **The rig is for everything else**: what reaches the disk or survives a restart, anything on the Player or the TV,
+  two windows at once, the packaged app, and every acceptance check a spec names.
+- **A pass in the preview proves nothing past the DM page.** When the question reaches beyond it, the rig answers.
+
 ## Running it
 
 ```
@@ -216,6 +228,10 @@ A file exports one async function taking `rig`:
 - `await rig.restart({ env })` — the same app with variables added to its environment (`null` removes one). **The
   rig never passes the shell's `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` to an app**, so a dev run has a Google
   client only when a scenario hands it one here, and a build only when it was built with one (`sync-client`).
+- `await rig.restart({ quit: 'os' })` — the same, closed from outside as the DM does (SIGTERM, or a `taskkill`
+  without `/F`), and `rig.quitMs` says how long the exit took. **A plain restart closes with the page's own
+  `window.close()`, which never reaches main's 'close' handler**, so only this form drives the close that waits for
+  the last save. `scenarios/close-keeps-edit.js` uses it.
 - `rig.catchBrowser()` — Linux only, null elsewhere: `{ env, opened() }`. Restart with that `env` and the app's
   `shell.openExternal` reaches a stand-in `xdg-open` that only writes the address down, with the session bus dead
   so no real browser is reached; `opened()` lists the addresses. `lib.connectOpens` and `lib.consentFaults` click

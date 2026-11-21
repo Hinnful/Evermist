@@ -257,18 +257,25 @@ function killAll() { for (const p of Array.from(live)) killApp(p); }
 // which scene was open - which reads as the app losing it, when the rig threw it away.
 // Closing the DM window is the real path: main.js quits on `window-all-closed`.
 // Bounded, with the hard kill as the fallback, because a run must never leave an app running.
-async function quitApp(inst, ms = 15000) {
-  if (!inst || !inst.proc) return;
-  try { await inst.dm.evaluate('window.close(); 0'); } catch (_) {}
+// `os` asks from outside instead, as the DM's close button or Cmd+Q does: SIGTERM is Electron's app.quit(), and a
+// taskkill without /F is the close button. ⚠ A page's own window.close() never reaches main's 'close' handler, so
+// only `os` drives the path that holds the close for the last save. Resolves to the milliseconds the exit took.
+async function quitApp(inst, ms = 15000, how = 'page') {
+  if (!inst || !inst.proc) return null;
+  const askedAt = Date.now();
+  if (how === 'os' && process.platform === 'win32') spawnSync('taskkill', ['/pid', String(inst.proc.pid)], { stdio: 'ignore', timeout: 15000 });
+  else if (how === 'os') { try { process.kill(inst.proc.pid, 'SIGTERM'); } catch (_) {} }
+  else { try { await inst.dm.evaluate('window.close(); 0'); } catch (_) {} }
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     if (inst.proc.exitCode !== null || inst.proc.signalCode !== null) {
       live.delete(inst.proc);
-      return;
+      return Date.now() - askedAt;
     }
     await cdp.sleep(120);
   }
   killApp(inst.proc);
+  return null;
 }
 
 // ─── Getting the run off the screen ──────────────────────────────────────────
@@ -679,13 +686,14 @@ function makeRig(inst, dirs, tally, args) {
     //
     // `restart({ exe })` swaps the binary on the same profile: a path starts that build (the
     // previous release's, for the rollback trip), `exe: null` the run's own. The profile is never
-    // touched, which is the point. `env` adds to the new app's environment, as appEnv says.
+    // touched, which is the point. `env` adds to the new app's environment, as appEnv says. `quit: 'os'` closes it
+    // from outside, as the DM does (quitApp), and `rig.quitMs` then holds how long the exit took, null past 15s.
     async restart(swap) {
       const old = [inst.dm].concat(inst.stage ? [inst.stage] : [])
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       // The console errors of the outgoing windows belong to this scenario, not to nothing.
       for (const s of old) tally.consoleErrors.push(...(s.errors || []));
-      await quitApp(inst);
+      rig.quitMs = await quitApp(inst, 15000, swap && swap.quit === 'os' ? 'os' : 'page');
       for (const s of old) s.close();
 
       const next = await startInstance(args, dirs.profile, false, swap && 'exe' in swap ? swap : null, swap && swap.env);
