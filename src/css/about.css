@@ -12,7 +12,7 @@
   #dock .about-text {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
   }
   /* The splash's letter-spacing, scaled down. The trailing space the tracking adds after the
@@ -21,15 +21,15 @@
     font: 600 12px/1 system-ui, -apple-system, sans-serif;
     letter-spacing: 0.22em;
     margin-left: 0.22em;
-    color: #d5d8dd;
+    color: var(--brand-word);
   }
   #dock .about-version {
     font: 400 11px/1 system-ui, -apple-system, sans-serif;
-    color: #7f858e;
+    color: var(--g-dim);
   }
   #dock .about-repo {
     font: 400 11px/1 system-ui, -apple-system, sans-serif;
-    color: #6b7079;
+    color: var(--g-dim);
   }
   /* Hidden until main reports a download or a ready install, so the footer's height only
      changes when there is something to say. */
@@ -46,7 +46,7 @@
     color: var(--b-icon);
     background: var(--b-tint);
     border: 0;
-    border-radius: 5px;
+    border-radius: 6px;
     padding: 4px 8px;
     cursor: var(--cur-pointer);
   }
@@ -86,21 +86,23 @@
   #cl-modal { z-index: 1; pointer-events: all; outline: none; }
   #cl-body { flex: 1; padding: 8px; }
   .cl-row {
-    width: 100%; height: 32px; display: flex; align-items: center; gap: 10px;
+    width: 100%; height: 32px; display: flex; align-items: center; gap: 8px;
     padding: 0 8px; border: 0; border-radius: 6px; background: none; text-align: left;
     color: var(--g-text); font: inherit; cursor: var(--cur-pointer);
   }
   .cl-row.bare { cursor: var(--cur-arrow); }
   .cl-row:hover { background: var(--g-hover); }
   .cl-row .v { flex: none; width: 44px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .cl-row .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c8ccd3; }
+  .cl-row .n { flex: 1; min-width: 0; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; color: var(--g-body); }
   .cl-row .d { flex: none; color: var(--g-dim); font-size: 11px; }
-  .cl-row .sm-chev { transition: transform .12s; }
+  /* Trimmed to their capitals, so the 12px version and name and the 11px date and chip centre as one line. */
+  .cl-row > span:not(.sm-chev, .sm-chip), .cl-row .sm-chip > span { text-box: trim-both cap alphabetic; }
+  .cl-row .sm-chev { transform: rotate(-90deg); transition: transform .12s; }
   .cl-open { background: var(--g-field); border-radius: 6px; margin-bottom: 2px; }
   .cl-open .cl-row:hover { background: none; }
   .cl-open .cl-row .n { color: var(--g-text); }
-  .cl-open .sm-chev { transform: translateY(var(--icon-nudge)) rotate(180deg); }
-  .cl-body { padding: 0 10px 12px 62px; color: #c8ccd3; }
+  .cl-open .sm-chev { transform: none; }
+  .cl-body { padding: 0 10px 12px 62px; color: var(--g-body); }
   .cl-body ul { margin: 0 0 10px; padding-left: 14px; }
   .cl-body li { margin: 2px 0; }
   /* The release note as it was written, line breaks included. */

@@ -155,7 +155,8 @@ function _wmMenuShow(rows, e) {
   menu.className = 'sm-menu wm-menu';
   menu.dataset.noI18n = '';
   for (const r of rows) {
-    if (r.sep) { menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
+    // A row left out can leave two lines together, or one at an end: a menu draws one line between groups only.
+    if (r.sep) { if (menu.lastElementChild && !menu.lastElementChild.matches('.sm-msep')) menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
     const b = document.createElement('button');
     b.className = 'sm-mi' + (r.danger ? ' danger' : '');
     const text = r.raw ? r.label : t(r.label);
@@ -169,12 +170,14 @@ function _wmMenuShow(rows, e) {
     b.addEventListener('click', () => { worldMapMenuClose(); r.run(); });
     menu.appendChild(b);
   }
+  if (menu.lastElementChild && menu.lastElementChild.matches('.sm-msep')) menu.lastElementChild.remove();
   menu.addEventListener('mousedown', ev => ev.stopPropagation());
   menu.addEventListener('contextmenu', ev => ev.preventDefault());
   document.body.appendChild(menu);
-  const w = menu.offsetWidth, h = menu.offsetHeight;
-  menu.style.left = Math.max(4, Math.min(e.clientX, innerWidth - w - 4)) + 'px';
-  menu.style.top = Math.max(4, Math.min(e.clientY, innerHeight - h - 4)) + 'px';
+  // The menu wears the UI zoom, so a screen point is divided by it.
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2, r = menu.getBoundingClientRect(), w = r.width, h = r.height;
+  menu.style.left = Math.max(4, Math.min(e.clientX, innerWidth - w - 4)) / z + 'px';
+  menu.style.top = Math.max(4, Math.min(e.clientY, innerHeight - h - 4)) / z + 'px';
   _wmMenu = menu;
 }
 

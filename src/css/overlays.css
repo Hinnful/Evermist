@@ -18,15 +18,16 @@
   #mt-modal { pointer-events: all; outline: none; }
   /* The body scrolls and the footer does not, so Remove never scrolls away on a short screen. */
   #mt-body { flex: 1; }
-  .mt-filerow { height: 40px; }
+  .mt-filerow { height: 32px; }
   .mt-filerow > svg { flex: none; color: var(--g-dim); }
-  .mt-file-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mt-filerow > .mt-file-name { text-box: trim-both cap alphabetic; }
+  .mt-file-name { flex: 1; min-width: 0; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; }
 
   /* The status line wraps: the parser's errors are sentences. */
   .mt-status { color: var(--g-dim); }
   .mt-status:empty { display: none; }
   .mt-status.mt-err { color: var(--r-text); }
-  #mt-list .sm-sub { margin-top: 14px; }
+  #mt-list .sm-sub { margin-top: 16px; }
   .mt-num { flex: none; min-width: 20px; }
   .mt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* A character count, not a snippet: the number says whether a room came through empty, which
@@ -46,8 +47,12 @@
   .cd-body { padding: 18px 18px 4px; }
   #cd-title { line-height: 1.35; margin-bottom: 8px; }
   /* pre-line keeps a caller's own line breaks. */
-  .cd-msg { color: #b0b5bd; white-space: pre-line; }
+  .cd-msg { color: var(--g-body); white-space: pre-line; }
   .cd-foot { border: 0; padding: 16px 18px 18px; }
+  /* A delete question's last button is the one destructive control that is red at rest. */
+  .cd-foot .sm-hbtn.danger { background: var(--r-solid); color: #fff; }
+  .cd-foot .sm-hbtn.danger:hover:not(:disabled) { background: var(--r-solid-h); color: #fff; }
+  .cd-foot .sm-hbtn.danger:active:not(:disabled) { background: var(--r-solid-p); color: #fff; }
   #cd-anchor.cd-solo #cd-cancel { display: none; }
 
   /* ===== SCENE FADE (player transition) ===== */
@@ -71,7 +76,7 @@
     z-index: 999;
   }
   #scene-fade.dark  { opacity: 1; }
-  #scene-fade.blind { background: #1a1a2e; }
+  #scene-fade.blind { background: var(--fog-base); }
 
   /* The DM's map dimming at a switch while the TV's fog closes (sceneSwitch.js). Opacity only. */
   #dm-switch-veil {
@@ -106,8 +111,8 @@
   .mp-body { padding: 18px; }
   .mp-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
   #map-progress-label { line-height: 1.35; }
-  .sm-track { height: 4px; border-radius: 2px; background: var(--g-field); overflow: hidden; }
-  .sm-track i { display: block; width: 0; height: 100%; border-radius: 2px; background: var(--b-solid); transition: width 0.12s ease-out; }
+  .sm-track { height: 4px; border-radius: 999px; background: var(--g-field); overflow: hidden; }
+  .sm-track i { display: block; width: 0; height: 100%; border-radius: 999px; background: var(--b-solid); transition: width 0.12s ease-out; }
   .mp-file { margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mp-file:empty { display: none; }
   #map-progress-foot { display: none; }
@@ -124,23 +129,23 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 18px;
+    gap: 16px;
     pointer-events: none;
   }
   /* Tracking is 0.06em — the app's widest, from .legend-title. The splash's 0.42em was
      borrowed from a splash screen, where a wordmark is the only thing on the page; here it
      read as a title screen, which nothing else in this app is. */
   #landing h2 {
-    color: #e4e6ea;
+    color: var(--g-text);
     font: 300 30px/1.2 system-ui, -apple-system, sans-serif;
     letter-spacing: 0.06em;
   }
   #landing p {
     font: 400 14px/1.5 system-ui, -apple-system, sans-serif;
-    color: #8b9099;
+    color: var(--g-dim);
     letter-spacing: 0.02em;
   }
-  #landing p strong { color: #c8ccd3; font-weight: 600; }
+  #landing p strong { color: var(--g-body); font-weight: 600; }
   /* The Player screen carries fog and map and nothing else, so the whole card's text goes:
      the instruction names a menu that screen does not have, and the wordmark in front of the
      players reads as a title screen. #landing-fog stays and is all they see until the map does. */
@@ -162,7 +167,7 @@
   #landing-loading {
     display: none;
     font: 400 14px/1.5 system-ui, -apple-system, sans-serif;
-    color: #8b9099;
+    color: var(--g-dim);
     letter-spacing: 0.02em;
   }
   /* DM ONLY. The Player card carries no text at all, and this rule outranks that one on

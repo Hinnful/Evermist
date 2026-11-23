@@ -58,6 +58,8 @@ function _bswBesideFight() {
   const w = (cols.statW || 440) * z, h = cols.statH ? (cols.statH + BSW_FIGHT_HEAD) * z : Math.min(680 * z, innerHeight - 16);
   let left = f.left - w - 10;
   if (left < 8) left = f.right + 10 + w < innerWidth ? f.right + 10 : 8;
+  // With no room on either side it opens over the table, on top of it, so the page the DM asked for is whole.
+  _bswEl().classList.toggle('over-fight', left === 8 && 8 + w > f.left);
   _bswSize(left / z, f.top / z, w / z, h / z);
 }
 
@@ -85,6 +87,7 @@ function bswShow(fromFight) {
 
 function bswHide() {
   _bswEl().hidden = true;
+  _bswEl().classList.remove('over-fight');
   _bsw.fromFight = false;
 }
 

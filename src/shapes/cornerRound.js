@@ -74,7 +74,8 @@ function drawCornerCircles(poly) {
     const s = toScreen(held.x, held.y), d = turnDelta(40, 20);
     drawLabelPlate(cursorCtx, s.sx + d.x, s.sy + d.y, Math.round(cornerRadiusAt(poly, held.flat)) + ' px',
                    cornerDrag.solo ? CORNER_ICON_ONE : CORNER_ICON_ALL,
-                   cornerDrag.solo ? SHAPE_PART_SELECTED : '#8b9099');
+                   cornerDrag.solo ? SHAPE_PART_SELECTED
+                     : getComputedStyle(document.documentElement).getPropertyValue('--g-dim').trim());
   }
   _cornerPlaceField(poly);
 }

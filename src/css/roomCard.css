@@ -4,21 +4,21 @@
   .dk-room { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
   .dk-room::-webkit-scrollbar { width: 0; }
   .dk-rhead { position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 14px 10px 0 12px; }
-  .dk-rhead .cp-adv-close { margin-top: 5px; flex: none; }
-  .dk-rhead .cp-adv-close:hover { color: rgba(240, 100, 90, 0.95); background: rgba(200, 50, 40, 0.12); }
-  .dk-rhead .cp-adv-close:disabled:hover { color: #b9bec6; background: transparent; }
+  .dk-rhead .cp-adv-close { margin-top: 2px; flex: none; }
+  .dk-rhead .cp-adv-close:hover:not(:disabled) { color: var(--r-text); background: var(--r-tint); }
+  .dk-rhead .cp-adv-close:active:not(:disabled) { color: var(--r-text); background: var(--r-tint-p); }
 
   .rp-name, .rp-desc {
-    width: 100%; box-sizing: border-box; padding: 4px; border: 0; border-radius: 5px;
+    width: 100%; box-sizing: border-box; padding: 4px; border: 0; border-radius: 6px;
     background: transparent; outline: none; transition: background .12s;
   }
-  .rp-name { flex: 1; min-width: 0; height: 34px; color: var(--g-text);
-             font: 600 16px/1.2 system-ui, -apple-system, sans-serif; text-overflow: ellipsis; }
+  .rp-name { flex: 1; min-width: 0; height: 28px; color: var(--g-text);
+             font: 600 14px/1.2 system-ui, -apple-system, sans-serif; text-overflow: ellipsis; }
   .rp-desc { min-height: 120px; margin: 6px 0 0; padding: 4px 16px 12px; border-radius: 0; resize: none; overflow: hidden;
-             color: #c4c8ce; font: 400 13px/1.6 system-ui, -apple-system, sans-serif; }
-  .rp-name:hover, .rp-desc:hover { background: rgba(255, 255, 255, 0.03); }
-  .rp-name:focus, .rp-desc:focus { background: rgba(255, 255, 255, 0.04); }
-  .rp-name::placeholder, .rp-desc::placeholder { color: #5d626a; font-weight: 400; }
+             color: var(--g-body); font: 400 13px/1.6 system-ui, -apple-system, sans-serif; }
+  .rp-name:hover, .rp-desc:hover { background: var(--g-raised); }
+  .rp-name:focus, .rp-desc:focus { background: var(--g-raised); }
+  .rp-name::placeholder, .rp-desc::placeholder { color: var(--g-dim); font-weight: 400; }
 
 
   /* ===== MODULE TEXT DROPDOWN (the book, inside the name field) ===== */
@@ -30,9 +30,9 @@
      is the right trade: at that moment the DM is naming the room, not reading it. */
   .rp-mt-dd {
     position: absolute; left: 12px; right: 10px; top: 100%; z-index: 4;
-    background: #232327;
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    background: var(--g-bg);
+    border: 1px solid var(--g-line); border-radius: 8px;
+    box-shadow: var(--pop-shadow);
     overflow: hidden;
   }
 
@@ -40,10 +40,9 @@
      the dungeon is left — and it is free here, since it is derived from the room names that are
      already on the map. */
   .rp-mt-head {
-    padding: 7px 10px 6px;
-    font: 600 10px/1 system-ui, -apple-system, sans-serif;
-    letter-spacing: 0.4px; text-transform: uppercase; color: #7f858e;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 8px 10px 6px;
+    font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
+    border-bottom: 1px solid var(--g-line);
   }
 
   .rp-mt-list { max-height: 190px; overflow-y: auto; padding: 4px; }
@@ -51,12 +50,13 @@
   .rp-mt-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
 
   .rp-mt-opt {
-    display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 6px 8px; border: none; border-radius: 6px;
-    background: none; color: #d5d8dd; cursor: var(--cur-pointer); text-align: left;
-    font: 500 12px/1.25 system-ui, -apple-system, sans-serif;
+    display: flex; align-items: center; gap: 8px; width: 100%; min-height: 28px;
+    padding: 6px 10px 6px 6px; border: none; border-radius: 6px;
+    background: none; color: var(--g-text); cursor: var(--cur-pointer); text-align: left;
+    font: 400 12px/16px system-ui, -apple-system, sans-serif;
   }
-  .rp-mt-opt:hover, .rp-mt-opt.active { background: rgba(90,140,235,0.22); }
+  .rp-mt-opt:hover, .rp-mt-opt.active { background: var(--b-tint); color: var(--b-icon); }
+  .rp-mt-opt:hover .rp-mt-num, .rp-mt-opt.active .rp-mt-num { color: var(--b-icon); opacity: .75; }
   /* Tabular digits so the numbers form a column and the names line up beside them — a list of
      eighty rooms is scanned by number as much as by name. The floor is sized for the WIDEST key
      the parser produces, a prefixed number with a sub-location letter ("N6А."), because the
@@ -64,7 +64,7 @@
      a key wider than the floor widens its box and shoves that one row's name out of line. */
   .rp-mt-num {
     flex: none; min-width: 34px; text-align: right;
-    color: #7f858e; font-variant-numeric: tabular-nums;
+    color: var(--g-dim); font-variant-numeric: tabular-nums;
   }
   .rp-mt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -72,24 +72,24 @@
      disabled, and the dot rather than a strikethrough is the reason why: sub-locations mean one
      heading legitimately serves several polygons (a kitchen and its pantry under one number), so
      "already used" is information, never a lock. */
-  .rp-mt-opt.placed .rp-mt-name { color: #8f959e; }
+  .rp-mt-opt.placed .rp-mt-name { color: var(--g-dim); }
   .rp-mt-dot {
     flex: none; width: 5px; height: 5px; border-radius: 50%;
-    background: #5a8ceb;
+    background: var(--b-icon);
   }
 
   .rp-mt-none {
-    padding: 8px 10px; color: #6b7078;
+    padding: 8px 10px; color: var(--g-dim);
     font: 400 11px/1.4 system-ui, -apple-system, sans-serif;
   }
 
   /* The import panel's way in from here: the one moment a DM wants the module is the moment
      they are looking at this list. Scene control's Sources row is the other. */
-  .rp-mt-foot { border-top: 1px solid var(--g-divider); padding: 4px; }
+  .rp-mt-foot { border-top: 1px solid var(--g-line); padding: 4px; }
   .rp-mt-foot button {
     width: 100%; padding: 6px 8px;
     border: none; border-radius: 6px; background: none;
-    color: #6ea8ff; cursor: var(--cur-pointer); text-align: left;
+    color: var(--b-icon); cursor: var(--cur-pointer); text-align: left;
     font: 500 11px/1.25 system-ui, -apple-system, sans-serif;
   }
-  .rp-mt-foot button:hover { background: rgba(90,140,235,0.16); }
+  .rp-mt-foot button:hover { background: var(--b-tint); }

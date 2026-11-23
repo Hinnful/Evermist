@@ -293,10 +293,8 @@ function _gaRender() {
   document.getElementById('ga-top').style.display = _gaPics.length ? '' : 'none';
   if (!_gaPics.length) {
     grid.className = 'ga-list ga-empty';
-    grid.innerHTML = `<div class="ga-well">${uiIcon('plus', 18)}<b></b><span></span></div>`;
-    grid.querySelector('b').textContent = t('Drop pictures here');
-    grid.querySelector('span').textContent = t('Portraits, monsters, letters. A click shows one on the TV.');
-    grid.querySelector('.ga-well').onclick = () => document.getElementById('ga-input').click();
+    grid.appendChild(libEmptyState(t('No pictures yet'), t('Portraits, monsters, letters. A click shows one on the TV.'),
+      () => document.getElementById('ga-input').click()));
     return;
   }
   grid.className = 'ga-list mu-list';

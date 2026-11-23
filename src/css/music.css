@@ -7,23 +7,24 @@
   .dk-player { padding: 14px 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--g-line); }
   .pl-top { display: flex; align-items: center; gap: 12px; }
   .pl-play {
-    width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%;
+    width: 36px; height: 36px; flex: none; padding: 0; border: 0; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: var(--g-text); color: #18181a; cursor: var(--cur-pointer); transition: transform .1s, background .12s;
+    background: var(--g-text); color: var(--g-bg); cursor: var(--cur-pointer); transition: transform .1s, background .12s;
   }
-  .pl-play:hover { background: #fff; transform: scale(1.04); }
+  .pl-play:hover { background: var(--g-text); transform: scale(1.04); }
   .mu-resting .pl-play { opacity: 0.35; cursor: var(--cur-arrow); transform: none; }
   .pl-meta { min-width: 0; flex: 1; }
   .pl-title { font: 600 14px/1.25 system-ui, -apple-system, sans-serif; color: var(--g-text);
               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mu-resting .pl-title { color: var(--g-dim); font-weight: 500; }
   .pl-sub { display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 400 11px/1 system-ui, sans-serif;
-            color: var(--g-dim); white-space: nowrap; }
+            color: var(--g-dim); }
+  .pl-sub > span:last-child { min-width: 0; line-height: 1.3; }
   .mu-resting .pl-sub .pl-bars { display: none; }
 
   /* Bars that say "sound is coming out"; paused flattens them rather than hiding them. */
-  .pl-bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; flex: none; }
-  .pl-bars i { width: 2px; height: 3px; border-radius: 1px; background: var(--g-text); animation: plBar .9s ease-in-out infinite; }
+  .pl-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; flex: none; }
+  .pl-bars i { width: 2px; height: 3px; border-radius: 999px; background: var(--g-text); animation: plBar .9s ease-in-out infinite; }
   .pl-bars i:nth-child(2) { animation-delay: -.3s; }
   .pl-bars i:nth-child(3) { animation-delay: -.6s; }
   .pl-bars i:nth-child(4) { animation-delay: -.15s; }
@@ -31,26 +32,26 @@
   .mu-paused .pl-bars i { animation: none; background: var(--g-dim); }
   .pl-bars.sm { margin-right: 2px; }
 
-  .pl-vol { display: flex; align-items: center; gap: 10px; color: var(--g-dim); }
+  .pl-vol { display: flex; align-items: center; gap: 8px; color: var(--g-dim); }
   .pl-vol svg { flex: none; }
   .pl-vol .cp-slider { flex: 1; }
   .pl-vol .cp-slider-fill { background: var(--g-text); }
   .pl-vol .cp-slider-track { background: #3a3c42; }
   .pl-pct { width: 22px; flex: none; text-align: right; font: 500 11px/1 system-ui, sans-serif;
-            color: var(--g-dim); font-variant-numeric: tabular-nums; }
+            color: var(--g-dim); font-variant-numeric: tabular-nums; text-box: trim-both cap alphabetic; }
 
-  .pl-dl { display: none; flex-direction: column; gap: 5px; font: 400 10.5px/1 system-ui, sans-serif; color: var(--g-dim); }
+  .pl-dl { display: none; flex-direction: column; gap: 4px; font: 400 11px/1 system-ui, sans-serif; color: var(--g-dim); }
   .mu-downloading .pl-dl { display: flex; }
-  .pl-dl .bar { height: 3px; border-radius: 2px; background: #3a3c42; overflow: hidden; }
+  .pl-dl .bar { height: 3px; border-radius: 999px; background: var(--g-pick); overflow: hidden; }
   .pl-dl .bar i { display: block; height: 100%; width: 0; background: var(--g-dim); transition: width .25s linear; }
 
   /* ===== THE TRACK LIST ===== */
-  .mu-toprow { display: flex; align-items: center; gap: 7px; padding: 12px 12px 6px 14px; }
+  .mu-toprow { display: flex; align-items: center; gap: 8px; padding: 12px 12px 6px 14px; }
   .mu-filterfield { flex: 1; min-width: 0; gap: 8px; color: var(--g-dim); }
   .mu-filterfield input {
     flex: 1; width: 0; min-width: 0;
-    border: none; background: transparent; color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    border: none; background: transparent; color: var(--g-text);
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; align-self: stretch;
   }
   .mu-filterfield input:focus { outline: none; }
   .mu-filterfield input::placeholder { color: var(--g-dim); }
@@ -58,50 +59,62 @@
   .mu-list { padding-bottom: 12px; }
   .mu-row {
     display: flex; align-items: center; gap: 8px;
-    height: 30px; padding: 0 10px 0 14px;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
+    height: 32px; padding: 0 10px 0 14px;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
     cursor: var(--cur-pointer);
   }
-  .mu-row:hover { background: rgba(255, 255, 255, 0.04); }
-  .mu-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mu-row:hover { background: var(--g-hover); }
+  /* A row's texts and the Add plate's word trim to their capitals, so each centres on the row with its icon. */
+  .mu-row-name { flex: 1; min-width: 0; overflow-x: clip; text-overflow: ellipsis; white-space: nowrap; text-box: trim-both cap alphabetic; }
   .mu-row-meta { flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
-                 font-variant-numeric: tabular-nums; }
+                 font-variant-numeric: tabular-nums; text-box: trim-both cap alphabetic; }
+  /* 11px meta beside a 12px name, lifted onto the name's baseline. */
+  .mu-row-meta, .sb-row .sb-count { translate: 0 calc(1cap / 22); }
   .mu-row-on { background: var(--g-field); cursor: var(--cur-arrow); }
-  .mu-row-pick { background: var(--b-tint); }
+  .mu-row-pick { background: var(--b-tint); color: var(--b-icon); }
+  .mu-row-pick .lib-ico { color: var(--b-icon); }
+  .mu-row-pick .mu-row-meta { color: var(--g-body); }
   .mu-row-on .mu-row-name { color: var(--g-text); font-weight: 600; }
-
-  .mu-empty { padding: 14px; }
 
   /* ===== THE LIBRARY: Music, Sounds and Pictures (libraryList.js) ===== */
   /* "+ Add" is a grey word button, icon and word, as every other labelled control in the dock. */
-  .dk-addb { height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px 0 8px; border: 0; border-radius: 6px;
+  .dk-addb { height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border: 0; border-radius: 6px;
              background: var(--g-field); color: var(--g-text); cursor: var(--cur-pointer);
-             font: 600 12px/1 system-ui, -apple-system, sans-serif; }
-  .dk-addb:hover { background: var(--g-hover); }
+             font: 500 12px/1 system-ui, -apple-system, sans-serif; }
+  .dk-addb > span { text-box: trim-both cap alphabetic; }
+  .dk-addb:hover:not(:disabled) { background: var(--g-hover); }
+  .dk-addb:active:not(:disabled) { background: var(--g-pick); }
   .dk-addb.lit { background: var(--g-pick); }
+  /* The one empty state: a title, one line, the Add plate; the Campaign's callout wears it too. */
+  .ui-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 28px 16px; text-align: center; }
+  .ui-empty b { font: 600 14px/18px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .ui-empty > span { max-width: 240px; font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .ui-empty .dk-addb { margin-top: 8px; }
   .mu-list { position: relative; user-select: none; }
   .lib-ico { flex: none; color: var(--g-dim); }
   /* ⋯ shows on the item under the pointer only, so a list of a hundred is not a wall of buttons. */
-  .lib-more { width: 22px; height: 22px; flex: none; padding: 0; border: 0; border-radius: 5px; display: none;
+  .lib-more { width: 24px; height: 24px; flex: none; padding: 0; border: 0; border-radius: 6px; display: none;
               align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
-  .lib-more:hover { background: var(--g-hover); color: var(--g-text); }
+  .lib-more:hover { background: var(--g-field); color: var(--g-text); }
+  .lib-more:active { background: var(--g-hover); color: var(--g-text); }
   .lib-more.lit { display: inline-flex; background: var(--g-pick); color: var(--g-text); }
   [data-lib-key]:hover > .lib-more, .lib-gh:hover > .lib-more { display: inline-flex; }
   .lib-dragging [data-lib-key]:hover > .lib-more { display: none; }
-  .lib-edit { flex: 1; min-width: 0; height: 22px; margin-left: -4px; padding: 0 4px; border: 0; border-radius: 4px;
-              background: var(--g-field); color: var(--g-text); font: inherit; box-shadow: inset 0 0 0 1px var(--b-icon); outline: none; }
+  /* Rename in place: the name plate's edit ring. */
+  .lib-edit { flex: 1; min-width: 0; height: 24px; margin-left: -4px; padding: 0 4px; border: 0; border-radius: var(--plate-radius);
+              background: var(--plate-edit-bg); color: var(--plate-text); font: inherit; box-shadow: inset 0 0 0 1.5px var(--plate-edit-ring); outline: none; }
   .lib-gh .lib-edit { flex: none; min-width: 84px; field-sizing: content; font-weight: 600; }
 
   /* Group headings, the scene library's way: a click folds, ⋯ holds Rename and Ungroup. */
-  .lib-gh { display: flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 8px 0 12px;
+  .lib-gh { display: flex; align-items: center; gap: 6px; height: 32px; margin-top: 6px; padding: 0 8px 0 12px;
             color: var(--g-text); font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); }
-  .lib-gh:hover { background: rgba(255, 255, 255, 0.04); }
+  .lib-gh:hover { background: var(--g-hover); }
   .lib-gh .car { color: var(--g-dim); }
   .lib-gh .car { flex: none; transition: transform .12s; }
   .lib-sec.shut .car { transform: rotate(-90deg); }
   .lib-sec.shut .lib-body { display: none; }
-  .lib-gh .lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lib-gh .c { font-weight: 400; color: var(--g-dim); }
+  .lib-gh .lib-name { min-width: 0; overflow-x: clip; text-overflow: ellipsis; white-space: nowrap; text-box: trim-both cap alphabetic; }
+  .lib-gh .c { font-weight: 400; color: var(--g-dim); text-box: trim-both cap alphabetic; }
   .lib-gh .sp { flex: 1; }
   .lib-sec.lib-empty { display: none; }
   .lib-dragging .lib-sec.lib-empty { display: block; }
@@ -110,23 +123,18 @@
   .lib-ghost { position: fixed; z-index: 600; pointer-events: none; opacity: .85; border-radius: 6px;
                background: var(--g-hover); box-shadow: 0 8px 20px rgba(0, 0, 0, .6); }
   .lib-faded { opacity: .3; }
-  .lib-line { position: absolute; left: 14px; right: 10px; height: 2px; border-radius: 1px; background: var(--b-icon); z-index: 2; pointer-events: none; }
+  .lib-line { position: absolute; left: 14px; right: 10px; height: 2px; border-radius: 999px; background: var(--b-icon); z-index: 2; pointer-events: none; }
   .lib-line.up { right: auto; width: 3px; height: auto; box-shadow: 0 0 6px var(--b-icon); }
-  .lib-merge { background: var(--b-tint) !important; color: var(--b-icon); box-shadow: inset 0 0 0 1px var(--b-icon); border-radius: 5px; }
-  .lib-gh.lib-join { background: var(--b-tint); color: var(--b-icon); border-radius: 5px; }
+  .lib-merge { background: var(--b-tint) !important; color: var(--b-icon); box-shadow: inset 0 0 0 1px var(--b-icon); border-radius: 6px; }
+  .lib-gh.lib-join { background: var(--b-tint); color: var(--b-icon); border-radius: 6px; }
   .lib-filedrop { box-shadow: inset 0 0 0 2px var(--b-icon); }
-  .lib-menu { position: fixed; z-index: 610; min-width: 178px; }
-  .lib-menu .sm-mi::before { display: none; }
+  .lib-menu { position: fixed; z-index: 610; }
   .lib-menu .sm-mi svg { flex: none; }
-  .lib-menu .sm-mi .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-  .lib-menu .sm-mi .ky { margin-left: 24px; color: var(--g-dim); font-weight: 400; }
-  .lib-menu .sm-mi:hover .ky { color: var(--b-icon); }
-  .lib-menu .sm-mi:disabled { opacity: .45; pointer-events: none; }
-  .lib-menu .sm-mi.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .lib-menu .sm-mi .nm { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 
   /* ===== SOUNDS: rows, as Music's ===== */
-  .sb-row .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
-                      color: var(--g-text); opacity: .7; }
+  .sb-row .sb-count { flex: none; font: 600 11px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+                      color: var(--g-text); opacity: .7; text-box: trim-both cap alphabetic; }
   .sb-row { position: relative; }
   .sb-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--g-text); }
   .sb-row-on { background: var(--g-field); }
@@ -134,7 +142,7 @@
   /* Stop every sound: the play button's shape on the field grey, greyed out while nothing plays. */
   .sb-stop { background: var(--g-field); color: var(--g-text); }
   .sb-stop:hover { background: var(--g-hover); }
-  .sb-stop:disabled { opacity: .35; cursor: var(--cur-arrow); transform: none; background: var(--g-field); }
+  .sb-stop:disabled { transform: none; background: var(--g-field); }
   .sb-resting .pl-title { color: var(--g-dim); font-weight: 500; }
   .sb-resting .pl-sub .pl-bars { display: none; }
 
@@ -149,7 +157,7 @@
   .mu-urlrow { flex: none; overflow: visible; }
   #mu-status { margin-top: 8px; }
   #mu-ltb { border-top: 1px solid var(--g-line); }
-  #mu-ltb-end { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #mu-ltb-end { min-width: 0; overflow-x: clip; text-overflow: ellipsis; }
 
   /* Appears only once a read passes a second, so a fast lookup never flickers one in and out. */
   .mu-spin {
@@ -162,7 +170,7 @@
   .mu-picklist { flex: 1; }
   .mu-pick { cursor: var(--cur-pointer); }
   .mu-pick:hover { background: var(--g-hover); }
-  .mu-pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mu-pick-name { flex: 1; min-width: 0; overflow-x: clip; text-overflow: ellipsis; white-space: nowrap; }
   .mu-pick-meta { flex: none; }
   /* A track already on disk is shown rather than hidden: pasting the same playlist before the
      next session is how the next ten get picked, so which ten are left has to be obvious. */

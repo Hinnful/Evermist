@@ -11,18 +11,17 @@ function companionStoredOn() {
 function companionSwitchInit() {
   const host = document.getElementById('settings-companion');
   if (!host) return;
-  host.innerHTML = '<span class="dk-sub"></span><div class="cp-tabs" data-no-i18n>' +
-    '<button type="button" class="cp-segtab" data-on="1"></button><button type="button" class="cp-segtab" data-on="0"></button></div>';
-  host.firstChild.textContent = t('Crystal companion');
-  const tabs = host.querySelectorAll('.cp-segtab');
-  tabs[0].textContent = t('On');
-  tabs[1].textContent = t('Off');
-  const paint = () => tabs.forEach(b => b.classList.toggle('active', (b.dataset.on === '1') === companionStoredOn()));
-  tabs.forEach(b => b.addEventListener('click', () => {
-    const on = b.dataset.on === '1';
+  host.innerHTML = '<div class="dk-swrow" data-no-i18n><span></span>' +
+    '<button type="button" class="dk-switch" role="switch" aria-checked="false"></button></div>';
+  const row = host.firstChild, sw = row.querySelector('.dk-switch');
+  row.firstChild.textContent = t('Crystal companion');
+  sw.setAttribute('aria-label', t('Crystal companion'));
+  const paint = () => sw.setAttribute('aria-checked', String(companionStoredOn()));
+  row.addEventListener('click', () => {
+    const on = !companionStoredOn();
     try { if (on) localStorage.removeItem(COMPANION_OFF_KEY); else localStorage.setItem(COMPANION_OFF_KEY, '1'); } catch (_) {}
     companionSetOn(on);
     paint();
-  }));
+  });
   paint();
 }

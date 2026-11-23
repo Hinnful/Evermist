@@ -25,6 +25,7 @@ The split itself is in CLAUDE.md, "Who owns what". In practice:
 | What | Where | Who can see it |
 |---|---|---|
 | Rules | `CLAUDE.md`, folder `CLAUDE.md` files, `.claude/rules/`, `.claude/skills/` | Public |
+| The design system: look, tokens, sizes, contrast | `.claude/rules/design-system.md`, held by `test/designSystem.test.js` | Public |
 | How the app works | `docs/ARCHITECTURE.md`, `docs/architecture/` | Public |
 | Why it is shaped this way | `docs/DECISIONS.md`, `docs/decisions/` | Public |
 | What the product is and is not | `docs/PRODUCT.md` | Public |
@@ -114,6 +115,19 @@ A bug report is an ordinary message and needs no command.
 - **Correctness work gets its check during the build.** Claude proves a behaviour without asking,
   with a unit test or one rig scenario run once and then deleted. A scenario stays only when it
   guards the DM's data (sync, backup, trash, rollback, upgrade), and is re-run when that code changes.
+- **A change to the interface is done when `test/designSystem.test.js` passes and the `design-sweep`
+  scenario is clean** (`npm run rig -- --dm-size 1280x1500 design-sweep`), and the DM sees it as 2x
+  close-ups. The sweep stays in the repo by the DM's call: it is the one kept scenario that guards no data.
+- **An audit of the interface walks the inventory, never a sample.** `tools/rig/inventory.js` lists every window,
+  pop-up, menu and dialog and the states each can be in; the `design-sweep` scenario opens every entry in every
+  state, runs the alignment, hover, native-control, padding and state-shift checks on it, and writes a 2x close-up
+  of each. An entry it cannot open fails the run. A new surface gets its entry in the same change.
+- **The close-ups are read by a reviewer who built none of it**: a fresh agent given only
+  `.claude/rules/design-system.md` and the close-ups, told to find what breaks a rule. The audit is judged
+  against the rules, never against the previous release.
+- **An audit report opens with what it did not check**, listed from the inventory, before any finding.
+- **A finding the DM makes after an audit is a miss.** It gets a line in `docs/decisions/audit-misses.md` naming
+  the step that should have caught it, and that step is fixed in the same change as the bug.
 - **On this machine the rig is a probe, never a gate.** `/commit` runs unit tests, lint and the
   guards and no scenario; the release gate runs the blocker set. One scenario or one screenshot
   answers a question code cannot. The DM may ask for `blockers` at low priority. A cloud session
@@ -225,6 +239,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 | `tools/check-release.js` | CI, `decide` | Branch, version and release-title agreement |
 | `tools/check-guards.js` | `/commit` | The same guards CI runs, before the push |
 | The rig's blocker set | CI on three platforms, every one blocking | The app starts, preps a map, runs a table session and keeps the DM's work |
+| `test/designSystem.test.js` | CI, every push; `/commit` | Colours, radii, type sizes, gaps and atom sizes against `.claude/rules/design-system.md` |
+| The rig's `design-sweep` | Every interface change, locally | Every inventory entry in every state: rows on one baseline, icons and switches on the capitals, no plate merging with its row or swallowed by its hover, no native control, text 6px clear of a control's side, nothing moving when a state changes, menus one size |
 | `check-notes.js` | `/commit` | Release-note mechanics |
 | `permissions.deny` in `.claude/settings.json` | Always | No Chrome browser tool |
 

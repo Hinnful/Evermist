@@ -1,20 +1,22 @@
-/* gallery.css — the Gallery pane in the dock: the find field, the grid of pictures, the empty well. */
+/* gallery.css — the Gallery pane in the dock: the find field, the grid of pictures. */
   #dock-pane-gallery { position: relative; }
   .ga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 8px; padding: 6px 12px 16px 14px; }
   .ga-tile { min-width: 0; position: relative; }
   .ga-tile.lib-ghost { padding: 0; background: none; box-shadow: none; }
-  .ga-th { position: relative; aspect-ratio: 1; border-radius: 5px; overflow: hidden; cursor: var(--cur-pointer); background: var(--g-field); }
+  .ga-th { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: var(--cur-pointer); background: var(--g-field); }
   .ga-th img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .ga-th:hover { box-shadow: 0 0 0 1px var(--g-pick); }
-  /* On the TV: the room picture's green and its TV tag, so a picture on the TV reads one way everywhere. */
-  .ga-tile.on .ga-th { box-shadow: 0 0 0 2px #5fbf8a; }
-  .ga-tile.picked:not(.on) .ga-th { box-shadow: 0 0 0 2px var(--b-solid); }
+  /* On the TV: the room picture's green ring and a status word, a dot and "TV", on the dark plate a thing over a
+     picture keeps. */
+  .ga-tile.on .ga-th { box-shadow: 0 0 0 2px var(--live); }
+  .ga-tile.picked:not(.on) .ga-th { box-shadow: 0 0 0 2px var(--b-icon); }
   .ga-tile.on .ga-th::after {
-    content: "TV"; position: absolute; left: 5px; top: 5px; padding: 2px 6px; border-radius: 3px;
-    background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;
+    content: "TV"; position: absolute; left: 5px; top: 5px; height: 20px; display: flex; align-items: center; padding: 0 7px 0 17px;
+    border-radius: 4px; color: var(--g-text); font: 500 11px/1 system-ui, sans-serif;
+    background: radial-gradient(circle at 9px 50%, var(--live) 3px, transparent 3.5px), rgba(0, 0, 0, 0.65);
   }
   /* ⋯ sits where the trash was: the tile's top right corner, on a dark plate. */
-  .ga-th .lib-more { position: absolute; top: 5px; right: 5px; background: rgba(0, 0, 0, 0.65); color: #e6e7e9; }
+  .ga-th .lib-more { position: absolute; top: 5px; right: 5px; background: rgba(0, 0, 0, 0.65); color: var(--g-text); }
   .ga-th:hover .lib-more { display: inline-flex; }
   .ga-th .lib-more:hover, .ga-th .lib-more.lit { background: var(--g-pick); color: var(--g-text); }
   .lib-dragging .ga-th:hover .lib-more { display: none; }
@@ -27,19 +29,12 @@
   .ga-name { overflow: hidden; text-overflow: ellipsis; cursor: var(--cur-arrow); }
   .ga-name-edit { min-width: 0; field-sizing: content; text-overflow: ellipsis; }
   .ga-none { grid-column: 1 / -1; padding: 24px 0; text-align: center; color: var(--g-dim);
-             font: 500 11.5px/1.4 system-ui, -apple-system, sans-serif; }
+             font: 400 12px/16px system-ui, -apple-system, sans-serif; }
 
-  .ga-list.ga-empty { display: block; padding: 14px 12px 16px 14px; }
-  .ga-well {
-    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 14px; text-align: center;
-    border: 1.5px dashed #3a3c42; border-radius: 8px; color: var(--g-dim); cursor: var(--cur-pointer);
-    font: 400 11.5px/1.4 system-ui, -apple-system, sans-serif;
-  }
-  .ga-well:hover { border-color: #50535a; color: #9aa0aa; }
-  .ga-well b { color: var(--g-text); font: 600 12px/1.2 system-ui, -apple-system, sans-serif; }
+  .ga-list.ga-empty { display: block; }
 
   .ga-drop { position: absolute; inset: 0; z-index: 3; display: none; align-items: center; justify-content: center;
              padding: 20px; text-align: center; pointer-events: none;
-             background: rgba(12, 140, 233, 0.12); box-shadow: inset 0 0 0 2px var(--b-icon); color: var(--b-icon);
+             background: var(--b-tint); box-shadow: inset 0 0 0 2px var(--b-icon); color: var(--b-icon);
              font: 600 12px/1.4 system-ui, -apple-system, sans-serif; }
   #dock-pane-gallery.ga-dragging .ga-drop { display: flex; }

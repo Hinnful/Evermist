@@ -152,6 +152,9 @@ covers the same packaging bugs and needs no portable step.
 `scenarios/blockers/*.js` is the release set, one file per journey. Any other file under `scenarios/`
 is run by name as a one-scenario probe.
 
+**`design-sweep` is kept and run on every interface change** (PROCESS.md, Building): it opens each screen and
+measures every row with `lib.alignSweep` and every hover with `lib.hoverSweep`.
+
 **A build's scenario is run once and then deleted.** It stays only when it guards the DM's data
 (sync, backup, trash, rollback, upgrade); those are re-run when that code changes.
 

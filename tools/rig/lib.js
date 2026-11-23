@@ -94,6 +94,253 @@ globalThis.__rigPainted = (mx, my) => {
 const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
+// ─── The alignment sweep ─────────────────────────────────────────────────────
+// .claude/rules/design-system.md, "Alignment": every text in a row stands on one baseline, and an icon or a
+// switch centres on the capitals of the row's text. A row is any visible flex row with two or more in-flow items;
+// a field, a multi-line block and a graphic taller than 30px are left out, since none has one line to meet.
+const ALIGN_SWEEP = `
+globalThis.__rigAlignSweep = (rootSel, tol) => {
+  tol = tol === undefined ? 0.5 : tol;
+  const shown = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return false;
+    const cs = getComputedStyle(e);
+    return cs.visibility !== 'hidden' && +cs.opacity > 0;
+  };
+  const firstText = (e) => {
+    const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.textContent.trim() && shown(n.parentElement) ? 1 : 3) });
+    return w.nextNode();
+  };
+  const lines = (e) => {
+    const tops = new Set();
+    const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      if (!n.textContent.trim() || !shown(n.parentElement)) continue;
+      const rg = document.createRange(); rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) if (r.width > 0) tops.add(Math.round(r.bottom));
+    }
+    return tops.size;
+  };
+  // A zero-width probe one cap tall, set on the text's own line: its bottom is the baseline. A text that is a
+  // flex item on its own is wrapped in a span for the read, which lays out the same, and unwrapped after.
+  const metrics = (node) => {
+    const parent = node.parentElement;
+    let host = parent, wrap = null;
+    if (/flex|grid/.test(getComputedStyle(parent).display)) {
+      wrap = document.createElement('span'); node.replaceWith(wrap); wrap.appendChild(node); host = wrap;
+    }
+    const probe = document.createElement('span');
+    probe.style.cssText = 'display:inline-block;width:0;height:1cap;padding:0;margin:0;border:0;vertical-align:baseline';
+    host.insertBefore(probe, node.nextSibling);
+    const r = probe.getBoundingClientRect();
+    probe.remove();
+    if (wrap) { wrap.replaceWith(node); }
+    return { base: r.bottom, capC: (r.top + r.bottom) / 2, size: parseFloat(getComputedStyle(parent).fontSize),
+      text: node.textContent.trim().slice(0, 24) };
+  };
+  const name = (e) => {
+    const bits = [];
+    for (let x = e; x && x !== document.body && bits.length < 3; x = x.parentElement) {
+      bits.unshift(x.id ? '#' + x.id : x.tagName.toLowerCase() + (x.classList.length ? '.' + [...x.classList].slice(0, 2).join('.') : ''));
+      if (x.id) break;
+    }
+    return bits.join(' > ');
+  };
+  const roots = rootSel ? [...document.querySelectorAll(rootSel)] : [document.body];
+  const faults = [];
+  let rows = 0;
+  for (const root of roots) {
+    for (const row of [root, ...root.querySelectorAll('*')]) {
+      const cs = getComputedStyle(row);
+      // A select's options are its open list, not a row.
+      if (!/flex/.test(cs.display) || /column/.test(cs.flexDirection) || !shown(row) || row.closest('select')) continue;
+      const kids = [...row.children].filter((c) => shown(c) && !/absolute|fixed/.test(getComputedStyle(c).position));
+      if (kids.length < 2) continue;
+      // A wrapping row is measured line by line: each flex line is a row of its own.
+      const flexLines = [];
+      for (const c of kids) {
+        const r = c.getBoundingClientRect(), cur = flexLines[flexLines.length - 1];
+        if (cur && (cs.flexWrap === 'nowrap' || r.top < cur.bottom)) { cur.items.push(c); cur.bottom = Math.max(cur.bottom, r.bottom); }
+        else flexLines.push({ items: [c], bottom: r.bottom });
+      }
+      for (const fl of flexLines) {
+        const texts = [], marks = [];
+        for (const c of fl.items) {
+          if (c.matches('input, textarea, select, canvas, img, video') || c.querySelector('input:not([type=range]), textarea, select')) continue;
+          const n = firstText(c);
+          if (n) {
+            if (lines(c) !== 1) continue;
+            const m = metrics(n);
+            if (m) texts.push(m);
+          } else {
+            const r = c.getBoundingClientRect();
+            if (r.height <= 30) marks.push({ c: (r.top + r.bottom) / 2, what: name(c) });
+          }
+        }
+        // A line whose main text sits in a field cannot be read: the field's text has no probe.
+        if (fl.items.some((c) => c.matches('input:not([type=range]), textarea'))) continue;
+        if (!texts.length || texts.length + marks.length < 2) continue;
+        rows++;
+        const bases = texts.map((t) => t.base), lo = Math.min(...texts.map((t) => t.capC)), hi = Math.max(...texts.map((t) => t.capC));
+        const spread = Math.max(...bases) - Math.min(...bases);
+        if (spread > tol) {
+          faults.push(name(row) + ': baselines differ by ' + spread.toFixed(2) + 'px (' +
+            texts.map((t) => '"' + t.text + '" ' + t.size + 'px ' + (t.base - bases[0]).toFixed(2)).join(', ') + ')');
+        }
+        for (const m of marks) {
+          const off = m.c < lo ? m.c - lo : m.c > hi ? m.c - hi : 0;
+          if (Math.abs(off) > tol) faults.push(name(row) + ': ' + m.what + ' sits ' + off.toFixed(2) + 'px off the capitals of "' + texts[0].text + '"');
+        }
+      }
+    }
+  }
+  return { rows, faults };
+};
+0`;
+
+// Every visible row under `rootSel` (the whole page when omitted) measured against the alignment rule.
+// Resolves with { rows, faults }; a fault names the row and the offset.
+async function alignSweep(session, rootSel, tol) {
+  await session.evaluate(ALIGN_SWEEP);
+  return session.evaluate('__rigAlignSweep(' + JSON.stringify(rootSel || null) + ', ' + (tol === undefined ? 0.5 : tol) + ')');
+}
+
+// The hover rule: a plate inside something the pointer lights stands off the surface it lies on at least as well
+// as at rest, and never merges with it in whatever state the screen is in. Every element a :hover rule repaints
+// is forced into :hover over CDP and each filled box inside it is measured against its own parent, both
+// composited over their ancestors, before and after.
+const HOVER_SWEEP = `(() => {
+  const parse = s => { const m = s.match(/[\\d.]+/g); if (!m) return null; let [r, g, b, a] = m.map(Number);
+    if (s.startsWith('color(')) { r *= 255; g *= 255; b *= 255; } return [r, g, b, a === undefined ? 1 : a]; };
+  const over = (f, b) => [0, 1, 2].map(i => f[i] * f[3] + b[i] * (1 - f[3])).concat(1);
+  const eff = el => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(e);
+    let c = [0, 0, 0, 1]; for (const e of chain.reverse()) { const p = parse(getComputedStyle(e).backgroundColor); if (p && p[3] > 0) c = over(p, c); } return c; };
+  const lum = c => { const f = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const name = e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + [...e.classList].slice(0, 2).map(c => '.' + c).join('');
+  const hosts = new Set();
+  const walk = list => { for (const r of list) { if (r.cssRules && !r.selectorText) { walk(r.cssRules); continue; }
+    if (!r.selectorText || !/background/.test(r.style ? r.style.cssText : '')) continue;
+    for (const s of r.selectorText.split(',')) { const i = s.indexOf(':hover'); if (i > 0) hosts.add(s.slice(0, i).trim()); } } };
+  for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch (e) {} }
+  const seen = el => { const b = el.getBoundingClientRect(); return b.width && b.height && b.bottom > 0 && b.top < innerHeight && el.offsetParent !== null; };
+  const els = new Set();
+  const root = window.__rigHoverRoot ? document.querySelector(window.__rigHoverRoot) : document.body;
+  for (const h of hosts) { try { document.querySelectorAll(h).forEach(e => { if (seen(e) && root && root.contains(e)) els.add(e); }); } catch (e) {} }
+  window.__rigHover = { hosts: [...els], kids: null,
+    take(i, fresh) { const el = this.hosts[i];
+      if (fresh) this.kids = [...el.querySelectorAll('*')].filter(k => { if (!seen(k)) return false; const b = k.getBoundingClientRect();
+        if (b.width * b.height > 40000) return false; const cs = getComputedStyle(k);
+        // A masked box is an icon drawn in its background, not a plate.
+        if (cs.maskImage !== 'none' || cs.webkitMaskImage !== 'none') return false;
+        const p = parse(cs.backgroundColor); return p && p[3] > 0.02; });
+      return { host: name(el), kids: this.kids.map(k => { const p = k.parentElement, a = k.getBoundingClientRect(), b = p.getBoundingClientRect();
+        return { k: name(k), r: ratio(eff(k), eff(p)), plate: a.width < b.width * 0.9 && a.height < b.height * 0.9 }; }) }; } };
+  return els.size;
+})()`;
+
+// Resolves with { hosts, faults }; a fault names the plate and its separation at rest and under the pointer.
+async function hoverSweep(session, rootSel) {
+  await session.evaluate('window.__rigHoverRoot = ' + JSON.stringify(rootSel || null) + '; 0');
+  const n = await session.evaluate(HOVER_SWEEP);
+  await session.send('DOM.enable'); await session.send('CSS.enable');
+  await session.send('DOM.getDocument', { depth: 0 });
+  const faults = new Set();
+  for (let i = 0; i < n; i++) {
+    const rest = await session.evaluate('__rigHover.take(' + i + ', true)');
+    if (!rest.kids.length) continue;
+    const { result } = await session.send('Runtime.evaluate', { expression: '__rigHover.hosts[' + i + ']' });
+    const { nodeId } = await session.send('DOM.requestNode', { objectId: result.objectId });
+    await session.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['hover'] });
+    const lit = await session.evaluate('__rigHover.take(' + i + ', false)');
+    await session.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
+    rest.kids.forEach((k, j) => { const h = lit.kids[j];
+      if (k.plate && k.r < 1.05) faults.add(rest.host + ' > ' + k.k + ' merges with what it lies on: ' + k.r.toFixed(2));
+      // A plate still standing off at 1.3 or more under the pointer is nowhere near merging.
+      if (h.r < k.r - 0.03 && h.r < 1.3) faults.add(rest.host + ' > ' + k.k + ' stands off what it lies on ' + k.r.toFixed(2) + ' at rest, ' + h.r.toFixed(2) + ' under the pointer'); });
+  }
+  return { hosts: n, faults: [...faults] };
+}
+
+// Three checks the eye used to be the only one to make, each over the visible part of `rootSel`:
+// - a native control: a <select> the browser draws, a button in the browser's own grey;
+// - text inside a filled control closer than 6px to its side;
+// - text trimmed to its capitals inside a box that clips, which cuts the tails of у and р;
+// - a box that moves when `toggle` runs; only what lies inside the toggled box (`except`, a selector) may change.
+const SURFACE_SWEEP = `(() => {
+  const seen = el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && b.bottom > 0 && b.top < innerHeight && el.offsetParent !== null; };
+  const name = e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + [...e.classList].slice(0, 2).map(c => '.' + c).join('');
+  const zoomOf = el => { let z = 1; for (let e = el; e; e = e.parentElement) z *= parseFloat(getComputedStyle(e).zoom) || 1; return z; };
+  const filled = cs => { const m = cs.backgroundColor.match(/[\\d.]+/g); return (m && (m[3] === undefined || +m[3] > 0.02)) || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none'; };
+  window.__rigSurface = {
+    native(rootSel) { const root = rootSel ? document.querySelector(rootSel) : document.body; if (!root) return [];
+      const out = [];
+      root.querySelectorAll('select').forEach(s => { if (seen(s) && getComputedStyle(s).appearance !== 'base-select') out.push(name(s) + ' is the browser\\'s own select'); });
+      root.querySelectorAll('button').forEach(b => { if (!seen(b)) return; const bg = getComputedStyle(b).backgroundColor;
+        if (/^rgb\\((239|240), (239|240), (239|240)\\)$/.test(bg) || getComputedStyle(b).borderStyle === 'outset') out.push(name(b) + ' wears the browser\\'s button'); });
+      return out; },
+    padding(rootSel) { const root = rootSel ? document.querySelector(rootSel) : document.body; if (!root) return [];
+      const out = [];
+      root.querySelectorAll('button, select, input[type=text], input[type=search], input:not([type])').forEach(c => {
+        if (!seen(c)) return; const cs = getComputedStyle(c); if (!filled(cs)) return; const z = zoomOf(c), b = c.getBoundingClientRect();
+        let l, r;
+        if (c.tagName === 'BUTTON') { const rg = document.createRange(); const texts = [...c.querySelectorAll('*')].concat(c).flatMap(e => [...e.childNodes]).filter(n => n.nodeType === 3 && n.textContent.trim());
+          if (!texts.length) return; const rs = texts.map(n => { rg.selectNodeContents(n); return rg.getBoundingClientRect(); }).filter(x => x.width);
+          if (!rs.length) return; l = (Math.min(...rs.map(x => x.left)) - b.left) / z; r = (b.right - Math.max(...rs.map(x => x.right))) / z;
+          const icon = c.querySelector('svg'); if (icon) { const ib = icon.getBoundingClientRect(); if (ib.width) { l = Math.min(l, (ib.left - b.left) / z); r = Math.min(r, (b.right - ib.right) / z); } }
+        } else { l = parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth); r = parseFloat(cs.paddingRight) + parseFloat(cs.borderRightWidth); if (c.tagName === 'SELECT') r = Math.max(r, 6); }
+        if (l < 5.5 || r < 5.5) out.push(name(c) + ' holds its content ' + l.toFixed(1) + 'px from the left and ' + r.toFixed(1) + 'px from the right'); });
+      return out; },
+    // A box that clips must hold its text's glyphs: a line height under the font's own, or a trim to the capitals,
+    // cuts the tails of у, р, д. A field is judged by its value and placeholder.
+    clip(rootSel) { const root = rootSel ? document.querySelector(rootSel) : document.body; if (!root) return [];
+      const out = new Set(), rg = document.createRange();
+      [root, ...root.querySelectorAll('*')].forEach(e => { if (!seen(e)) return; const cs = getComputedStyle(e);
+        const field = /^(INPUT|TEXTAREA)$/.test(e.tagName);
+        const nodes = field ? [] : [...e.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim());
+        const text = field ? (e.value || '') + (e.placeholder || '') : nodes.map(n => n.textContent).join('');
+        // Only a letter that hangs below the line is cut; digits and capitals never are.
+        if (!/[ДдЗзРрУуФфЦцЩщgjpqy,()]/.test(text)) return;
+        const trimmed = cs.textBoxTrim && cs.textBoxTrim !== 'none';
+        if (field) { if (trimmed) out.add(name(e) + ' trims its text to the capitals and clips the descenders'); return; }
+        if (/visible/.test(cs.overflowY) && /visible/.test(cs.overflow)) return;
+        const b = e.getBoundingClientRect(), bottom = b.bottom - parseFloat(cs.borderBottomWidth) * (b.height / (e.offsetHeight || b.height));
+        for (const n of nodes) { rg.selectNodeContents(n); const r = rg.getBoundingClientRect();
+          if (r.height && r.bottom > bottom + 0.5) { out.add(name(e) + ' clips the tails of its letters by ' + (r.bottom - bottom).toFixed(1) + 'px'); break; } } });
+      return [...out]; },
+    snap(rootSel) { const root = document.querySelector(rootSel); if (!root) return null; const m = new Map();
+      const walk = (e, path) => { if (seen(e)) { const b = e.getBoundingClientRect(); m.set(path, { n: name(e), tag: e.tagName, x: b.x, y: b.y, el: e }); }
+        [...e.children].forEach((c, i) => walk(c, path + '/' + i)); };
+      walk(root, ''); return m; },
+    shift(before, rootSel, except) { const after = this.snap(rootSel); if (!before || !after) return ['cannot find ' + rootSel];
+      const out = new Set(); for (const [p, a] of before) { // Matched by place and tag: a toggle changes the classes of what it toggles.
+        const b = after.get(p); if (!b || b.tag !== a.tag) continue;
+        // What the toggle draws inside its box may change; the box itself may not move.
+        if (except && b.el.parentElement && b.el.parentElement.closest(except)) continue;
+        const dx = b.x - a.x, dy = b.y - a.y; if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) out.add(a.n + ' moves ' + dx.toFixed(1) + ', ' + dy.toFixed(1) + 'px'); }
+      return [...out]; },
+  };
+  return 0;
+})()`;
+
+async function surfaceSweep(session, rootSel) {
+  await session.evaluate(SURFACE_SWEEP);
+  const sel = JSON.stringify(rootSel || null);
+  return (await session.evaluate('__rigSurface.native(' + sel + ')')).concat(await session.evaluate('__rigSurface.padding(' + sel + ')'),
+    await session.evaluate('__rigSurface.clip(' + sel + ')'));
+}
+
+// The boxes under `rootSel` that move when `toggle` (page JS) runs; `except` names the box the toggle changes.
+async function shiftSweep(session, rootSel, toggle, except) {
+  await session.evaluate(SURFACE_SWEEP);
+  await session.evaluate('window.__rigBefore = __rigSurface.snap(' + JSON.stringify(rootSel) + '); 0');
+  await session.evaluate('(async () => { ' + toggle + ' })()');
+  await settle(session, 'false', 150);
+  return session.evaluate('__rigSurface.shift(__rigBefore, ' + JSON.stringify(rootSel) + ', ' + JSON.stringify(except || null) + ')');
+}
+
 // ─── The preamble ────────────────────────────────────────────────────────────
 
 // The helper set alone, for a window, such as the Player, that no import loaded a map into.
@@ -244,4 +491,4 @@ function wav(seconds, tone) {
   return buf;
 }
 
-module.exports = { DM_MAP, wav, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };
+module.exports = { DM_MAP, wav, alignSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };

@@ -104,6 +104,10 @@ function toggleMaterialPalette(host, on, noLight) {
   const find = pal.querySelector('#mat-find');
   find.value = '';
   _renderPalette();
+  // Kept off the dock: a palette that would run under the open pane moves left by the overlap.
+  pal.style.left = '';
+  const r = pal.getBoundingClientRect(), edge = innerWidth - dockMapInset() - 8;
+  if (r.right > edge) pal.style.left = -(r.right - edge) / (r.width / pal.offsetWidth) + 'px';
   find.focus();
 }
 

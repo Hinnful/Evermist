@@ -183,6 +183,10 @@ function _sbRender() {
   const q = _sbEl('sb-filter').value.trim().toLocaleLowerCase();
   const sections = libSections(_sbLib(), _sbPresent());
   list.textContent = '';
+  if (!_sbPresent().length) {
+    list.appendChild(libEmptyState(t('No sounds yet'), t('Short effects: a door, thunder, a sword. A click plays one.'), () => _sbEl('btn-sb-add').click()));
+    return;
+  }
   const groups = sections.length > 1;
   for (const sec of sections) {
     const items = sec.items.filter(k => !q || soundLabel(k).toLocaleLowerCase().includes(q));

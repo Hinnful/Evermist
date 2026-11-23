@@ -72,17 +72,17 @@
     border: 2px solid transparent;
     transition: border-color .12s;
   }
-  .pane-col.pane-selected::after { border-color: rgba(90, 140, 235, 0.6); }
+  .pane-col.pane-selected::after { border-color: var(--b-icon); }
 
   #panes-divider {
     flex: none;
     width: 8px;
     cursor: var(--cur-col);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--g-field);
     border-left: 1px solid rgba(0, 0, 0, 0.5);
     border-right: 1px solid rgba(0, 0, 0, 0.5);
   }
-  #panes-divider:hover { background: rgba(90, 140, 235, 0.35); }
+  #panes-divider:hover { background: var(--b-tint-h); }
 
   /* ⚠ A mousemove over an <iframe> belongs to that frame, so the drag needs the frames covered
      for its length. panes.js adds the class on mousedown. */
@@ -93,7 +93,7 @@
   .pane-close {
     position: absolute; top: 8px; right: 8px;
     zoom: var(--ui-zoom, 1.2);
-    background: var(--g-bg); color: #fff;
+    background: var(--g-bg); color: var(--g-text);
     opacity: 0;
     transition: opacity .12s, background .12s;
   }

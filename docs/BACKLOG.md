@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 9 open items; IDs run to 309."
+description: "Open work only. 11 open items; IDs run to 312."
 metadata: 
   node_type: memory
   type: project
@@ -142,22 +142,6 @@ base for the campaign, with monsters as one more kind beside groups, maps, rooms
 to talk it through first. **Discussion.**
 **Campaign · Prep · DM only**
 
-### 307. One design language for every control
-Filed 2026-11-21 from the 304 boards. The same meaning is drawn in different ways across the app, and it confuses the DM:
-"picked" has four looks and a picked list row five; secondary buttons come in four heights; a close button comes in five
-sizes; hover uses six greys; some disabled buttons fade and some do not change; no button shows a pressed state; delete,
-rename and right-click work differently from one list to the next. The goal is one language that every control follows: all
-primary buttons alike, all secondary alike, all tertiary alike. A palette change is out: it would not change how the app reads.
-The selection colours stay as they are. A picked value is the grey plate; a mode or a tool in hand is the blue
-tint. Must be fixed and the item closed, not parked. Research and boards (private):
-audit https://claude.ai/artifact/NrFPPCX81HPh63X2yosicy,
-design-system study https://claude.ai/artifact/WM63r1TroEmkzD1CNKvXGP,
-boards https://claude.ai/artifact/PfjEdLTDCPbvr2z2apZ5uu, https://claude.ai/artifact/PgLu5BcDoca4Tkv8kR3zs6,
-https://claude.ai/artifact/FTNyKDV83M5oToJW3ggUZH, https://claude.ai/artifact/ERwnPQXYqRmJBfDCxVr3JH.
-Board 4 is the closest to the agreed direction: actions and sizes made consistent, selection colours unchanged. Rejected on
-the way: every control on a plate at rest (too noisy), and a palette change. **Needs `/spec`.**
-**Polish · DM only**
-
 ### 308. Legendary actions and recharge as cells on the fight copy
 Filed 2026-11-21, split out of 304, which covers spells only. A legendary creature's pool of legendary actions and an
 action that recharges on a roll of 5–6 get cells on the fight copy of the stat block, the same crystal cells 304 gives
@@ -170,6 +154,28 @@ Filed 2026-11-21, left out of 304. 304 lets the DM spend and return spell crysta
 every crystal of a creature in one press, after a long rest or for a new fight, is not in it. It has no picked place or
 look yet. **Needs a design round.**
 **Play · Polish · DM only**
+
+### 310. Interface motion
+Filed 2026-11-22 from the 307 design-system round. 307 makes the controls consistent and adds no new motion; this item is the
+part that changes how the app feels. One set of durations and easings for what opens, closes, appears and moves: menus,
+popovers, windows, toasts, the dock pane, hover, the pressed state, a dragged row, a reorder. Today 18 keyframe animations
+in 9 stylesheets each carry their own timing. Includes the reduced-motion preference. Start after 307 lands, so the motion
+is designed on the final controls. **Needs research and a board.**
+**Polish · DM only**
+
+### 311. A challenge rating shows its XP on hover
+Filed 2026-11-22 from 307. Under the design system a pill means "hover for details", and the Bestiary's challenge badge is a
+pill that shows nothing. On hover it shows the XP and the proficiency bonus for that rating, from the fixed table in the
+rules (0 to 30): "Опасность 12 · 8 400 опыта · бонус мастерства +4". The first version uses the app's plain tooltip; the
+shared hover card comes with spell descriptions. Small: a tested pure table and the tooltip.
+**Play · Prep · DM only**
+
+### 312. Editing a monster looks like editing
+Filed 2026-11-23 from the 307 audit. In edit mode the Bestiary page and a fight row's copy show their lines as plain text:
+Armor class, Hit points, Speed, Saves and the rest are editable, but nothing sunk or outlined says so, and "+ Add section" is a
+bare text link where every other list grows by the Add plate. The design system's field is a sunk rectangle; edit mode
+should wear it on every line it lets the DM type into, and Add section should be the Add plate. **Needs a board.**
+**Prep · Polish · DM only**
 
 ---
 

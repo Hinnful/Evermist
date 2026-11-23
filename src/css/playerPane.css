@@ -5,8 +5,8 @@
     position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
     background-color: #131417;
     background-image:
-      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      linear-gradient(var(--g-bg) 1px, transparent 1px),
+      linear-gradient(90deg, var(--g-bg) 1px, transparent 1px);
     background-size: 22px 22px;
   }
   /* minimap.js sizes the canvas and turns it with My seat; the buttons over it never turn. */
@@ -18,14 +18,14 @@
   #tv-ui { position: absolute; inset: 0; pointer-events: none; }
   #tv-ui button { font-family: system-ui, -apple-system, sans-serif; }
   #tv-ui .tv-ic { display: inline-flex; flex: none; }
-  .tv-row { position: absolute; z-index: 5; display: flex; gap: 5px; align-items: center; }
+  .tv-row { position: absolute; z-index: 5; display: flex; gap: 4px; align-items: center; }
   .tv-row.tl { top: 7px; left: 7px; }
   .tv-row.tr { top: 7px; right: 7px; }
   .tv-row.bl { bottom: 7px; left: 7px; right: 7px; }
 
   /* The picture's tools: faint at rest, full under the pointer. */
   .tv-ov {
-    pointer-events: auto; position: relative; height: 28px; min-width: 28px; padding: 0; border-radius: 7px;
+    pointer-events: auto; position: relative; height: 28px; min-width: 28px; padding: 0; border-radius: 6px;
     border: 1px solid var(--g-pick); background: var(--g-hover); color: var(--g-text);
     display: inline-flex; align-items: center; justify-content: center; cursor: var(--cur-pointer);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); opacity: 0.4; transition: opacity .15s;
@@ -35,62 +35,63 @@
   /* 1 inch and Sync carry their words, at the buttons' height. */
   .tv-ov.wd { padding: 0 9px 0 8px; gap: 6px; font: 500 12px/1 system-ui, -apple-system, sans-serif; }
   /* The ··· button glows for a moment when TV setup has flown into it. */
-  .tv-ov.hot { opacity: 1; box-shadow: 0 0 0 2px var(--b-icon), 0 0 14px 3px rgba(92, 177, 255, 0.6); }
+  .tv-ov.hot { opacity: 1; box-shadow: 0 0 0 2px var(--b-icon), 0 0 14px 3px var(--b-icon); }
   .tv-ov.active { background: linear-gradient(var(--b-tint), var(--b-tint)), var(--g-hover); color: var(--b-icon); }
 
   /* Off: the one button the DM needs, and the screen it will use. */
   .tv-cta { position: absolute; z-index: 5; left: 50%; top: 52%; transform: translate(-50%, -50%);
             display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 16px); }
   .tv-go {
-    pointer-events: auto; height: 36px; padding: 0 16px 0 14px; border-radius: 7px; border: 0;
-    background: var(--b-solid); color: #fff; white-space: nowrap; font: 600 13.5px/1 system-ui;
+    pointer-events: auto; height: 36px; padding: 0 16px 0 14px; border-radius: 6px; border: 0;
+    background: var(--b-solid); color: #fff; white-space: nowrap; font: 600 13px/1 system-ui;
     display: inline-flex; align-items: center; gap: 8px; cursor: var(--cur-pointer); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
-  .tv-go:hover { background: var(--b-icon); }
-  /* No TV found: the same button, quiet, still clickable for the help box. */
-  .tv-go.none { background: var(--g-field); color: var(--g-text); }
-  .tv-go.none:hover { background: var(--g-hover); }
+  .tv-go:hover { background: var(--b-solid-h); }
+  .tv-go:active { background: var(--b-solid-p); }
+  /* No TV found (.none) it stays solid blue: the line under it says so, and the press opens the help box. */
   .tv-go.small { height: 28px; padding: 0 10px; font-size: 12px; box-shadow: none; }
   .tv-sub {
-    pointer-events: auto; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 0; background: none;
-    padding: 3px 5px; border-radius: 4px; cursor: var(--cur-pointer); color: #fff; font: 500 11.5px/1 system-ui;
+    pointer-events: auto; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; border: 0; background: none;
+    padding: 3px 5px; border-radius: 4px; cursor: var(--cur-pointer); color: var(--g-text); font: 500 12px/1 system-ui;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
   }
   .tv-sub:hover { background: rgba(0, 0, 0, 0.5); }
   .tv-sub .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .tv-sub .car { flex: none; font-size: 8px; color: var(--g-dim); }
+  .tv-sub .car { flex: none; width: 10px; height: 10px; font-size: 0; background: var(--g-dim);
+                 -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat; }
 
   /* Live: the state and its way back in one pill. At rest it states the fact; under the pointer it
      offers Stop, and both words share one cell so the pill keeps its width. */
-  .tv-grp { pointer-events: auto; display: inline-flex; align-items: stretch; height: 30px; max-width: 100%; border-radius: 8px;
-            overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); border: 1.5px solid var(--b-solid); }
-  .tv-grp > * { border: 0; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; font: 600 12px/1 system-ui;
+  .tv-grp { pointer-events: auto; display: inline-flex; align-items: stretch; height: 28px; max-width: 100%; border-radius: 8px;
+            overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); border: 1.5px solid var(--b-icon); }
+  .tv-grp > * { border: 0; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; font: 600 12px/1 system-ui;
                 cursor: var(--cur-pointer); white-space: nowrap; position: relative; }
   .tv-grp.tight > * { padding: 0 7px; }
-  .tv-grp .lv { background: linear-gradient(var(--b-tint-h), var(--b-tint-h)), var(--g-bg); color: #fff; }
+  .tv-grp .lv { background: linear-gradient(var(--b-tint-h), var(--b-tint-h)), var(--g-bg); color: var(--g-text); }
   .tv-grp .lv.sw { display: inline-grid; align-items: center; justify-items: center; }
-  .tv-grp .sw .st, .tv-grp .sw .ac { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 7px; }
+  .tv-grp .sw .st, .tv-grp .sw .ac { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 6px; }
   .tv-grp .sw .ac { visibility: hidden; }
   .tv-grp .sw:hover .st { visibility: hidden; }
   .tv-grp .sw:hover .ac { visibility: visible; }
   .tv-grp .lv.sw:hover { background: var(--b-solid); }
   .tv-grp .lv i { width: 7px; height: 7px; border-radius: 50%; background: var(--b-icon); animation: tvPulse 2.6s ease-in-out infinite; }
-  .tv-grp .sd { background: var(--g-hover); color: var(--g-text); border-left: 1px solid rgba(12, 140, 233, 0.45); }
+  .tv-grp .sd { background: var(--g-hover); color: var(--g-text); }
   .tv-grp .sd:hover { background: var(--g-pick); }
   .tv-grp .unsent { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--b-icon); }
   @keyframes tvPulse { 50% { opacity: 0.3; } }
 
   .tv-wait {
     pointer-events: auto; position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 10px; background: rgba(14, 14, 18, 0.72); color: var(--g-text); font: 500 12px/1.3 system-ui;
+    justify-content: center; gap: 8px; background: rgba(14, 14, 18, 0.72); color: var(--g-text); font: 500 12px/1.3 system-ui;
   }
   .tv-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--g-pick); border-top-color: var(--b-icon); animation: tvSpin .8s linear infinite; }
   @keyframes tvSpin { to { transform: rotate(360deg); } }
   .tv-note { pointer-events: auto; position: absolute; z-index: 6; left: 8px; right: 8px; bottom: 8px; padding: 7px 9px; border-radius: 6px;
-             background: var(--g-bg); color: var(--g-text); font: 400 11.5px/1.35 system-ui; }
+             background: var(--g-bg); color: var(--g-text); font: 400 12px/1.35 system-ui; }
   .tv-btn { pointer-events: auto; height: 28px; padding: 0 10px; border-radius: 6px; border: 0; background: var(--g-field);
             color: var(--g-text); font: 500 12px/1 system-ui; cursor: var(--cur-pointer); }
-  .tv-btn:hover { background: var(--g-hover); }
+  .tv-btn:hover:not(:disabled) { background: var(--g-hover); }
+  .tv-btn:active:not(:disabled) { background: var(--g-pick); }
 
   /* The screen question and the help box open above the picture, in Scene control's type. */
   #tv-pop {
@@ -102,57 +103,56 @@
   #tv-pop.help { width: 290px; }
   .tv-menu { padding: 12px 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
   .tv-menu .q { font: 600 12px/1.3 system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  .tv-menu .blk { display: flex; flex-direction: column; gap: 6px; }
+  .tv-menu .blk { display: flex; flex-direction: column; gap: 4px; }
   .tv-menu .lbl { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
-  .tv-row2 { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border: 0; border-radius: 5px;
-             background: var(--g-field); color: var(--g-text); font: 500 11.5px/1 system-ui, sans-serif; cursor: var(--cur-pointer);
+  .tv-row2 { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px;
+             background: var(--g-field); color: var(--g-text); font: 500 12px/1 system-ui, sans-serif; cursor: var(--cur-pointer);
              text-align: left; min-width: 0; }
   .tv-row2:hover { background: var(--g-hover); }
   .tv-row2 .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .tv-row2 .mt { margin-left: auto; flex: none; color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
   .tv-help { padding: 12px; font: 400 12px/1.45 system-ui; color: var(--g-text); }
-  .tv-help .t { display: block; font: 600 12px/1 system-ui; margin-bottom: 7px; }
+  .tv-help .t { display: block; font: 600 14px/1.2 system-ui; margin-bottom: 7px; }
   .tv-help .b { font-weight: 600; }
   .tv-help .kbd { font: 600 11px/1 system-ui; padding: 2px 5px; border-radius: 4px; background: var(--g-field); }
   .tv-help .act { display: flex; gap: 6px; margin-top: 10px; }
-  .tv-lnk { margin-top: 10px; border: 0; background: none; padding: 0; color: var(--g-dim); font: 400 11.5px/1 system-ui;
-            cursor: var(--cur-pointer); text-decoration: underline; text-underline-offset: 2px; }
+  /* The text link: dim, underlined only under the pointer (.bs-link is the same). */
+  .tv-lnk { margin-top: 10px; border: 0; background: none; padding: 0; color: var(--g-dim); font: 500 12px/1 system-ui;
+            cursor: var(--cur-pointer); }
+  .tv-lnk:hover { color: var(--g-text); text-decoration: underline; text-underline-offset: 3px; }
 
   /* ===== TV SETUP (tvControl.js): an .sm-win at the question width, centred over the map ===== */
   .tvs { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
          background: var(--veil); transition: background .45s; }
   .tvs .sm-wbody { overflow: visible; display: flex; flex-direction: column; padding: 14px 16px 16px; }
-  .tvs .sm-sub { margin: 16px 0 6px; }
+  .tvs .sm-sub { margin: 16px 0 4px; }
   .tvs .sm-sub:first-child { margin-top: 0; }
   .tvs .tv-ic { display: inline-flex; flex: none; }
   .tvs .sm-hbtn.dd { width: 100%; padding: 0 9px; }
   .tvs .sm-hbtn.dd .sm-dim { font-weight: 400; }
   .tvs .ddw { position: relative; }
   .tvs #tb-dd { position: absolute; zoom: 1; left: 0; right: 0; top: calc(100% + 4px); min-width: 0; }
-  /* The pick-one pill, in the skin the fight table's window wears. */
-  .tvs .cp-tabs { padding: 2px; gap: 2px; border: 0; border-radius: 6px; background: var(--g-field); }
-  .tvs .cp-segtab { height: 24px; border: 0; border-radius: 4px; color: var(--g-dim); font: 500 12px/16px system-ui, -apple-system, sans-serif; }
-  .tvs .cp-segtab:hover:not(.active) { background: var(--g-hover); color: var(--g-text); }
-  .tvs .cp-segtab.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
   /* Turn: the TV three ways, as the seat sees it. */
-  .tv-turn { display: flex; justify-content: center; gap: 10px; }
+  .tv-turn { display: flex; justify-content: center; gap: 8px; }
   .tv-turn button { position: relative; flex: none; width: 102px; height: 57px; padding: 0; border: 0; border-radius: 6px; overflow: hidden;
                     background: var(--fog-base); cursor: var(--cur-pointer); box-shadow: inset 0 0 0 1px var(--g-line); }
   .tv-turn button:hover { box-shadow: inset 0 0 0 1px var(--g-pick); }
-  .tv-turn button.on { box-shadow: 0 0 0 2px var(--b-solid); }
+  .tv-turn button.on { box-shadow: 0 0 0 2px var(--b-icon); }
   .tv-turn.side button { width: 60px; height: 107px; }
   .tv-turn .tvp { position: absolute; left: 50%; top: 50%; width: 102px; height: 57px; translate: -50% -50%; }
   .tv-turn.side .tvp { width: 107px; height: 60px; }
   /* TV size (tvOneInch.js): the picker, Other's field under it on the right, the line saying where the size came from.
      With no size and 1 inch pressed, the label and the picker are marked blue. */
   .tvs-size { display: flex; flex-direction: column; }
-  .tvs-size .cp-segtab { flex: 1; }
+  .tvs-size { margin-top: 16px; }
+  .tvs-size .cp-segtab { flex: 1 0 auto; padding: 0 10px; }
   .tvs-size > .sm-dim { margin-top: 6px; }
   .tvs-size.need > .sm-sub { color: var(--b-icon); }
   .tvs-size.need > .cp-tabs { box-shadow: 0 0 0 1.5px var(--b-icon); }
   .tvs-other { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 6px; }
-  .tvs-field { width: 64px; height: 26px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--g-pick); border-radius: 6px;
+  .tvs-field { width: 64px; height: 28px; box-sizing: border-box; padding: 0 8px; border: 0; border-radius: 6px;
                background: var(--g-field); color: var(--g-text); text-align: right; font: 500 12px/1 system-ui, -apple-system, sans-serif; outline: none; }
+  .tvs-field:focus { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
   .tvs-field.empty { box-shadow: 0 0 0 2px var(--b-icon); }
   .tvs .sm-win.fly { transition: transform .45s cubic-bezier(.5, 0, .3, 1), opacity .45s; opacity: 0; }
   .tvs-note { margin-top: 16px; color: var(--g-dim); font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
@@ -165,46 +165,46 @@
   .cp-row .cp-tabs { flex: 1; min-width: 0; }
   .cp-row .cp-btn-live { flex: 1 1 auto; min-width: 0; }
 
-  /* − / value / + stepper (Player zoom). Styled as a FIELD (light surface + hairline),
-     not a black toggle pill — it holds a value, it isn't a pick-one-of-these group. */
+  /* − / value / + stepper (the calibration count). A field: it holds a value, it isn't a pick-one well. */
   .cp-stepper {
-    flex: 1; min-width: 0; height: 30px;
+    flex: 1; min-width: 0; height: 28px;
     display: flex; align-items: center;
-    padding: 0 2px; border-radius: 7px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 0 2px; border-radius: 6px;
+    background: var(--g-field);
   }
-  .cp-stepper:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .cp-stepper:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
   .cp-stepbtn {
-    width: 24px; height: 26px; flex: none; padding: 0;
+    width: 24px; height: 24px; flex: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    border: none; border-radius: 5px;
-    background: transparent; color: #9aa0aa; cursor: var(--cur-pointer);
+    border: none; border-radius: 6px;
+    background: transparent; color: var(--g-dim); cursor: var(--cur-pointer);
     transition: background .12s, color .12s;
   }
-  .cp-stepbtn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .cp-stepval { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 1px; }
+  .cp-stepbtn:hover:not(:disabled) { background: var(--g-hover); color: var(--g-text); }
+  .cp-stepbtn:active:not(:disabled) { background: var(--g-pick); color: var(--g-text); }
+  .cp-stepval { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 0; }
   .cp-stepval input {
     /* width:0 is required here for the same reason as .cp-chip-pre input: an <input>'s
        intrinsic width wins over min-width:0 alone. Not an old-engine workaround. */
     flex: 1; width: 0; min-width: 0; border: none; background: transparent;
-    text-align: center; color: #e2e4e8;
+    text-align: center; color: var(--g-text);
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    align-self: stretch; text-box: trim-both cap alphabetic;
   }
   .cp-stepval input:focus { outline: none; }
 
   /* Go-live button — outline at rest, blue outline + fill while the Player is open. The
      blue state is the only live indicator; there is no separate dot. */
-  .cp-btn-live { gap: 7px; border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
-  .cp-btn-live:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); }
+  .cp-btn-live { gap: 6px; border: 1.5px solid var(--g-line); background: transparent; color: var(--g-text); }
+  .cp-btn-live:hover { border-color: var(--g-pick); background: var(--g-field); }
   .cp-btn-live.live {
-    border-color: rgba(90,140,235,0.6);
-    background: rgba(70,120,220,0.11);
-    color: #8fb6ff;
+    border-color: var(--b-icon);
+    background: var(--b-tint);
+    color: var(--b-icon);
   }
 
   .cp-hint {
-    font: 500 10px/1.3 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
-    color: #6b7078; letter-spacing: 0.03em;
+    font: 500 11px/1.3 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    color: var(--g-dim);
   }
 

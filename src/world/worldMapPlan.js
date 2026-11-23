@@ -363,12 +363,12 @@ function wmPlateSpot(outline, w, h, gap, minW) {
 }
 
 // ─── The count and the hand of maps ──────────────────────────────────────────
-// The count pill after a place's name: its type is WM_PILL.size of the plate's, its padding and the gap before it
-// WM_PILL.padX and .gap of its own (worldMap.css .wm-hc), so the plate's width must include them.
-const WM_PILL = { size: 0.72, padX: 0.5, gap: 0.5 };
+// The count after a place's name: its type is WM_PILL.size of the plate's and the gap before it WM_PILL.gap of its own
+// (worldMap.css .wm-hc), so the plate's width must include them.
+const WM_PILL = { size: 0.72, gap: 0.5 };
 
 function wmPillWidth(countTextW, plateFontPx) {
-  return countTextW + plateFontPx * WM_PILL.size * (2 * WM_PILL.padX + WM_PILL.gap);
+  return countTextW + plateFontPx * WM_PILL.size * WM_PILL.gap;
 }
 
 // What a place shows of the maps it holds, zoomed out: up to three cards and, past three, a "+N" card. Screen px at size 1.

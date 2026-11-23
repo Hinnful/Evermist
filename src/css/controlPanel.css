@@ -1,34 +1,30 @@
 /* controlPanel.css — the stock pane controls: groups, labels, pills, fields, buttons, sliders, the colour picker. Defines @keyframes cpAdvIn, which roomCard.css also uses, so this must load before roomCard.css. */
   #cp-legacy { display: none; }
 
-  /* .cp-tabs is the pick-one pill: Auto/Manual, the library's Shrink big maps. */
+  /* The well, a pick-one: .cp-tabs holds words (Auto/Manual, Shrink big maps), .cp-seg icons. 28 tall, 24 items, the
+     picked value lifted on --g-pick. */
   .cp-tabs {
-    display: flex; align-items: center; gap: 3px;
-    padding: 4px; border-radius: 10px;
-    background: rgba(0, 0, 0, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.045);
+    display: flex; align-items: center; gap: 2px;
+    padding: 2px; border-radius: 8px;
+    background: var(--g-field);
   }
   .cp-segtab {
-    flex: 1; height: 30px; padding: 0;
-    border: 1.5px solid transparent; border-radius: 7px;
-    background: transparent; color: #7f858e;
+    flex: 1; height: 24px; padding: 0;
+    border: 0; border-radius: 6px;
+    background: transparent; color: var(--g-dim);
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: var(--cur-pointer); transition: background .12s, color .12s, border-color .12s;
+    cursor: var(--cur-pointer); transition: background .12s, color .12s;
   }
-  .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .cp-segtab.active {
-    border-color: rgba(90, 140, 235, 0.6);
-    background: rgba(70, 120, 220, 0.11);
-    color: #8fb6ff;
-  }
+  .cp-segtab:hover:not(.active, :disabled) { color: var(--g-text); }
+  .cp-segtab.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
   /* Panes */
-  .cp-pane { padding: 18px 10px; display: flex; flex-direction: column; gap: 22px; }
+  .cp-pane { padding: 18px 10px; display: flex; flex-direction: column; gap: 24px; }
   .cp-pane[hidden] { display: none; }
   .cp-group { display: flex; flex-direction: column; gap: 12px; }
   .cp-label {
     font: 600 11px/1 system-ui, -apple-system, sans-serif;
-    color: #b8bdc6; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--g-body);
   }
 
   /* Icon rows (animation mode / grid type) */
@@ -37,14 +33,14 @@
     flex: 1; aspect-ratio: 1; padding: 0;
     display: flex; align-items: center; justify-content: center;
     border: 1.5px solid transparent; border-radius: 6px;
-    background: transparent; color: #9aa0aa; cursor: var(--cur-pointer);
+    background: transparent; color: var(--g-dim); cursor: var(--cur-pointer);
     transition: background .12s, color .12s, border-color .12s;
   }
-  .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-iconbtn:hover:not(.active) { background: var(--g-field); color: var(--g-body); }
   .cp-iconbtn.active {
-    border-color: rgba(90, 140, 235, 0.6);
-    background: rgba(70, 120, 220, 0.11);
-    color: #8fb6ff;
+    border-color: var(--b-icon);
+    background: var(--b-tint);
+    color: var(--b-icon);
   }
 
   /* Icon rows rendered as an inset segment — match the bottom-toolbar fog-mode group
@@ -52,19 +48,18 @@
      Grid-type row and the Fog Animation row. */
   .cp-seg {
     align-self: flex-start;          /* box width follows its icons, not the full sidebar */
-    gap: 3px; padding: 4px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.045);
+    gap: 2px; padding: 2px;
+    border-radius: 8px;
+    background: var(--g-field);
   }
   .cp-seg .cp-iconbtn {
     flex: none; aspect-ratio: auto;
-    width: 30px; height: 30px;
-    border: none; border-radius: 7px;
-    color: #7f858e;
+    width: 24px; height: 24px;
+    border: none; border-radius: 6px;
+    color: var(--g-dim);
   }
-  .cp-seg .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .cp-seg .cp-iconbtn.active { border: none; background: transparent; color: #6ea8ff; }
+  .cp-seg .cp-iconbtn:hover:not(.active, :disabled) { background: transparent; color: var(--g-text); }
+  .cp-seg .cp-iconbtn.active { border: none; background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
   /* HSV colour picker */
   .cp-picker { display: flex; flex-direction: column; gap: 8px; }
@@ -103,54 +98,49 @@
     accent-color: transparent;
   }
 
-  /* Colour field (swatch + hex + alpha%) */
+  /* The field: grey, no outline; focus lifts one step and draws a 1px blue line, as .sm-field. */
   .cp-field {
-    display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px;
-    border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px;
+    border-radius: 6px; background: var(--g-field);
   }
+  .cp-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
   .cp-swatch { width: 16px; height: 16px; border-radius: 4px; flex: none; border: 1px solid rgba(255,255,255,0.16); }
-  .cp-hash { font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: #7f858e; flex: none; }
+  .cp-hash { font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: var(--g-dim); flex: none; text-box: trim-both cap alphabetic; }
   .cp-hex {
-    flex: 1; min-width: 0; margin-left: -4px; border: none; background: transparent; color: #d5d8dd;
+    flex: 1; min-width: 0; margin-left: -4px; border: none; background: transparent; color: var(--g-text);
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+    align-self: stretch; text-box: trim-both cap alphabetic;
   }
   .cp-hex:focus { outline: none; }
-  .cp-fdiv { width: 1px; align-self: stretch; background: var(--g-divider); flex: none; }
+  .cp-fdiv { width: 1px; align-self: stretch; background: var(--g-line); flex: none; }
   .cp-alphanum {
-    width: 26px; flex: none; border: none; background: transparent; color: #c4c8ce; text-align: right;
+    width: 26px; flex: none; border: none; background: transparent; color: var(--g-body); text-align: right;
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    align-self: stretch; text-box: trim-both cap alphabetic;
   }
   .cp-alphanum:focus { outline: none; }
-  .cp-pct { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: #7c8088; flex: none; }
+  .cp-pct { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); flex: none; text-box: trim-both cap alphabetic; }
 
   /* Buttons */
   .cp-btnrow { display: flex; gap: 6px; }
   .cp-btnrow .cp-btn { flex: 1; }
+  /* The secondary plate. Never put one inside a .cp-seg / .cp-tabs well: that box means "pick one of these". */
   .cp-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 100%; height: 30px; padding: 0 12px; border-radius: 7px;
+    width: 100%; height: 28px; padding: 0 12px; border: 0; border-radius: 6px;
+    background: var(--g-field); color: var(--g-text);
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: var(--cur-pointer); white-space: nowrap;
-    transition: background .12s, border-color .12s, color .12s;
+    transition: background .12s, color .12s;
   }
-  .cp-btn-outline { border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
-  .cp-btn-outline:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); color: #d5d8dd; }
-  /* Button identity: an independent control, outlined + blue-filled when active. Never
-     put one of these inside a .cp-seg / .cp-tabs pill — that black box means "pick one
-     of these", which is the toggle-group identity. */
-  .cp-btn-outline.active {
-    border-color: rgba(90,140,235,0.6);
-    background: rgba(70,120,220,0.11);
-    color: #8fb6ff;
-  }
-  /* A .cp-btn can be genuinely unavailable, so it has to LOOK unavailable — an ordinary-looking
-     button that does nothing on click reads as a broken button. Hover is suppressed too. */
-  .cp-btn:disabled { opacity: 0.45; cursor: var(--cur-arrow); }
-  .cp-btn:disabled:hover { border-color: rgba(255,255,255,0.1); background: transparent; }
+  .cp-btn:hover:not(:disabled) { background: var(--g-hover); }
+  .cp-btn:active:not(:disabled) { background: var(--g-pick); }
+  .cp-btn-outline.active { background: var(--b-tint); color: var(--b-icon); }
   .cp-row { display: flex; align-items: center; gap: 6px; }
-  .cp-btn-icon { width: 30px; flex: none; padding: 0; }
-  .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
-  .cp-btn-danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
+  .cp-btn-icon { width: 28px; flex: none; padding: 0; }
+  .cp-btn-danger { background: transparent; }
+  .cp-btn-danger:hover:not(:disabled) { background: var(--r-tint); color: var(--r-text); }
+  .cp-btn-danger:active:not(:disabled) { background: var(--r-tint-p); color: var(--r-text); }
 
   /* Sliders (the Custom movement dials, Settings' Half and Feather) */
   .cp-slider { position: relative; height: 16px; display: flex; align-items: center; }
@@ -169,20 +159,21 @@
 
   /* Number chips */
   .cp-chip {
-    display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 0 7px;
-    border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
-    color: #e2e4e8; font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    display: inline-flex; align-items: center; justify-content: center; height: 28px; padding: 0 7px;
+    border-radius: 6px; background: var(--g-field); border: 0;
+    color: var(--g-text); font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
   }
   input.cp-chip-num { width: 46px; text-align: center; }
-  .cp-chip:focus, input.cp-chip:focus { outline: none; border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
-  .cp-chip-pre { flex: 1; height: 30px; gap: 3px; padding: 0 8px; }
-  .cp-chip-prefix { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #7f858e; flex: none; }
+  .cp-chip:focus-within, input.cp-chip:focus { outline: none; background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
+  .cp-chip-pre { flex: 1; height: 28px; gap: 4px; padding: 0 8px; }
+  .cp-chip-prefix { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); flex: none; text-box: trim-both cap alphabetic; }
   .cp-chip-pre input {
     /* ⚠ width:0 IS REQUIRED, and not an old-engine workaround — measured on Chromium 150,
        removing it takes the field from 88px to 168px and overflows the chip by 149px. An
        <input> carries an intrinsic width that min-width:0 alone does not defeat. */
-    flex: 1; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: #e2e4e8;
+    flex: 1; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: var(--g-text);
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    align-self: stretch; text-box: trim-both cap alphabetic;
   }
   .cp-chip-pre input:focus { outline: none; }
 
@@ -192,18 +183,20 @@
     padding: 9px 9px 2px 14px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd; }
+  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  /* The icon button beside the dock: 24, no plate at rest. */
   .cp-adv-close {
-    width: 22px; height: 22px; flex: none; padding: 0;
+    width: 24px; height: 24px; flex: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    border: none; background: transparent; color: #9aa0aa; border-radius: 6px; cursor: var(--cur-pointer);
+    border: none; background: transparent; color: var(--g-dim); border-radius: 6px; cursor: var(--cur-pointer);
     transition: background .12s, color .12s;
   }
-  .cp-adv-close:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  .cp-adv-close:hover:not(:disabled) { background: var(--g-field); color: var(--g-text); }
+  .cp-adv-close:active:not(:disabled) { background: var(--g-hover); }
   .cp-adv-close[hidden] { display: none; }
-  .cp-adv-body { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
-  .cp-advrow { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; column-gap: 7px; }
-  .cp-advlbl { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa; }
+  .cp-adv-body { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .cp-advrow { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; column-gap: 8px; }
+  .cp-advlbl { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
 
   /* NOTHING styles the hidden #cp-legacy controls, and nothing should. They exist only so the
      fog / grid / player wiring in toolbar.js, grid.js and minimap.js keeps a real element to

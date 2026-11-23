@@ -144,18 +144,17 @@ function _hintSeat() {
 function _hintsInitSwitch() {
   const host = document.getElementById('settings-hints');
   if (!host) return;
-  host.innerHTML = '<span class="dk-sub"></span><div class="cp-tabs" data-no-i18n>' +
-    '<button type="button" class="cp-segtab" data-on="1"></button><button type="button" class="cp-segtab" data-on="0"></button></div>';
-  host.firstChild.textContent = t('Hints');
-  const tabs = host.querySelectorAll('.cp-segtab');
-  tabs[0].textContent = t('On');
-  tabs[1].textContent = t('Off');
-  const paint = () => tabs.forEach(b => b.classList.toggle('active', (b.dataset.on === '1') !== _hintsOff()));
-  tabs.forEach(b => b.addEventListener('click', () => {
-    try { if (b.dataset.on === '1') localStorage.removeItem(HINTS_OFF_KEY); else localStorage.setItem(HINTS_OFF_KEY, '1'); } catch (_) {}
+  host.innerHTML = '<div class="dk-swrow" data-no-i18n><span></span>' +
+    '<button type="button" class="dk-switch" role="switch" aria-checked="false"></button></div>';
+  const row = host.firstChild, sw = row.querySelector('.dk-switch');
+  row.firstChild.textContent = t('Hints');
+  sw.setAttribute('aria-label', t('Hints'));
+  const paint = () => sw.setAttribute('aria-checked', String(!_hintsOff()));
+  row.addEventListener('click', () => {
+    try { if (_hintsOff()) localStorage.removeItem(HINTS_OFF_KEY); else localStorage.setItem(HINTS_OFF_KEY, '1'); } catch (_) {}
     if (_hintsOff()) hintClose();
     paint();
-  }));
+  });
   paint();
 }
 

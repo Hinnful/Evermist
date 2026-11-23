@@ -390,8 +390,8 @@ describe('the count and the hand of maps', () => {
     assert.ok(W.wmFanSize(4).w > W.wmFanSize(2).w);
   });
 
-  it('adds the pill to the plate: its text, its padding and the gap before it', () => {
-    assert.equal(W.wmPillWidth(10, 20), 10 + 20 * 0.72 * 1.5);
+  it('adds the count to the plate: its text and the gap before it', () => {
+    assert.equal(W.wmPillWidth(10, 20), 10 + 20 * 0.72 * 0.5);
   });
 
   it('sits at full size in the middle of a roomy place', () => {

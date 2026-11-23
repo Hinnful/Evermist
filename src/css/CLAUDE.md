@@ -1,6 +1,8 @@
 # CSS rules
 
-Scoped to `src/css/`. The root [CLAUDE.md](../../CLAUDE.md) carries everything else.
+Scoped to `src/css/`. The root [CLAUDE.md](../../CLAUDE.md) carries everything else. What a stylesheet may
+say (tokens, sizes, radii, contrast, which selector is which atom) is
+[.claude/rules/design-system.md](../../.claude/rules/design-system.md), which `test/designSystem.test.js` holds.
 
 ## CSS
 

@@ -4,8 +4,9 @@ Split out of [DECISIONS.md](../DECISIONS.md). What was decided about the **DM's 
 toolbar, the control panel and its tabs, the scene library, the minimap's furniture and the
 dialogs - and why it held.
 
-The Player view has no UI at all, so nothing here reaches it. The layout and
-button-identity rules that bind while editing this chrome are in the `dm-ui` skill; the
+The Player view has no UI at all, so nothing here reaches it. The layout rules
+that bind while editing this chrome are in the `dm-ui` skill, button identity and the rest of the look in
+[.claude/rules/design-system.md](../../.claude/rules/design-system.md); the
 stylesheet cascade is in [src/css/CLAUDE.md](../../src/css/CLAUDE.md); how the panels are
 wired is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
@@ -44,6 +45,7 @@ cell size is a scrub field. The pane drives `#cp-legacy`, so no behaviour code c
 
 ### Map settings is words, pills and switches · `SETTLED` (2026-11-07)
 BACKLOG 255. The pane stopped following Figma's right panel (unlabelled scrub fields, eyes ending rows, no labels, "Sources" rows). Every control has a small sub-header; a pick-one is the app's own grey segment pill with icons, names in tooltips; a section that can be turned off has a knob switch on its title; Reset is a frameless word on the title and asks first; actions are grey labelled buttons, no bare icons beside rows. Rejected: Excalidraw-style separate buttons (a second look beside the segment pill used in Type, Hints, Shrink big maps and the toolbar wells); a two-column layout (halves the opacity slider, pairs unrelated controls); the line look in a pop-out (opacity must take one drag); picture tiles for weather and fog (about three times as tall); full-width pickers and colour squares (gaps grow with the dock); a revert arrow per sub-header (Reset covers the grid); Fit to map as a blue word on the heading or inside the stepper. Weather and fog themes are icon pills with no heading value, since they are kinds, not amounts; "No weather" has a crossed circle so it is not a sun. Fog themes are cloud, three drops, round flask, icicles and flame, each in its doorLight colour; rejected icons: crystal, ice cube, thermometer, test tube, splatter, dripping blood, one cloud in five colours (Default and Ice look alike). The title keeps a capital F, a deliberate exception to sentence case, because Fog is the signature feature. This supersedes the dropdowns for Weather presets and fog themes.
+**Narrowed 2026-11-22** (`.claude/rules/design-system.md`): Reset wears an icon ("↺ Reset"), and Hints is a switch, not a pill.
 
 ### Map settings stays one rail pane · `SETTLED` (2026-11-07)
 Splitting it into rail tabs was rejected: a newcomer must guess which tab holds a setting, the rail would overflow a 768px screen, and the Fog/Grid/Player tab bar was already replaced by one pane on 2026-10-02. If height becomes a problem, sections fold; they do not become tabs.
@@ -279,6 +281,7 @@ the scene library fills the screen (the Bestiary became a free window, see below
 that opens it, so "Scenes" became "Scene library" and "Add music" became "Add from YouTube".
 Rejected: the first round, which gave each window its own header, close and button sizes and read
 as inconsistent at a glance.
+**Superseded in part 2026-11-22** (`.claude/rules/design-system.md`): the dock's 26px controls become 28, one height with the windows'.
 
 ### Buttons are three kinds and an icon button · `SETTLED` (2026-10-03)
 Primary wears the blue tint, one per window, and only where the window has an action it exists
@@ -289,6 +292,8 @@ No button has an outline; a focus ring shows only on keyboard focus. An icon bes
 since its lid makes it read low once moved. Rejected: a grey-filled destructive button, one red at
 rest, one on a footer's left while the next dialog put its own on the right, and a Done button in
 a window where nothing waits to be accepted.
+**Narrowed 2026-11-22** (`.claude/rules/design-system.md`): the rejection of red at rest no longer covers a delete question's last
+button, which is solid red; every other destructive control stays red only under the pointer.
 
 ### Selection follows Gmail, not a tinted header · `SETTLED` (2026-10-03)
 Reverses the selection bar that replaced the header in the scene library, the Bestiary and the
@@ -1156,6 +1161,8 @@ A well is 30px tall, field grey, 8px radius, 2px padding, 26px items with a 6px 
 Every divider runs the full height of its strip with 8px clear on each side, and the row's notch never sits under one. The
 fog clouds, the size field, the material button and the mode switch all wear it. Scene control's field dividers
 (`.cp-fdiv`) follow in a later pass.
+**Superseded in part 2026-11-22** (`.claude/rules/design-system.md`): wells 30/26 become 28/24, and one line token (`--g-line`) replaces
+`--g-divider`.
 
 ### The first-map toast is dropped · `SETTLED` (2026-10-16)
 The line over the first fully hidden map is gone, and its saved flag is left unread. The row of clouds and the two eyes put
@@ -1195,6 +1202,8 @@ The Show on TV step is unchanged. The look of the bar is Spec B.
 Solid blue marked both the pick (the tool in hand, a list row, a well item) and the action to take next (Show on TV).
 The DM settled one meaning each: a solid blue fill, with no glow, asks to be pressed; the blue tint, as on the rail's open
 tab, shows what is picked or in hand. The app-wide pass is BACKLOG 183.
+**Narrowed 2026-11-22** (`.claude/rules/design-system.md`): a thin indicator (the focus ring, the rename edit ring, insertion and drop
+lines, picked rings) takes `--b-icon`, which holds 3:1 on every surface; `--b-solid` is a fill only.
 
 ### The world map's bar has no words, and Find is a large search in the middle · `SETTLED` (2026-10-16)
 The bar reads Select, Add, Place, a divider, Find, with no words and Select always leftmost. Solid blue means "press this" and
@@ -1215,6 +1224,8 @@ take next. A window may show more than one solid button; the rule marks what to 
 `test/blueMeaning.test.js` holds the list of what may be solid. **Reverses, by title:** "Buttons are three kinds and an
 icon button" (the primary's tint and "one per window"); "The toolbar follows Figma" (solid for the tool in hand).
 **Ends** the world map scoping in "The world map's bar has no words".
+**Narrowed 2026-11-22** (`.claude/rules/design-system.md`): a thin indicator (the focus ring, the rename edit ring, insertion and drop
+lines, picked rings) takes `--b-icon`, which holds 3:1 on every surface; `--b-solid` is a fill only.
 
 ### Places take no Merge, Cut out or Split · `SETTLED` (2026-10-16)
 The DM found the place repairs did not work and had no first-evening use. The world map's options row loses the repair
@@ -1287,6 +1298,7 @@ Rejected in order: 48x44 full tiles (label touching the edge), a 44x26 pill (an 
 side bar (an extra element doing what colouring icon and word does), labels beside the icon (wider,
 changes the UX), and hover names alone. Button text is trimmed to cap height and baseline so it
 sits on the optical centre beside an icon. One divider rule app-wide: edge to edge, 1px, `--g-divider`.
+**Narrowed 2026-11-22** (`.claude/rules/design-system.md`): the divider takes the one line token (`--g-line`), not `--g-divider`.
 
 ### The shape button is labelled, and rooms and groups start on Rectangle · `SETTLED` (2026-10-22)
 A square icon means "a square" only to someone who knows they are in a vector editor. The bottom
@@ -1316,6 +1328,9 @@ only this screen" help; blue means a TV is found or several screens can be picke
 configuring at launch is found without a plug event; the macOS cause is unconfirmed and CI cannot check it
 (one virtual screen). Q pings at the pointer like Ctrl+middle-click, for touchpads with no middle button, only over
 an open map and not in a field. G was rejected: it toggles the grid. The shortcut legend lists Q.
+**Superseded in part 2026-11-22** (`.claude/rules/design-system.md`): the grey is gone. Under the design system solid blue means
+press this, the next step, not that a TV is found, so Show on TV is always solid blue and the line under it says
+whether a TV is found; without one a press still leads on to the help box. The help box and Q are unchanged.
 
 ### The Music pane has an Add files button · `REVERTED` (2026-11-12, now the "+ Add" word button; the picker and the file rules stay)
 An icon button between New group and Add from YouTube opens a native multi-file picker filtered to the music
@@ -1550,3 +1565,39 @@ and drag, Delete, copy/paste, Alt-drag copy and fog act on every piece.
 - Stored as records with `pieceOf: <uid of the first record>`, linked by uid because sync and Import renumber ids; a head
   without a uid gets one minted alone, never `esAssignUids` over the list (it keeps the first holder in list order).
 - Accepted loss on the previous release: pieces show as rooms of their own; a Split made there rejoins, a name typed there drops.
+
+### The palette is unified and lifted for contrast · `SETTLED` (2026-11-22, BACKLOG 307)
+The interface drew 142 colours where one token each would do, and 62 text uses failed WCAG AA. They fold into the
+tokens of `.claude/rules/design-system.md`, and the dim text tokens rise so labels and meta hold 4.5:1 and main and reading text 7:1;
+`test/designSystem.test.js` checks the pairs and freezes today's breaks in a shrink-only allowlist. Merging into the
+current tokens without the lift was rejected: text in the row under the pointer would read worse than now. A change of
+hue stays rejected: the lift moves lightness and keeps every hue. Enemy and ally, the fog clouds, the damage types,
+the effect material, the slot crystal and the brand mark keep a domain set of their own.
+
+### A plate in a row is a layer over the row · `SETTLED` (2026-11-22, BACKLOG 307)
+A plate inside a row that lights under the pointer or carries a state (open, ticked) is a white layer over the row (`--g-lay-raised`,
+`--g-lay-field`, `--g-lay-pick`), so it moves with the row. A row with a state takes that state's own hover: open `--b-tint-h`, ticked
+`--g-hover`. Rejected on product grounds: a darker hover on rows that hold plates (hover darkens nowhere else), an outline on every
+pill, a lighter Carbon-style fill (it drops coloured damage numbers to 2.6:1), and making every plate in the app a layer (one token
+would look different on every surface). Strict WCAG 1.4.11 / APCA Lc 15 for plate fills was not adopted: the bar is that a plate never
+merges with what it lies on and its text stays readable. WCAG asks no contrast of a plate identified by its text, nor of hover against rest.
+
+### Menus, fields and small furniture settled in the design-system pass · `SETTLED` (2026-11-23, BACKLOG 307)
+- Every menu is drawn at the UI's zoom (`body > .sm-menu`), so the Campaign, library and Notes menus match the fight table's: one row height.
+- A menu's Delete row has no trash icon; it is marked by being last and red under the pointer, so the names keep one column. The tick
+  column shows only when a row is ticked. A menu never draws two separator lines together, or one at an end.
+- The source tag after a monster's name centres its capitals on the name's x-height. Rejected, both judged by eye on close-ups: on the
+  baseline (reads low) and centred on the capitals (reads high).
+- Text fields are not trimmed to cap height, and text that ellipsises clips sideways only (`overflow-x: clip`): a box shorter than its
+  letters cut the tails of у, р, д in every search and filter field and in several rows.
+- A pill's text centres on its pill and the pill on its row; the row-baseline rule covers free text only.
+- The Bestiary's challenge-rating range uses the app-drawn select (`appearance: base-select`) in the menu skin; Reset in the filter
+  pop-ups is the tertiary text action with its ↺ icon. One thin scrollbar for every scroller lives in `base.css`.
+- The abilities legend reads Modifier · Score · Save with dots, in the cell's order; the line over Save meant to echo the save strip was
+  removed as unclear.
+- Integration statuses are a dot and a word (grey off, green on); the Claude line's "Not connected" reads «Отключено» in Russian.
+- Empty-state titles and the TV help box title are 14, the section title size; grid calibration's Done is the primary blue button.
+
+### The Bestiary opens over a fight table with no room beside it · `SETTLED` (2026-11-23)
+Product call. With room beside the fight table the Bestiary opens there and stays below the table in z-order; with none it opens over
+the table and on top of it.

@@ -38,7 +38,7 @@ function _bsQueueHtml() {
 
 function _bsCell(b, k) {
   if (k === 'cr') return `<td class="num"><span class="bs-crb">${_cbEsc(bsCr(b))}</span></td>`;
-  if (k === 'name') return `<td class="nm">${_cbEsc(b.name)}${bs.fresh.has(b.id) ? '<span class="bs-new">' + t('NEW') + '</span>' : ''}</td>`;
+  if (k === 'name') return `<td class="nm">${_cbEsc(b.name)}${bs.fresh.has(b.id) ? '<span class="bs-new">' + t('New') + '</span>' : ''}</td>`;
   if (k === 'size') return `<td>${_cbEsc(t(bsSize(b)))}</td>`;
   if (k === 'type') return `<td>${_cbEsc(t(bsType(b)))}</td>`;
   if (k === 'ac' || k === 'hp') return `<td class="num">${_cbEsc(combatFirstNum(b[k]) || '—')}</td>`;
@@ -151,14 +151,14 @@ function _bsFilterPop(anchor, k) {
   el.dataset.k = k;
   if (F.range) {
     const opts = (v, none) => `<option value="">${none}</option>` + BS_CRS.map(c => `<option ${v === c ? 'selected' : ''}>${c}</option>`).join('');
-    el.innerHTML = `<div class="top"><span class="lbl">Challenge rating</span><button data-p="none">Clear</button></div>
+    el.innerHTML = `<div class="top"><span class="lbl">Challenge</span><button data-p="none">${uiIcon('reset', 13)}<span>Clear</span></button></div>
       <div class="range"><select data-r="0">${opts(bs.f.cr[0], 'From 0')}</select><span>to</span><select data-r="1">${opts(bs.f.cr[1], 'Up to 30')}</select></div>`;
     el.addEventListener('change', e => { bs.f.cr[+e.target.dataset.r] = e.target.value || null; bestiaryRender(); });
   } else {
     const draw = () => {
-      el.innerHTML = `<div class="top"><button data-p="all">Select all</button><button data-p="none">Clear</button></div>
+      el.innerHTML = `<div class="top"><button data-p="all">Select all</button><button data-p="none">${uiIcon('reset', 13)}<span>Clear</span></button></div>
         <div class="opts" data-no-i18n>${bsOptions(_bsAll(), bs.f, k).map(o => `<div class="o" data-v="${_cbEsc(o.value)}">
-          <span class="bs-cb ${bs.f[k].includes(o.value) ? 'on' : ''}"></span>${_cbEsc(t(o.value))}<span class="c">${o.count}</span></div>`).join('')}</div>`;
+          <span class="bs-cb ${bs.f[k].includes(o.value) ? 'on' : ''}"></span><span>${_cbEsc(t(o.value))}</span><span class="c">${o.count}</span></div>`).join('')}</div>`;
     };
     draw();
     el.addEventListener('click', e => {

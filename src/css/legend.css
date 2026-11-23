@@ -16,9 +16,9 @@
   .lg-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 24px; }
   /* A long Russian label wraps rather than pushing its keys out of the window. */
   .lg-row { min-height: 28px; padding: 4px 0; display: flex; align-items: center; gap: 8px; line-height: 16px; }
-  .lg-row .k { margin-left: auto; display: flex; gap: 3px; }
+  .lg-row .k { margin-left: auto; display: flex; gap: 4px; }
   #shortcut-legend kbd {
     min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px;
     display: inline-grid; place-items: center; white-space: nowrap;
-    background: var(--g-field); color: #d5d8dd; font: 500 11px/1 system-ui, -apple-system, sans-serif;
+    background: var(--g-field); color: var(--g-text); font: 500 11px/1 system-ui, -apple-system, sans-serif;
   }

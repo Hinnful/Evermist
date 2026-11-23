@@ -541,3 +541,10 @@ recommendation line, which decides whether `/redteam` runs.
 Ten boards for the fight table were redrawn by eye and drifted from the real window. A mockup of an existing window is now built on the
 app's own CSS and markup. A UI build is checked with real CDP input in Russian and close-up screenshots before the DM sees it, and a fix
 to one handle is checked on every sibling control.
+
+### The design-system audit walks an inventory, not a sample · `SETTLED` (2026-11-23)
+The first audit of BACKLOG 307 compared 12 screens at rest with the previous release and missed every pop-up, menu and row state; about a
+dozen faults surfaced after it (`audit-misses.md`). The audit now walks an inventory of every surface and state (`tools/rig/inventory.js`)
+with machine checks for alignment, plate merging and hover, native controls, control padding, state shifts, clipped letters and menu size.
+An outside reviewer given only the rules and the close-ups reads them, the report opens with what was not checked, and each later finding
+becomes a line in `audit-misses.md` and a fixed step. Rejected: auditing against the previous release, which carries its faults forward.

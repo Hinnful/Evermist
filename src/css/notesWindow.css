@@ -9,22 +9,23 @@
   }
   .nw[hidden] { display: none; }
   .nw input, .nw textarea { user-select: text; }
-  .nw-head { height: 38px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: var(--cur-move); }
+  .nw-head { height: 48px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: var(--cur-move); }
   .nw-ib {
-    width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
-    border: 0; background: transparent; color: #7f858e; border-radius: 6px; cursor: var(--cur-pointer);
+    width: 28px; height: 28px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
+    border: 0; background: transparent; color: var(--g-dim); border-radius: 6px; cursor: var(--cur-pointer);
   }
-  .nw-ib:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #d5d8dd; }
-  .nw-ib:disabled { opacity: 0.3; cursor: var(--cur-arrow); }
+  .nw-ib:hover:not(:disabled) { background: var(--g-field); color: var(--g-text); }
+  .nw-ib:active:not(:disabled) { background: var(--g-hover); color: var(--g-text); }
   .nw-ib.on { color: var(--b-icon); }
   .nw-ib svg { width: 15px; height: 15px; }
 
   .nw-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; margin-left: 6px; overflow: hidden; white-space: nowrap; font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
-  .nw-crumb { flex: 0 0 auto; padding: 4px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; }
+  /* Crumbs trim to their capitals, so they share a baseline with the header's buttons. */
+  .nw-crumb { flex: 0 0 auto; padding: 6px 4px; border-radius: 6px; overflow-x: clip; text-overflow: ellipsis; text-box: trim-both cap alphabetic; }
   .nw-crumb[data-go], .nw-crumb.more { cursor: var(--cur-pointer); }
-  .nw-crumb[data-go]:hover, .nw-crumb.more:hover { color: var(--g-text); background: rgba(255, 255, 255, 0.06); }
+  .nw-crumb[data-go]:hover, .nw-crumb.more:hover { color: var(--g-text); background: var(--g-field); }
   .nw-crumb.last { flex: 0 1 auto; min-width: 40px; font-weight: 600; color: var(--g-text); }
-  .nw-sep { flex: none; padding: 0 1px; color: #5b5f66; }
+  .nw-sep { flex: none; padding: 0 1px; color: var(--g-mute); text-box: trim-both cap alphabetic; }
 
   .nw-body { display: flex; flex: 1; min-height: 0; }
   .nw-tree { position: relative; width: 200px; flex: none; border-right: 1px solid var(--g-line); display: flex; flex-direction: column; min-height: 0; }
@@ -32,25 +33,31 @@
   .nw-tedge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: var(--cur-ew); z-index: 2; }
   .nw-tedge:hover, .nw-tedge.drag { background: var(--b-tint); }
   .nw-tl { position: relative; flex: 1; overflow: auto; padding: 6px 4px; outline: none; }
-  .nw-row { display: flex; align-items: center; height: 24px; border-radius: 6px; cursor: var(--cur-pointer); color: #c3c8cf; padding-right: 4px; white-space: nowrap; font-size: 12px; }
+  .nw-row { display: flex; align-items: center; height: 28px; border-radius: 6px; cursor: var(--cur-pointer); color: var(--g-body); padding-right: 4px; white-space: nowrap; font-size: 12px; }
   .nw-row:hover, .nw-row.cur { background: var(--g-hover); }
-  .nw-row.sel { background: var(--plate-sel-bg); color: var(--b-icon); }
+  .nw-row.sel { background: var(--b-tint); color: var(--b-icon); }
   .nw-row.sel .nw-ti { color: var(--b-icon); }
-  .nw-row.sec { margin-top: 10px; cursor: var(--cur-arrow); font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-row.sec { margin-top: 10px; cursor: var(--cur-arrow); font: 600 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   .nw-row.sec:hover { background: none; }
   .nw-tw { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); border-radius: 4px; }
   .nw-tw[data-tog]:hover { color: var(--g-text); background: var(--g-pick); }
-  .nw-tw.shut svg, .nw-lore:not([open]) .nw-lore-chev svg { transform: rotate(-90deg); }
-  .nw-menu { position: fixed; min-width: 150px; }
-  .nw-menu .sm-mi::before { display: none; }
-  .nw-menu .sm-mi:disabled { opacity: .35; pointer-events: none; }
-  .nw-menu .sm-mi.why, .lib-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 4px; padding-bottom: 4px; color: #6b7078; }
+  /* The one chevron (--chev) in place of the row's own glyph, turned 90° while shut. */
+  .nw-tw > svg, .nw-lore-chev > svg { display: none; }
+  .nw-tw::before, .nw-lore-chev::before { content: ''; width: 10px; height: 10px; background: currentColor; transition: transform .12s;
+    -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat; }
+  .nw-tw.shut::before, .nw-lore:not([open]) .nw-lore-chev::before { transform: rotate(-90deg); }
+  .nw-menu { position: fixed; }
+  .nw-menu .sm-mi.why, .lib-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 2px; padding-top: 4px; padding-bottom: 4px; color: var(--g-dim); }
   .nw-why { font-size: 11px; color: var(--g-dim); }
   .nw-ti { width: 15px; flex: none; color: var(--g-dim); display: flex; }
   .nw-ti svg { width: 12px; height: 12px; }
-  .nw-tn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 5px; }
+  .nw-tn { flex: 1; min-width: 0; overflow-x: clip; text-overflow: ellipsis; margin-left: 5px; }
+  /* The name trims to its capitals so the row's glyphs centre on it; a rename's field keeps its own box. */
+  .nw-tn:not(:has(input)) { text-box: trim-both cap alphabetic; }
   .nw-row.sec .nw-tn { margin-left: 0; }
-  .nw-tn input { width: 100%; font: inherit; color: var(--g-text); background: var(--g-field); border: 0; border-radius: 4px; padding: 0 4px; outline: 1px solid var(--b-solid); }
+  /* Rename in place: the name plate's edit ring. */
+  .nw-tn input { width: 100%; font: inherit; color: var(--plate-text); background: var(--plate-edit-bg); border: 0; border-radius: var(--plate-radius); padding: 0 4px;
+                 outline: none; box-shadow: inset 0 0 0 1.5px var(--plate-edit-ring); }
   .nw-ta { visibility: hidden; flex: none; width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
   .nw-row:hover .nw-ta { visibility: visible; }
   .nw-ta:hover { background: var(--g-pick); color: var(--g-text); }
@@ -59,18 +66,18 @@
   .nw-row.lib-join { background: var(--b-tint); color: var(--b-icon); }
   .nw-row .lib-more { width: 20px; height: 20px; }
   .nw-row.off { opacity: 0.4; }
-  .nw-newb { flex: none; margin: 6px; height: 28px; border: 1px dashed var(--g-line); border-radius: 6px; background: none; color: var(--g-dim); cursor: var(--cur-pointer); font: inherit; font-size: 12px; }
-  .nw-newb:hover { color: var(--g-text); border-color: var(--g-pick); }
+  /* New is the Add plate (.dk-addb, music.css), the tree's width. */
+  .nw-newb { margin: 6px; justify-content: center; }
 
   .nw-note { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 12px 16px 12px; }
   .nw-meta { min-height: 18px; margin-bottom: 2px; }
-  .nw-kind { font-size: 11px; color: var(--g-dim); background: var(--g-field); border-radius: 4px; padding: 1px 6px; }
+  .nw-kind { font-size: 11px; color: var(--g-dim); }
   .nw-title {
     width: 100%; margin: 2px 0 6px -4px; padding: 1px 4px; border: 0; border-radius: 4px; background: transparent; outline: none;
-    color: var(--g-text); font: 600 16px/1.4 system-ui, -apple-system, sans-serif; text-overflow: ellipsis;
+    color: var(--g-text); font: 600 14px/1.4 system-ui, -apple-system, sans-serif; text-overflow: ellipsis;
   }
   .nw-title:hover:not(:read-only) { background: var(--g-hover); }
-  .nw-title:focus:not(:read-only) { background: var(--g-field); box-shadow: 0 0 0 1px var(--b-solid); }
+  .nw-title:focus:not(:read-only) { background: var(--plate-edit-bg); border-radius: var(--plate-radius); box-shadow: inset 0 0 0 1.5px var(--plate-edit-ring); }
   .nw-title[hidden], #np-field[hidden], .nw-monster[hidden] { display: none; }
   /* The room's own name row and notes keep roomCard.css; here they sit flush in the window's padding. */
   .nw-note .dk-room { flex: none; overflow: visible; }
@@ -79,11 +86,12 @@
   .nw-note .rp-desc { padding: 4px 0 12px; margin-top: 4px; }
   #np-field { flex: 1 1 auto; min-height: 90px; overflow-y: auto; padding: 4px 0 12px; margin: 0; }
   .nw-monster { flex: none; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-  .nw-lore { width: 100%; color: #b4b9c1; }
-  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: var(--cur-pointer); font: 600 12px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-lore { width: 100%; color: var(--g-body); }
+  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: var(--cur-pointer); font: 600 14px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-lore summary > span:last-child { text-box: trim-both cap alphabetic; }
   .nw-lore summary::-webkit-details-marker { display: none; }
   .nw-lore-chev { display: flex; color: var(--g-dim); }
-  .nw-lore-body { white-space: pre-wrap; user-select: text; padding: 4px 0 0; font-size: 12.5px; line-height: 1.55; }
+  .nw-lore-body { white-space: pre-wrap; user-select: text; padding: 4px 0 0; font-size: 13px; line-height: 1.55; }
   .nw-tl::-webkit-scrollbar, .nw-note::-webkit-scrollbar, #np-field::-webkit-scrollbar { width: 8px; }
   .nw-tl::-webkit-scrollbar-thumb, .nw-note::-webkit-scrollbar-thumb, #np-field::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 4px; }
   .nw-tl::-webkit-scrollbar-thumb:hover, .nw-note::-webkit-scrollbar-thumb:hover, #np-field::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }
@@ -92,29 +100,32 @@
 
   /* ===== The editor: labels for mentions, the @ picker, the hover preview, "Appears in" ===== */
   .nw .ne, .bp-notes.ne { user-select: text; cursor: var(--cur-text); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
-  .ne:empty::before { content: attr(placeholder); color: #5d626a; pointer-events: none; }
+  .ne:empty::before { content: attr(placeholder); color: var(--g-dim); pointer-events: none; }
   .ne[contenteditable="false"] { opacity: 0.5; }
-  .ne .mn { color: var(--b-icon); background: var(--b-tint); border-radius: 4px; padding: 0 4px; cursor: var(--cur-pointer); }
+  .ne .mn { color: var(--b-icon); background: var(--b-tint); border-radius: 999px; padding: 0 6px; cursor: var(--cur-pointer); }
   .ne .mn:hover { background: var(--b-tint-h); }
   .ne .mn.miss { color: var(--r-text); background: var(--r-tint); }
   .ne-pop, .ne-tip {
-    position: fixed; zoom: var(--ui-zoom, 1.2); z-index: 450; background: var(--g-raised); border: 1px solid var(--g-line);
+    position: fixed; zoom: var(--ui-zoom, 1.2); z-index: 450; background: var(--g-bg); border: 1px solid var(--g-line);
     border-radius: 8px; box-shadow: var(--pop-shadow); font: 400 12px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--g-text); user-select: none;
   }
   .ne-pop { padding: 4px; min-width: 200px; max-width: 320px; }
-  .ne-pop > div { padding: 4px 8px; border-radius: 5px; cursor: var(--cur-pointer); display: flex; justify-content: space-between; gap: 12px; }
-  .ne-pop > div.on, .ne-pop > div:hover { background: var(--b-tint); }
+  .ne-pop > div { min-height: 28px; padding: 6px 10px 6px 6px; border-radius: 6px; cursor: var(--cur-pointer); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ne-pop > div.on, .ne-pop > div:hover { background: var(--b-tint); color: var(--b-icon); }
+  .ne-pop > div.on small, .ne-pop > div:hover small { color: var(--b-icon); opacity: .75; }
   .ne-pop small { color: var(--g-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ne-pop .hd { font-weight: 500; font-size: 11px; color: var(--g-dim); cursor: var(--cur-arrow); background: none !important; }
-  .ne-tip { padding: 8px 10px; width: 230px; display: none; pointer-events: none; }
+  .ne-tip { background: var(--g-raised); padding: 8px 10px; width: 230px; display: none; pointer-events: none; }
   .ne-tip p { margin: 4px 0 0; color: var(--g-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
   .ne-kind { font-size: 11px; color: var(--g-dim); background: var(--g-field); border-radius: 4px; padding: 1px 6px; }
   .nw-appears { flex: none; }
   .nw-appears[hidden] { display: none; }
-  .nw-appears .aph { margin: 18px 0 4px; display: flex; align-items: center; gap: 6px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); cursor: var(--cur-pointer); }
+  .nw-appears .aph { margin: 16px 0 12px; display: flex; align-items: center; gap: 6px; font: 600 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); cursor: var(--cur-pointer); }
+  .nw-appears .aph > span:not(.car) { text-box: trim-both cap alphabetic; }
   .nw-appears .aph .n { font-weight: 500; color: var(--g-dim); }
-  .nw-appears .aph .car { color: var(--g-dim); font-size: 9px; width: 10px; }
-  .nw-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: var(--cur-pointer); display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
+  .nw-appears .aph .car { color: var(--g-dim); }
+  .nw-appears .aph .car.shut { transform: rotate(-90deg); }
+  .nw-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 6px; cursor: var(--cur-pointer); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--g-body); font-size: 12px; }
   .nw-appears .ap:hover { background: var(--g-hover); }
-  .nw-appears .ap small { color: var(--g-dim); }
-  .nw-appears .hint { color: var(--g-dim); font-size: 11.5px; }
+  .nw-appears .ap small { color: var(--g-dim); font-size: 11px; }
+  .nw-appears .hint { color: var(--g-dim); font-size: 11px; }

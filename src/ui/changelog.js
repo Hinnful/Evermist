@@ -82,7 +82,7 @@ function _clFill() {
     if (entry.version === _clVersion) {
       const chip = document.createElement('span');
       chip.className = 'sm-chip on';
-      chip.textContent = t('Installed');
+      chip.appendChild(document.createElement('span')).textContent = t('Installed');
       head.appendChild(chip);
     }
     const date = document.createElement('span');

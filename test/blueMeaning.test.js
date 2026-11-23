@@ -7,19 +7,18 @@ const path = require('node:path');
 // Solid blue means "press this"; the blue tint means "picked". A fill of solid blue anywhere else
 // reads as a pick, so every selector that may wear it is named here.
 const ALLOWED = [
-  /^\.sm-hbtn\.primary(:hover)?$/,           // each window's main button
-  /^\.tv-go$/,                               // Show on TV
+  /^\.sm-hbtn\.primary(:hover|:active)?(:not\([^)]*\))*$/, // each window's main button, hover and pressed
+  /^\.tv-go(:hover|:active)?$/,              // Show on TV
   /^\.tv-grp \.lv\.sw:hover$/,               // the TV pill's Stop, a press target
   /^#wm-bar \.wm-bar-open(:hover)?$/,        // the world map's Open
-  /^#btn-edit-done(:hover)?$/,               // the edit row's Done
+  /^#btn-edit-done(:hover|:active)?$/,       // the edit row's Done
   /^\.sm-track i$/,                          // progress fill
   /^#pv-frame span$/,                        // the Player-view label
   /^\.wm-card\[data-col\]:not\(\[data-col=""\]\)::after$/, // the world map's L/R number badge
   /^\.wm-lm\[data-col\]:not\(\[data-col=""\]\)::after$/,
-  /^\.cb-colsize:hover$/,                    // a resize line, not a fill
 ];
 
-const SOLID = /background(?:-color)?\s*:[^;}]*(var\(\s*--b-solid|#0c8ce9|#2a9cf0|rgb\(\s*12\s*,\s*140\s*,\s*233\s*\))/i;
+const SOLID = /background(?:-color)?\s*:[^;}]*(var\(\s*--b-solid|#0a72bf|#0a76c4|#0868ad)/i;
 
 function offenders(dir) {
   const bad = [];

@@ -318,6 +318,7 @@ function _cpInitResets() {
     danger: true,
     onConfirm: run,
   });
+  for (const id of ['cp-grid-reset', 'cp-fog-reset']) _cpEl(id).insertAdjacentHTML('afterbegin', uiIcon('reset', 13));
 
   _cpEl('cp-grid-reset').addEventListener('click', () => {
     ask('Grid type, size, line style, thickness, colour and opacity go back to their defaults.', () => {

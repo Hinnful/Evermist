@@ -13,12 +13,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 11px;
+    gap: 12px;
     pointer-events: none; /* pass-through; children opt back in */
   }
 
-  /* Figma's proportions one step larger, for a laptop at arm's length: a 36px box around a 22px
-     icon on screen (the bar is zoomed, so CSS px are screen px over --ui-zoom). Flat grey. */
+  /* A 28px control (34px on screen: the bar is zoomed, so CSS px are screen px over --ui-zoom). Flat grey. */
   #toolbar-bottom {
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
@@ -35,14 +34,14 @@
   #tb-grp-ops, #btn-door, .tb-backend { display: none !important; }
   #toolbar-bottom button > svg, #toolbar-bottom .tb-shape-glyph svg { width: 18.5px; height: 18.5px; }
 
-  /* Tool buttons. Solid blue with a white icon is the tool in hand: one thing on screen. */
+  /* Tool buttons: tertiary, the tool in hand in the blue tint. */
   .tool-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 6px;
     border: 0;
     background: transparent;
-    color: #a3a8b0;
+    color: var(--g-dim);
     cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
@@ -51,29 +50,26 @@
     padding: 0;
     flex-shrink: 0;
   }
-  .tool-btn:hover { background: var(--g-field); color: var(--g-text); }
+  .tool-btn:hover:not(:disabled) { background: var(--g-field); color: var(--g-text); }
+  .tool-btn:active:not(:disabled, .active) { background: var(--g-hover); color: var(--g-text); }
   .tool-btn.active, .tool-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
-  /* Unavailable tool — the Brush in Effects mode, which paints fog and an effect has none.
-     Same grey as a disabled .mode-btn, so "can't do that here" reads the same on both rows. */
-  .tool-btn:disabled { color: #565b62; cursor: var(--cur-arrow); }
-  .tool-btn:disabled:hover { background: transparent; color: #565b62; }
 
   /* ===== CONTEXT ROW (above the toolbar) ===== */
   /* What the bar below is currently set to: the fog trio in Rooms mode, the material picker and
      corner radius in Effects mode, brush size alongside either.
      ⚠ ONE PILL, AND THE GROUPS INSIDE GET NO SURFACE OF THEIR OWN. Each group used to carry its
      own rounded box inside this row, which put a pill inside a pill at two different heights.
-     The row is the pill; the padding here and the 30px buttons in it are what make it exactly as
+     The row is the pill; the padding here and the 28px buttons in it are what make it exactly as
      tall as #toolbar-bottom. Same surface as the bar, so the two read as one control area.
      ⚠ IT DOES RENDER EMPTY - Select and Split have nothing to put here - and it is hidden with
      `visibility`, never `display`. A hidden box still holds its place, so the bar below does not
      jump up by this row plus the wrapper's gap every time the DM picks Select. The explicit
      min-height is what stops the box collapsing to its padding once every child is hidden; it
-     is the 6px padding on 30px children this row already computed to. A floor rather than a
-     fixed size, so a control taller than 30px grows the row instead of being clipped by it. */
+     is the 6px padding on 28px children this row already computed to. A floor rather than a
+     fixed size, so a control taller than 28px grows the row instead of being clipped by it. */
   #context-row {
     position: relative;
-    min-height: 42px;
+    min-height: 40px;
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
     display: flex;
@@ -89,7 +85,7 @@
   .tb-group {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
   }
   /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
@@ -97,81 +93,91 @@
   #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom, #fx-aids, #fx-shapes, #edit-row, #er-done-grp { display: none; }
   /* Every row sits centred over the bar (#tools-wrapper centres both) and points at no tool. An open edit
      frames it in blue (editRow.js). */
-  #context-row.er-on { border-color: var(--b-solid); box-shadow: 0 0 0 1px var(--b-solid); }
+  #context-row.er-on { border-color: var(--b-icon); box-shadow: 0 0 0 1px var(--b-icon); }
   /* The edit row: the well's pick in the blue tint, then the actions at the row's 8px gap, then Done. */
   #edit-row { gap: 8px; }
   #edit-row > .tb-mdiv { display: block; }
   #edit-row .fx-track .mode-btn.active, #edit-row .fx-track .mode-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
   #edit-row .er-op svg { width: 17px; height: 17px; }
-  #btn-edit-done { height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--b-solid); color: #fff;
+  #btn-edit-done { height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--b-solid); color: #fff;
     font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); white-space: nowrap; }
   #btn-edit-done:hover { background: var(--b-solid-h); }
+  #btn-edit-done:active { background: var(--b-solid-p); }
 
   /* Snap and Straight walls: an icon each, the name in the tooltip. */
   #fx-aids { gap: 2px; }
   #fx-aids .tb-toggle svg { width: 16px; height: 16px; flex: none; }
 
   /* ===== ONE SYSTEM for every pick-one control and divider =====
-     A well: 30px tall, field grey, 8px radius, 2px padding, 26px items with a 6px radius, the pick lifted
+     A well: 28px tall, field grey, 8px radius, 2px padding, 24px items with a 6px radius, the pick lifted
      with a soft shadow. A bare icon is an action or a tool. Every gap between groups is 8px, and a divider
      sits in the middle of one: 8px clear on each side, the full height of its strip. */
-  .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: var(--g-divider); }
+  .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: var(--g-line); }
   #toolbar-bottom > .tb-mdiv { display: block; }
-  .fx-track { display: flex; align-items: center; gap: 2px; padding: 2px; height: 30px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
-  .fx-track .mode-btn { width: 26px; height: 26px; border-radius: 6px; color: #8b9099; }
-  .fx-track .mode-btn:hover { background: none; color: var(--g-text); }
+  .fx-track { display: flex; align-items: center; gap: 2px; padding: 2px; height: 28px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
+  .fx-track .mode-btn { width: 24px; height: 24px; border-radius: 6px; color: var(--g-dim); }
+  .fx-track .mode-btn:hover:not(:disabled, .active), .fx-track .mode-btn:active:not(:disabled, .active) { background: none; color: var(--g-text); }
   .fx-track .mode-btn.active, .fx-track .mode-btn.active:hover { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
-  .fx-track .mode-btn:disabled, .fx-track .mode-btn:disabled:hover { color: #4d5158; background: none; box-shadow: none; cursor: var(--cur-arrow); }
+  .fx-track .mode-btn:disabled { background: none; box-shadow: none; }
   .fx-track .mode-btn svg { width: 18px; height: 18px; }
   /* The lit cloud wears the colour of the room outline it will draw: green, teal, purple. */
-  .fx-track .fx-dir[data-dir="reveal"].active, .fx-track .fx-dir[data-dir="reveal"].active:hover { background: rgba(50, 220, 110, 0.2); color: #5fe39a; box-shadow: none; }
-  .fx-track .fx-dir[data-dir="half"].active, .fx-track .fx-dir[data-dir="half"].active:hover { background: rgba(70, 190, 210, 0.2); color: #6fd3e4; box-shadow: none; }
-  .fx-track .fx-dir[data-dir="shroud"].active, .fx-track .fx-dir[data-dir="shroud"].active:hover { background: rgba(150, 80, 255, 0.24); color: #b48cff; box-shadow: none; }
-  .fx-track .fx-dir.active:disabled, .fx-track .fx-dir.active:disabled:hover { background: none; color: #4d5158; }
+  .fx-track .fx-dir[data-dir="reveal"].active, .fx-track .fx-dir[data-dir="reveal"].active:hover { background: var(--cloud-reveal-tint); color: var(--cloud-reveal); box-shadow: none; }
+  .fx-track .fx-dir[data-dir="half"].active, .fx-track .fx-dir[data-dir="half"].active:hover { background: var(--cloud-half-tint); color: var(--cloud-half); box-shadow: none; }
+  .fx-track .fx-dir[data-dir="shroud"].active, .fx-track .fx-dir[data-dir="shroud"].active:hover { background: var(--cloud-hide-tint); color: var(--cloud-hide); box-shadow: none; }
+  .fx-track .fx-dir.active:disabled, .fx-track .fx-dir.active:disabled:hover { background: none; color: var(--g-dim); }
 
   /* The material button and its size field are one control in two halves: 2px apart, no divider. */
   /* The material button is a grey field with its arrow inside, like the size field beside it, so it reads as a pick. */
-  :is(#mat-pick, #fxp-mat) { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 8px; background: var(--g-field); cursor: var(--cur-pointer); }
+  :is(#mat-pick, #fxp-mat) { display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 6px; background: var(--g-field); cursor: var(--cur-pointer); }
   :is(#mat-pick, #fxp-mat):hover { background: var(--g-hover); }
   :is(#mat-pick, #fxp-mat) .mt-chev, :is(#mat-pick, #fxp-mat) .mt-chev:hover { color: var(--g-dim); background: none; }
-  :is(#mat-pick, #fxp-mat) .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); }
+  :is(#mat-pick, #fxp-mat) .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); }
   :is(#mat-pick, #fxp-mat) .mt-btn:hover { background: none; }
   /* The well's Select in hand wears the blue tint; the armed shape wears the material's colour (--fx-col, effectsTool.js),
      as a lit fog cloud wears its own. The shape's arrow sits inside the well. */
   #fx-shapes .fx-track .mode-btn.active, #fx-shapes .fx-track .mode-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
   #fx-shapes .fx-track .fx-shape.active, #fx-shapes .fx-track .fx-shape.active:hover {
-    background: color-mix(in srgb, var(--fx-col, #ff8a3d) 22%, transparent); color: var(--fx-col, #ff8a3d); }
-  #fx-shapes .fx-track .tb-chev { height: 26px; }
+    background: color-mix(in srgb, var(--fx-col, var(--material-default)) 22%, transparent); color: var(--fx-col, var(--material-default)); }
+  #fx-shapes .fx-track .tb-chev { height: 24px; }
   :is(#mat-pick, #fxp-mat) .mt-btn svg { width: 18px; height: 18px; }
   /* The material's name after its glyph. */
   :is(#mat-pick, #fxp-mat) .mt-btn.mt-named { width: auto; padding: 0 8px 0 6px; gap: 6px; }
   :is(#mat-pick, #fxp-mat) .mt-btn.mt-named span { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); text-box: trim-both cap alphabetic; }
   :is(#fx-sizes, #fxp-size) { display: flex; align-items: center; }
-  :is(#fx-sizes, #fxp-size) .sz-field { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 8px; background: var(--g-field); }
-  :is(#fx-sizes, #fxp-size) .sz-scrub { display: inline-flex; color: #8b9099; cursor: var(--cur-ew); padding-right: 6px; }
+  :is(#fx-sizes, #fxp-size) .sz-field { display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 6px; background: var(--g-field); }
+  :is(#fx-sizes, #fxp-size) .sz-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
+  :is(#fx-sizes, #fxp-size) .sz-scrub { display: inline-flex; color: var(--g-dim); cursor: var(--cur-ew); padding-right: 6px; }
   :is(#fx-sizes, #fxp-size) .sz-scrub svg { width: 14px; height: 14px; }
-  :is(#fx-sizes, #fxp-size) .sz-in { width: 38px; height: 28px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; }
-  :is(#fx-sizes, #fxp-size) .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 28px; color: var(--g-text); }
+  :is(#fx-sizes, #fxp-size) .sz-in { width: 38px; height: 24px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; text-box: trim-both cap alphabetic; }
+  :is(#fx-sizes, #fxp-size) .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 24px; color: var(--g-text); }
   :is(#fx-sizes, #fxp-size) .sz-handv svg { width: 17px; height: 17px; }
-  :is(#fx-sizes, #fxp-size) .sz-unit { color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; padding-right: 2px; }
-  :is(#fx-sizes, #fxp-size) .tb-chev { height: 28px; }
+  /* The 11px unit, trimmed and lifted onto the 13px number's baseline. */
+  :is(#fx-sizes, #fxp-size) .sz-unit { color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; padding-right: 2px;
+                                       text-box: trim-both cap alphabetic; translate: 0 calc(1cap / 11); }
+  :is(#fx-sizes, #fxp-size) .tb-chev { height: 24px; }
   :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-in, :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-unit { display: none; }
   :is(#fx-sizes, #fxp-size) .sz-field:not(.hand) .sz-handv { display: none; }
-  #mat-pal { position: absolute; left: 0; bottom: calc(100% + 10px); width: 300px; padding: 8px; border-radius: 10px; background: var(--panel-bg);
-    border: var(--panel-border); box-shadow: var(--panel-shadow); z-index: 5; }
+  /* The material palette wears the menu skin (.sm-menu): its pick carries the check, the row under the pointer the tint. */
+  #mat-pal { position: absolute; left: 0; bottom: calc(100% + 10px); width: max-content; min-width: 320px; padding: 4px; border-radius: 8px; background: var(--g-bg);
+    border: 1px solid var(--g-line); box-shadow: var(--pop-shadow); z-index: 5; }
   #mat-pal[hidden] { display: none; }
-  #mat-find { width: 100%; box-sizing: border-box; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--g-field); color: var(--g-text);
-    font: 500 12.5px/1 system-ui, -apple-system, sans-serif; outline: none; margin-bottom: 6px; }
-  #mat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; max-height: 300px; overflow-y: auto; }
-  #mat-grid .mt-tile { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--g-text);
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: var(--cur-pointer); white-space: nowrap; overflow: hidden; }
+  #mat-find { width: 100%; box-sizing: border-box; height: 28px; padding: 0 9px; border: 0; border-radius: 6px; background: var(--g-field); color: var(--g-text);
+    font: 400 12px/1 system-ui, -apple-system, sans-serif; outline: none; margin-bottom: 4px; }
+  #mat-find:focus { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
+  #mat-find::placeholder { color: var(--g-dim); }
+  /* Each column as wide as its longest name, so no name clips in any language. */
+  #mat-grid { display: grid; grid-template-columns: repeat(2, minmax(max-content, 1fr)); gap: 0 2px; max-height: 300px; overflow-y: auto; scrollbar-gutter: stable; }
+  #mat-grid .mt-tile { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 4px; border: 0; border-radius: 6px; background: none; color: var(--g-text);
+    font: 400 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: var(--cur-pointer); white-space: nowrap; overflow: hidden; }
+  #mat-grid .mt-tile::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; color: var(--b-icon); }
+  #mat-grid .mt-tile.on::before { content: '\2713'; }
   #mat-grid .mt-tile svg { width: 18px; height: 18px; flex: none; }
-  #mat-grid .mt-tile:hover { background: var(--g-field); }
-  #mat-grid .mt-tile.on { background: var(--g-pick); }
-  #mat-grid .mt-tile:disabled { opacity: .4; background: none; }
-  #mat-grid .mt-sec { grid-column: 1 / -1; padding: 9px 8px 4px; color: var(--g-dim); font: 600 10.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+  #mat-grid .mt-tile > span:last-child { text-box: trim-both cap alphabetic; }
+  #mat-grid .mt-tile:hover:not(:disabled) { background: var(--b-tint); color: var(--b-icon); }
+  #mat-grid .mt-tile:disabled { background: none; }
+  #mat-grid .mt-sec { grid-column: 1 / -1; padding: 9px 8px 4px 24px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #mat-grid .mt-sec:first-child { padding-top: 3px; }
-  #mat-grid .mt-none { grid-column: 1 / -1; padding: 10px 6px; color: var(--g-dim); font: 500 12px/1 system-ui, -apple-system, sans-serif; }
+  #mat-grid .mt-none { grid-column: 1 / -1; padding: 10px 6px; color: var(--g-dim); font: 400 12px/1 system-ui, -apple-system, sans-serif; }
 
   #ctx-door { gap: 6px; }
   /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
@@ -180,13 +186,13 @@
   /* A read-only line, not a control: it says where the Door tool takes its size from. Muted so it
      cannot be mistaken for something to press. */
   .tb-hint {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--g-dim);
     font-size: 11px;
     white-space: nowrap;
   }
   /* Brush size is a second group in the same pill, so it needs the wider gap to read as its own
      thing rather than as more of the trio beside it. */
-  #panel-brush-bottom { gap: 11px; }
+  #panel-brush-bottom { gap: 12px; }
   /* The calibration HUD: the app's floating surface, placed over the map beside the square by
      gridCalibrate.js. Same fixed + zoom pair as the room card, so style px are pre-zoom px and
      _rpScreenToStyle is the only correct way to write left/top. It never takes the map's mouse
@@ -196,7 +202,7 @@
     position: fixed; left: 0; top: 0; z-index: 150;
     display: none;                /* gridCalRefreshUI() switches this to flex */
     zoom: var(--ui-zoom, 1.2);
-    align-items: center; gap: 9px;
+    align-items: center; gap: 8px;
     padding: 6px 10px;
     background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
     box-shadow: var(--panel-shadow);
@@ -207,8 +213,9 @@
      to its contents, so the stepper needs a width of its own. */
   #gridcal-hud .cp-stepper { flex: none; width: 106px; }
   #gridcal-hud #gridcal-hint {
-    color: #8a9099; font: 500 11px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
+    color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
   }
+  #gridcal-hud #gridcal-hint, #gridcal-done > span { text-box: trim-both cap alphabetic; }
   /* Done sizes to its word. A stock .cp-btn is full width, which is the pane's shape, not a
      floating row's. */
   #gridcal-done { flex: none; width: auto; min-width: 62px; padding: 0 14px; }
@@ -222,11 +229,11 @@
      icon says a single corner takes the number. */
   #corner-field {
     position: fixed; left: 0; top: 0; z-index: 150; display: none; zoom: var(--ui-zoom, 1.2);
-    width: auto; min-width: 84px; height: 26px; gap: 5px; border: 1px solid var(--g-line); border-radius: 6px;
+    width: auto; min-width: 84px; height: 28px; gap: 6px; border: 0; border-radius: 6px;
     background: var(--g-field); color: var(--g-dim); box-shadow: var(--pop-shadow);
   }
-  #corner-field:focus-within { background: var(--g-hover); }
-  #corner-field input { flex: 1 0 auto; text-align: left; font: 500 11.5px/1 system-ui, sans-serif; }
+  #corner-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon), var(--pop-shadow); }
+  #corner-field input { flex: 1 0 auto; text-align: left; font: 500 12px/1 system-ui, sans-serif; }
   #corner-field input::placeholder { color: var(--g-dim); }
   .rp-radius-ico { flex: none; }
   #corner-field .rp-ico-one { display: none; }
@@ -257,8 +264,7 @@
 
   /* A tool the mode cannot use greys in place and does nothing, so nothing on the bar moves: Brush and Room in Effects. */
   #toolbar-bottom .tool-btn.tb-off, #toolbar-bottom .tool-btn.tb-off:hover,
-  #toolbar-bottom .tb-chev.tb-off, #toolbar-bottom .tb-chev.tb-off:hover { color: #4d5158; background: none; cursor: var(--cur-arrow); }
-  #toolbar-bottom .tb-off svg { opacity: 0.55; }
+  #toolbar-bottom .tb-chev.tb-off, #toolbar-bottom .tb-chev.tb-off:hover { opacity: 0.4; background: none; cursor: var(--cur-arrow); }
 
   /* Reveal all and Hide all: bare eyes after a divider, tools like any other. */
   #tb-whole { gap: 2px; }
@@ -270,8 +276,9 @@
     border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
   }
   #room-fog .tb-mdiv { display: block; margin: -6px 8px; }
-  #room-fog .rf-door { width: 30px; height: 30px; border-radius: 6px; color: #a3a8b0; }
+  #room-fog .rf-door { width: 28px; height: 28px; border-radius: 6px; color: var(--g-dim); }
   #room-fog .rf-door:hover { background: var(--g-field); color: var(--g-text); }
+  #room-fog .rf-door:active { background: var(--g-hover); }
   #room-fog .rf-door svg { width: 17px; height: 17px; }
   #room-fog .rf-door.active, #room-fog .rf-door.active:hover { background: var(--b-tint); color: var(--b-icon); }
   body.player-mode #room-fog, body.world #room-fog, body.players-view #room-fog { display: none !important; }
@@ -283,29 +290,29 @@
   #fxp-size .sz-hand { display: none; padding: 0 6px 0 0; color: var(--g-dim); font: 500 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap; }
   #fxp-size .sz-field.off .sz-hand { display: inline; }
   #fxp-size .sz-field.off .sz-in, #fxp-size .sz-field.off .sz-unit { display: none; }
-  #fxp-size .sz-field.off .sz-scrub, #fxp-size .sz-field.off .tb-chev { color: #4d5158; cursor: var(--cur-arrow); background: none; }
+  #fxp-size .sz-field.off .sz-scrub, #fxp-size .sz-field.off .tb-chev { color: var(--g-mute); cursor: var(--cur-arrow); background: none; }
   body.player-mode #fx-pop, body.world #fx-pop, body.players-view #fx-pop { display: none !important; }
 
   /* The players' view: the DM's map as the TV shows it, inside a blue frame while it is on. */
-  #pv-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-solid); }
+  #pv-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-icon); }
   #pv-frame span {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%); zoom: var(--ui-zoom, 1.2); padding: 6px 12px;
-    border-radius: 7px; background: var(--b-solid); color: #fff; font: 600 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
+    border-radius: 6px; background: var(--b-solid); color: #fff; font: 600 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
   }
   body.players-view #pv-frame { display: block; }
   /* The editing chrome and the labels ride the cursor canvas, so the TV's view has neither. */
   body.players-view #cursor-canvas { visibility: hidden; }
 
   /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
-     other, so they sit bare on the bar rather than in a pill. On is the blue tint, which is a
-     switch; the solid blue belongs to the tool in hand alone. */
+     other, so they sit bare on the bar rather than in a pill. On is the blue tint, as for the
+     tool in hand. */
   .tb-toggle {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 6px;
     border: 0;
     background: transparent;
-    color: #a3a8b0;
+    color: var(--g-dim);
     cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
@@ -314,7 +321,8 @@
     padding: 0;
     flex-shrink: 0;
   }
-  .tb-toggle:hover { background: var(--g-field); color: var(--g-text); }
+  .tb-toggle:hover:not(:disabled) { background: var(--g-field); color: var(--g-text); }
+  .tb-toggle:active:not(:disabled, .active) { background: var(--g-hover); }
   .tb-toggle.active, .tb-toggle.active:hover { background: var(--b-tint); color: var(--b-icon); }
 
   /* ===== THE TWO LISTS ===== */
@@ -330,49 +338,54 @@
   /* The shapes are never shown; a .click() on one still picks it. */
   #shape-menu { display: none; }
   .tb-chev {
-    width: 13px; height: 30px; flex: none; padding: 0; border: 0; border-radius: 4px;
+    width: 13px; height: 28px; flex: none; padding: 0; border: 0; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
     background: none; color: var(--g-dim); cursor: var(--cur-pointer);
   }
-  .tb-chev:hover, .tb-chev.open { background: var(--g-field); color: var(--g-text); }
-  #toolbar-bottom .tb-chev > svg { width: 8px; height: 8px; }
+  .tb-chev:hover:not(:disabled), .tb-chev.open { background: var(--g-field); color: var(--g-text); }
+  .tb-chev:active:not(:disabled) { background: var(--g-hover); }
+  /* The one chevron (--chev), drawn here in place of the button's own glyph. */
+  .tb-chev > svg { display: none; }
+  .tb-chev::before { content: ''; width: 10px; height: 10px; flex: none; background: currentColor;
+                     -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat; }
 
   /* The list a chevron opens: a check on the current pick, the icon, the name, the key; the row
-     under the pointer is solid blue. A shape this mode lacks is greyed. */
+     under the pointer wears the blue tint. A shape this mode lacks is greyed. */
   #tb-dd {
     position: fixed; left: 0; top: 0; z-index: 220; zoom: var(--ui-zoom, 1.2);
-    min-width: 200px; padding: 6px; display: flex; flex-direction: column; gap: 1px;
-    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); animation: cpAdvIn .12s ease;
+    min-width: 200px; padding: 4px; display: flex; flex-direction: column;
+    background: var(--g-bg); border: 1px solid var(--g-line); border-radius: 8px;
+    box-shadow: var(--pop-shadow); animation: cpAdvIn .12s ease;
   }
   .dd-it {
     display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 6px;
     border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); text-align: left;
-    color: var(--g-text); font: 600 12px/1 system-ui, -apple-system, sans-serif;
+    color: var(--g-text); font: 400 12px/1 system-ui, -apple-system, sans-serif;
   }
-  .dd-it .ck { width: 14px; flex: none; text-align: center; }
+  .dd-it .ck { width: 14px; flex: none; text-align: center; font-size: 11px; }
+  .dd-it .ck, .dd-it .nm, .dd-it .ky { text-box: trim-both cap alphabetic; }
   .dd-it .ic { display: flex; flex: none; }
   .dd-it .ic svg { width: 16px; height: 16px; }
   .dd-it .nm { flex: 1; white-space: nowrap; }
-  .dd-it .ky { margin-left: 24px; color: var(--g-dim); font-weight: 500; }
+  .dd-it .ky { margin-left: 24px; color: var(--g-dim); font-weight: 400; }
   .dd-it:hover:not(.off) { background: var(--b-tint); color: var(--b-icon); }
-  .dd-it:hover:not(.off) .ky, .dd-it .ck { color: var(--b-icon); }
-  .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  .dd-it:hover:not(.off) .ky { color: var(--b-icon); }
   #tb-dd.nock .ck { display: none; }
+  #tb-dd.nock .dd-it { padding-left: 10px; }
+  .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #tb-dd.nock .dd-lbl { padding-left: 10px; }
-  #tb-dd .dd-sep { height: 1px; margin: 4px -6px; background: var(--g-divider); }
-  .dd-it.off { color: #5d626a; cursor: var(--cur-arrow); }
-  .dd-it.off .ky { color: #5d626a; font-weight: 400; }
+  #tb-dd .dd-sep { height: 1px; margin: 4px -4px; background: var(--g-line); }
+  .dd-it.off { opacity: 0.4; cursor: var(--cur-arrow); }
   body.player-mode #tb-dd { display: none !important; }
 
-  /* Mode buttons (fog modes) — 30px, low-ink, bare blue when picked */
+  /* Mode buttons (fog modes): low-ink, bare blue when picked */
   .mode-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border: none;
-    border-radius: 7px;
+    border-radius: 6px;
     background: transparent;
-    color: #7f858e;
+    color: var(--g-dim);
     cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
@@ -381,11 +394,9 @@
     padding: 0;
     flex-shrink: 0;
   }
-  .mode-btn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .mode-btn:hover:not(:disabled) { background: var(--g-field); color: var(--g-text); }
+  .mode-btn:active:not(:disabled, .active) { background: var(--g-hover); }
   .mode-btn.active { color: var(--b-icon); }
-  /* Unavailable fog mode — Half-shrouded while the brush is picked, which can't paint it */
-  .mode-btn:disabled { color: #565b62; cursor: var(--cur-arrow); }
-  .mode-btn:disabled:hover { background: transparent; color: #565b62; }
 
   /* Brush size — a group inside #context-row, shown when the Brush is picked. Its surface,
      zoom and shadow belong to that pill now; only the slider's own styling lives here. */
@@ -418,18 +429,18 @@
     gap: 4px;
     padding: 3px 7px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: var(--g-field);
+    border: 1px solid var(--g-line);
   }
   #panel-brush-bottom .brush-val {
-    color: #e2e4e8;
+    color: var(--g-text);
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
     min-width: 20px;
     text-align: right;
   }
   #panel-brush-bottom .brush-unit {
     font: 500 11px/1 system-ui, -apple-system, sans-serif;
-    color: #7f858e;
+    color: var(--g-dim);
   }
 
   /* The bottom-left #panel-brush and bottom-right #panel-player that used to sit here are
@@ -441,5 +452,5 @@
 #fp-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; box-sizing: border-box;
   opacity: 0; transition: opacity 180ms ease; border: 2px solid var(--fp-c); box-shadow: inset 0 0 22px var(--fp-glow); }
 #fp-frame.on { opacity: 1; }
-#fp-frame[data-kind="reveal"] { --fp-c: #5fe39a; --fp-glow: rgba(95, 227, 154, 0.35); }
-#fp-frame[data-kind="hide"] { --fp-c: #b48cff; --fp-glow: rgba(180, 140, 255, 0.35); }
+#fp-frame[data-kind="reveal"] { --fp-c: var(--cloud-reveal); --fp-glow: var(--cloud-reveal-glow); }
+#fp-frame[data-kind="hide"] { --fp-c: var(--cloud-hide); --fp-glow: var(--cloud-hide-glow); }

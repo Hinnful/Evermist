@@ -447,6 +447,16 @@ function gridCalScreenBox(s) {
   return { x, y, w: Math.max(...sp.map(q => q.sx)) - x, h: Math.max(...sp.map(q => q.sy)) - y };
 }
 
+// The span's blue is the thin-indicator token, read once from :root.
+let _gcBlue = null;
+function _gcInk(alpha) {
+  if (!_gcBlue) {
+    const h = getComputedStyle(document.documentElement).getPropertyValue('--b-icon').trim().slice(1);
+    _gcBlue = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).join(',');
+  }
+  return alpha == null ? 'rgb(' + _gcBlue + ')' : 'rgba(' + _gcBlue + ',' + alpha + ')';
+}
+
 function gridCalHandle(sx, sy, r, fill, stroke) {
   cursorCtx.beginPath();
   cursorCtx.arc(sx, sy, r, 0, Math.PI * 2);
@@ -498,8 +508,8 @@ function drawGridCalibration() {
   }
   const a = toScreen(s.ax, s.ay), b = toScreen(s.bx, s.by);
   cursorCtx.save();
-  cursorCtx.fillStyle = 'rgba(96,160,255,0.12)';
-  cursorCtx.strokeStyle = 'rgba(96,160,255,0.9)';
+  cursorCtx.fillStyle = _gcInk(0.12);
+  cursorCtx.strokeStyle = _gcInk(0.9);
   cursorCtx.lineWidth = 1.5;
   let x, y, w, h;
   if (gridCalIsHex()) {
@@ -513,7 +523,7 @@ function drawGridCalibration() {
     cursorCtx.fill();
     cursorCtx.save(); cursorCtx.clip();
     cursorCtx.beginPath(); gridCalHexInner(s).forEach(path);
-    cursorCtx.strokeStyle = 'rgba(96,160,255,0.5)'; cursorCtx.lineWidth = 1; cursorCtx.stroke();
+    cursorCtx.strokeStyle = _gcInk(0.5); cursorCtx.lineWidth = 1; cursorCtx.stroke();
     cursorCtx.restore();
     cursorCtx.beginPath(); path(gridCalHexOutline(s));
     cursorCtx.setLineDash([6, 4]); cursorCtx.stroke(); cursorCtx.setLineDash([]);
@@ -529,8 +539,8 @@ function drawGridCalibration() {
         cursorCtx.moveTo(x + w * t, y); cursorCtx.lineTo(x + w * t, y + h);
         cursorCtx.moveTo(x, y + h * t); cursorCtx.lineTo(x + w, y + h * t);
       }
-      cursorCtx.strokeStyle = 'rgba(96,160,255,0.5)'; cursorCtx.lineWidth = 1; cursorCtx.stroke();
-      cursorCtx.strokeStyle = 'rgba(96,160,255,0.9)'; cursorCtx.lineWidth = 1.5;
+      cursorCtx.strokeStyle = _gcInk(0.5); cursorCtx.lineWidth = 1; cursorCtx.stroke();
+      cursorCtx.strokeStyle = _gcInk(0.9); cursorCtx.lineWidth = 1.5;
     }
     cursorCtx.setLineDash([6, 4]); cursorCtx.strokeRect(x, y, w, h); cursorCtx.setLineDash([]);
   }
@@ -541,18 +551,22 @@ function drawGridCalibration() {
   const n = s.n != null ? s.n : gridCalGuessCount(gridCalSpanReach(s));
   if (n >= 1) {
     const label = (s.n != null ? gridSize : gridCalCellOf(gridCalSpanReach(s), n)).toFixed(1) + ' px';
-    cursorCtx.font = 'bold 12px system-ui, sans-serif';
+    // The name plate's skin (rpPlateSkin, roomPanel.js), as the size and radius labels wear it.
+    const k = rpPlateSkin();
+    cursorCtx.font = '600 12px system-ui, -apple-system, sans-serif';
     const tw = cursorCtx.measureText(label).width;
     cursorCtx.save();
     uprightAt(cursorCtx, x + w, y);
-    cursorCtx.fillStyle = 'rgba(18,18,28,0.9)';
-    cursorCtx.fillRect(x + w + 8, y - 20, tw + 12, 20);
-    cursorCtx.fillStyle = '#8fb4ff';
-    cursorCtx.fillText(label, x + w + 14, y - 6);
+    cursorCtx.fillStyle = k.bg;
+    cursorCtx.beginPath(); cursorCtx.roundRect(x + w + 8, y - 22, tw + 16, 22, 6); cursorCtx.fill();
+    cursorCtx.strokeStyle = k.line; cursorCtx.lineWidth = 1;
+    cursorCtx.beginPath(); cursorCtx.roundRect(x + w + 8.5, y - 21.5, tw + 15, 21, 5.5); cursorCtx.stroke();
+    cursorCtx.fillStyle = k.text; cursorCtx.textBaseline = 'middle';
+    cursorCtx.fillText(label, x + w + 16, y - 10.5);
     cursorCtx.restore();
   }
 
-  gridCalHandle(a.sx, a.sy, 5, '#ffffff', '#4080ff');
+  gridCalHandle(a.sx, a.sy, 5, '#ffffff', _gcInk());
   gridCalHandle(b.sx, b.sy, 5, '#ffd166', '#c98a1e');
   if (gridCalRefine) {
     const r = toScreen(gridCalRefine.x, gridCalRefine.y);

@@ -18,45 +18,42 @@
   }
   /* A flex container is no block container, so text-box trims only the span the text sits in: the word centres on its capitals. */
   .sm-hbtn, .sm-hbtn > span:not(.sm-chev) { text-box: trim-both cap alphabetic; }
-  .sm-hbtn:hover { background: var(--g-hover); color: var(--g-text); }
+  .sm-hbtn:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--g-hover); color: var(--g-text); }
+  .sm-hbtn:active:not(:disabled):not([aria-disabled="true"]) { background: var(--g-pick); }
   .sm-hbtn > svg:first-child { margin-left: -2px; }
-  .sm-hbtn svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
-  /* The trash's lid carries its weight at the top, so it sits 1.25px above the trimmed label's optical line (windows.js). */
-  .sm-hbtn svg.i-trash { transform: translateY(-0.64px); }
+  .sm-hbtn svg { flex: none; width: 14px; height: 14px; }
   .sm-hbtn.primary { background: var(--b-solid); color: #fff; }
-  .sm-hbtn.primary:hover { background: var(--b-solid-h); color: #fff; }
-  .sm-hbtn:disabled { opacity: 0.4; cursor: var(--cur-arrow); }
-  .sm-hbtn:disabled:hover { background: var(--g-field); }
+  .sm-hbtn.primary:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--b-solid-h); color: #fff; }
+  .sm-hbtn.primary:active:not(:disabled):not([aria-disabled="true"]) { background: var(--b-solid-p); color: #fff; }
   /* Destructive: no fill and the trash at rest; red only under the pointer. */
   .sm-hbtn.danger { background: transparent; color: var(--g-text); }
-  .sm-hbtn.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .sm-hbtn.danger:hover:not(:disabled) { background: var(--r-tint); color: var(--r-text); }
+  .sm-hbtn.danger:active:not(:disabled) { background: var(--r-tint-p); color: var(--r-text); }
 
   /* An icon button; the close is this with the cross. */
   .sm-bare, .sm-x {
     width: 28px; height: 28px; flex: none; padding: 0;
     display: inline-flex; align-items: center; justify-content: center;
     border: 0; border-radius: 6px;
-    background: transparent; color: #9aa0aa; cursor: var(--cur-pointer);
+    background: transparent; color: var(--g-dim); cursor: var(--cur-pointer);
     transition: background .12s, color .12s;
   }
   .sm-bare svg, .sm-x svg { width: 14px; height: 14px; }
-  .sm-bare:hover, .sm-x:hover { background: var(--g-field); color: #fff; }
-  .sm-bare.danger:hover { background: var(--r-tint); color: var(--r-text); }
-  .sm-hbtn:focus-visible, .sm-bare:focus-visible, .sm-x:focus-visible {
-    outline: 2px solid var(--b-solid); outline-offset: 2px;
-  }
+  .sm-bare:hover:not(:disabled), .sm-x:hover { background: var(--g-field); color: var(--g-text); }
+  .sm-bare:active:not(:disabled), .sm-x:active { background: var(--g-hover); }
+  .sm-bare.danger:hover:not(:disabled) { background: var(--r-tint); color: var(--r-text); }
+  .sm-bare.danger:active:not(:disabled) { background: var(--r-tint-p); }
 
   /* The one chevron, wherever a control opens a list. */
   .sm-chev {
     display: inline-block; flex: none; width: 10px; height: 10px; font-size: 0; opacity: 0.7;
     background: currentColor;
     -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
-    transform: translateY(var(--icon-nudge));
   }
 
   /* Grey, no outline; focus lifts one step and draws a 1px blue line. */
   .sm-field {
-    height: 28px; padding: 0 9px; gap: 7px;
+    height: 28px; padding: 0 9px; gap: 6px;
     display: flex; align-items: center;
     border: 0; border-radius: 6px;
     background: var(--g-field); color: var(--g-dim);
@@ -64,10 +61,11 @@
   .sm-field input {
     flex: 1; min-width: 0; border: 0; outline: 0; background: none;
     color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
+    align-self: stretch;   /* no cap trim: a field clips what it holds, and a trim would cut the tails of у and р */
   }
   .sm-field input::placeholder { color: var(--g-dim); }
-  .sm-field svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
-  .sm-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-solid); }
+  .sm-field svg { flex: none; width: 14px; height: 14px; }
+  .sm-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
 
   /* The tick. A partial selection shows a dash; a row that cannot be picked again is .done. */
   .sm-tick {
@@ -84,13 +82,14 @@
   .sm-tick.done { background: var(--g-field); cursor: var(--cur-arrow); }
   .sm-tick.done::after { border-color: var(--g-dim); }
 
+  /* A status word: a dot and the word, no plate. */
   .sm-chip {
-    height: 20px; padding: 0 7px; border: 0; border-radius: 4px;
-    display: inline-flex; align-items: center; flex: none;
-    background: var(--g-field); color: #c8ccd3;
-    font: 500 11px/1 system-ui, -apple-system, sans-serif;
+    display: inline-flex; align-items: center; gap: 4px; flex: none;
+    color: var(--g-body); font: 500 11px/1 system-ui, -apple-system, sans-serif;
   }
-  .sm-chip.on { background: var(--b-tint); color: var(--b-icon); }
+  .sm-chip::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--g-dim); }
+  .sm-chip.on { color: var(--b-icon); }
+  .sm-chip.on::before { background: var(--b-icon); }
 
   /* A window: 360 for a question or a progress bar, 480 for a list, 720 for a reference. The
      library and the Bestiary fill the screen. */
@@ -111,10 +110,10 @@
     display: flex; align-items: center; gap: 8px;
     padding: 0 10px 0 16px; border-bottom: 1px solid var(--g-line);
   }
-  .sm-wtitle { font: 600 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .sm-wtitle { font: 600 16px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   /* ⚠ The same size and line-height as the title: centring aligns line boxes, not baselines. */
   .sm-wcount {
-    margin-left: -2px; font: 400 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
+    margin-left: -2px; font: 400 16px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
     font-variant-numeric: tabular-nums;
   }
   .sm-sp { flex: 1; }
@@ -123,10 +122,10 @@
     flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
     padding: 12px 16px; border-top: 1px solid var(--g-line);
   }
-  .sm-sub { font-size: 11px; color: var(--g-dim); margin: 14px 0 6px; line-height: 1; }
+  .sm-sub { font-size: 11px; color: var(--g-dim); margin: 16px 0 4px; line-height: 1; }
   .sm-sub:first-child { margin-top: 2px; }
   .sm-row {
-    height: 32px; display: flex; align-items: center; gap: 10px;
+    height: 32px; display: flex; align-items: center; gap: 8px;
     padding: 0 8px; margin: 0 -8px; border-radius: 6px;
   }
   /* No hover of its own: a row lights only where clicking it does something (.mu-pick). */
@@ -148,26 +147,37 @@
   }
   .sm-ltb > .sm-tick { margin-right: 4px; }
   .sm-ltb .cnt { color: var(--g-dim); }
+  .sm-ltb > span:not(.sm-tick), .mu-pick > span:not(.sm-tick) { text-box: trim-both cap alphabetic; }
   .sm-ltb .cnt.on { color: var(--g-text); font-weight: 600; margin-right: 4px; }
   .sm-ltb .end { margin-left: auto; color: var(--g-dim); white-space: nowrap; }
   .sm-sel { background: var(--g-field); }
 
-  /* A list dropped from a control: the dock's list. */
+  /* The one menu skin: 200 wide, 28 rows, a check column only in a menu with a ticked row, the key on the right, Delete last and red under the
+     pointer. Every other menu takes these numbers. */
   .sm-menu {
-    padding: 4px; background: var(--g-bg);
+    min-width: 200px; padding: 4px; background: var(--g-bg);
     border: 1px solid var(--g-line); border-radius: 8px; box-shadow: var(--pop-shadow);
     color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
   }
+  /* At the UI's own scale, as every window and the fight table's menus; a submenu inside one inherits it. */
+  body > .sm-menu { zoom: var(--ui-zoom, 1.2); }
   .sm-mi {
     min-height: 28px; width: 100%; display: flex; align-items: center; gap: 8px;
-    padding: 6px 10px 6px 6px; border: 0; border-radius: 5px;
+    padding: 6px 10px 6px 6px; border: 0; border-radius: 6px;
     background: none; color: var(--g-text); text-align: left; cursor: var(--cur-pointer);
     font: 400 12px/16px system-ui, -apple-system, sans-serif;
   }
   .sm-mi::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }
   .sm-mi.on::before { content: '\2713'; }
+  .sm-menu:not(:has(> .sm-mi.on)) > .sm-mi { padding-left: 10px; }
+  .sm-menu:not(:has(> .sm-mi.on)) > .sm-mi::before { display: none; }
   .sm-mi:hover, .sm-mi.hot { background: var(--b-tint); color: var(--b-icon); }
   .sm-mi:hover .sm-dim, .sm-mi.hot .sm-dim { color: var(--b-icon); opacity: .75; }
+  .sm-mi .nm { flex: 1; white-space: nowrap; }
+  .sm-mi .ky { margin-left: 24px; color: var(--g-dim); font-weight: 400; }
+  .sm-mi:hover .ky, .sm-mi.hot .ky { color: var(--b-icon); }
+  .sm-mi.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .sm-mi:disabled { pointer-events: none; }
   /* The toast stack: one style, one place, above the context row over the toolbar and above
      every veil, the progress overlay's included. An update lands whenever it lands, and a veil
      would swallow the click that installs it. The stack takes no clicks; its toasts do. */
@@ -185,19 +195,20 @@
     pointer-events: auto; animation: smToastIn .18s ease;
   }
   .sm-toast.solo { padding-right: 12px; }
-  .sm-toast > svg { flex: none; width: 16px; height: 16px; color: var(--g-dim); transform: translateY(var(--icon-nudge)); }
+  .sm-toast > svg { flex: none; width: 16px; height: 16px; color: var(--g-dim); }
   .sm-toast > svg.i-trash { transform: none; }
   /* A long message wraps instead of cutting off. */
   .sm-toast .m { flex: 1; min-width: 0; }
   /* A toast's action is blue text, with no fill until the pointer is on it. */
   .sm-toast .sm-hbtn.primary { background: none; color: var(--b-icon); font-weight: 600; padding: 0 10px; }
-  .sm-toast .sm-hbtn.primary:hover { background: var(--b-tint); color: var(--b-icon); }
+  .sm-toast .sm-hbtn.primary:hover:not(:disabled) { background: var(--b-tint); color: var(--b-icon); }
+  .sm-toast .sm-hbtn.primary:active:not(:disabled) { background: var(--b-tint-h); color: var(--b-icon); }
   /* The countdown runs along the top edge, so it adds no weight under the button. */
   .sm-toast .timer { position: absolute; left: 0; top: 0; height: 2px; width: 100%; background: var(--b-icon); }
   /* A key heard with nothing to do: it says so and fades. */
   #key-hint { display: none; }
   #key-hint.on { display: flex; }
 
-  .sm-msep { border: 0; height: 1px; flex: none; background: var(--g-divider); margin: 4px -4px; }
+  .sm-msep { border: 0; height: 1px; flex: none; background: var(--g-line); margin: 4px -4px; }
 
   body.player-mode #sm-toasts { display: none !important; }

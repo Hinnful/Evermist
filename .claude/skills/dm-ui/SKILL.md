@@ -1,12 +1,15 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/editRow.js, src/ui/effectsRow.js, src/ui/effectPopup.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesTreeDrag.js, src/notes/notesMapDrop.js, src/ui/libraryList.js, src/notes/notesWindow.js, src/notes/notesEditor.js, src/notes/notesAppears.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the edit row, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's 1 inch and Sync, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/editRow.js, src/ui/effectsRow.js, src/ui/effectPopup.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesTreeDrag.js, src/notes/notesMapDrop.js, src/ui/libraryList.js, src/notes/notesWindow.js, src/notes/notesEditor.js, src/notes/notesAppears.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the edit row, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's 1 inch and Sync, or the calibration HUD and what arming calibration puts away. Carries layout and behaviour rules that are invisible in code review; button identity and the rest of the look are in .claude/rules/design-system.md.
 ---
 
 # DM interface identity and layout
 
 Binding rules for the DM-facing interface. The look comes from the dock prototype (v23) the DM
 picked; each rule below was settled with them, and most by building the alternative first.
+
+This skill holds layout and behaviour. The look (button identity, tokens, sizes, wells, dividers, colours,
+row heights, contrast) is [.claude/rules/design-system.md](../../rules/design-system.md), loaded with UI code.
 
 ## The dock (`dock.js`, `dock.css`)
 
@@ -19,11 +22,11 @@ One dock on the right edge holds every control that is not on the map or the too
   (the one map-bound pane), then Music, Sounds, Pictures and Fights. Settings and Help sit at the bottom.
 - **The rail is 60px with 12px between items; each button is the whole hit area, and the ONLY
   highlight is a 34x30 rounded square (radius 8) behind the 17px icon**, so hover and the open tint
-  have one shape. The label sits 5px below it, 9.5px on one line trimmed to its capitals
+  have one shape. The label sits 4px below it, 9.5px on one line trimmed to its capitals
   (`text-box`); Map settings alone breaks onto two lines (`width: min-content`, so it survives
   translation). The open pane's tab tints the indicator and turns icon and label blue; a window open
   outside the rail wears a dot on the indicator's corner (the fight table, the Bestiary and Notes, nothing
-  else). Dividers run edge to edge with no margin of their own.
+  else).
 - **Clicking the open tab again closes the pane, leaving the rail.** The rail never hides.
 - **One pane at a time.** The dock has no Room tab and no Notes pane: the selected room lives in the Notes window.
 - **The open pane and the width persist under `evermist.dockPane` and `evermist.dockWidth`.**
@@ -36,24 +39,6 @@ One dock on the right edge holds every control that is not on the map or the too
 - **Hidden in `body.player-mode` and `body.pane-mode`.** A column window shows no dock.
 - **Pop-outs** (a colour picker, Custom movement) open to the dock's LEFT, level with the row that
   opened them, in the `.dk-pop` shell.
-
-## The dock's skin
-
-- **One divider rule app-wide**: a divider runs edge to edge across its container (a bar's full height, a
-  menu's or the rail's full width, a field's full height), 1px, `--g-divider`. A menu's padding is
-  cancelled with negative side margins so the line touches both edges.
-
-- **Grey surfaces, no outlines.** Fields and buttons are filled grey (`--g-field`), hover one
-  step lighter, a pick inside a segment is the lighter `--g-pick` plate. Defined once on `:root`
-  in `base.css`; a control that writes its own hex drifts.
-- **Solid blue is press this, the blue tint is picked** (`test/blueMeaning.test.js` holds the list of
-  what may be solid). The tint (`--b-tint`) with a blue icon (`--b-icon`) marks what is on or in hand:
-  the tool, the row under the pointer in any list, a ticked box, the active column chip, snap,
-  straighten, the edit row's Select, Pen or Bend, Two maps, the open rail tab, the Door button on a room's popup while Door is
-  armed, a closed eye. Pick-one wells (the fog clouds),
-  fields and an open eye stay grey. A repair in force wears its own colour: Merge green, Cut out
-  red, Split yellow.
-- **Two levels of type**: a 12px bold section title, and an 11px dim sub-header over a group.
 
 ## Map settings pane (`#dock-pane-scene`, `controlPanel.js`)
 
@@ -116,7 +101,7 @@ The room card's module renders into the Notes window's room level; there is no f
 - **The header holds hide-tree, back, forward and the breadcrumbs** (the tree's path to what is shown, a crumb
   opens that level, the middle folds into "…" with a list when narrow). The tree sits left, its width dragged on its
   edge: the campaign, groups nested by outline, maps and rooms, a Roads section (only with roads), Monsters and
-  NPCs (a DM note, or made with "+ New"), Factions and Lore. Section titles are the dock's 12px bold, sentence case.
+  NPCs (a DM note, or made with "+ New"), Factions and Lore. Section titles are the dock's 14px bold, sentence case.
 - **The tree uses the library pattern** (`notesTreeDrag.js`, `notesMapDrop.js`): ⋯ on every row but a section title, Ctrl+R
   renames, every list reorders by drag with a blue line, and rooms, roads and monsters group by a hold over a middle. A map
   dropped on a Campaign group moves its card inside the outline. The order is Notes-only (`evermist.notesOrder`) and never
@@ -177,8 +162,8 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
   rectangle on first open, and a scene filed under a place is moved inside it.
 - **Scenes are picked together with Shift** (`worldMapPick.js`, rules in `worldPickPlan.js`): Shift-click toggles, a
   Shift-dragged box adds, a plain click drops the pick, Esc clears it. A pick is scenes only and moves as one.
-- **Settings wears Map settings' parts** (BACKLOG 282): Interface, Campaign, Integrations, About, each a 12px title
-  over 11px sub-headers. Interface is three full-width segments: Language, Hints, "Your seat at the TV" (four icons,
+- **Settings wears Map settings' parts** (BACKLOG 282): Interface, Campaign, Integrations, About, each a 14px title
+  over 11px sub-headers. Interface is Language (a full-width segment), the Hints and Crystal companion switches (`.dk-swrow`), and "Your seat at the TV" (a segment of four icons,
   a TV with a chair below, above, left, right, never angles or a drawing). There is no fog section.
 - **Campaign holds the campaign's storage**: Shrink big maps, Module text, Background picture, Backup, Recently
   deleted. A file with nothing loaded is a grey `.dk-load` button with an icon and a verb in full-colour text, the
@@ -195,7 +180,7 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
   (Connect or Disconnect). Google Drive has no Sync now. Claude's Disconnect makes Evermist refuse its calls until
   Connect; the rules line under it stays word for word.
 - **The right-click menu is the `.sm-menu` look** (`sceneManager.css`). Delete works on any scene: deleting the open
-  one switches the window to the first scene, as it always did. Delete has no red until the pointer is on it.
+  one switches the window to the first scene, as it always did.
 
 ## Half-shroud
 
@@ -241,9 +226,6 @@ wears the colour of the room outline it will draw. Reveal all and Hide all wear 
 - **The players' view** (`playersView.js`): holding H, or the minimap's TV button, puts the fog at
   full strength and hides the cursor canvas (outlines and labels), inside a blue frame. Its button
   wears a TV icon, never an eye.
-- **One rule for every pick-one control and divider.** A well is 30px tall, field grey, 8px radius,
-  2px padding, 26px items with a 6px radius, the pick lifted with a soft shadow. A divider runs the
-  full height of its strip with 8px clear on each side. A bare icon is an action or a tool.
 
 ## The repairs
 
@@ -266,7 +248,7 @@ red, Split yellow) and the fog clouds, which grey.
 
 ## Search (`search.js`, `search.css`)
 
-One box from any view: Ctrl+F (not while a text field has focus), the bar's last button (a divider, then Find) or the Campaign's Find. It is the window parts, not its own look: `.sm-win` and its scroll bar, `.sm-x` beside the field, the field in `.sm-field`'s skin, the menus' full-width `--g-divider` between groups, 32px rows, one 30px column for a map's thumbnail or a kind's icon, the match bold in its own line's colour in names and note excerpts alike.
+One box from any view: Ctrl+F (not while a text field has focus), the bar's last button (a divider, then Find) or the Campaign's Find. It is the window parts, not its own look: `.sm-win` and its scroll bar, `.sm-x` beside the field, the field in `.sm-field`'s skin, the menus' divider between groups, list rows, one 30px column for a map's thumbnail or a kind's icon, the match bold in its own line's colour in names and note excerpts alike.
 
 - **Empty it lists the 6 most recently opened things** on every view, no Clear; first use says "Type a name or words from a note".
 - **Typing lists groups by their own strongest result, ties maps first**; the best match is the first row of the first group, selected, and a result appears once. Five a group; "N more" opens the rest in place and typing again folds it. A note hit shows its words from a whole word.
@@ -280,7 +262,7 @@ One box from any view: Ctrl+F (not while a text field has focus), the bar's last
 - **Order**: Select, Brush, Room ▾, Effects, a divider, Reveal all, Hide all, a divider, Find. There is no Fog / Effects switch on the
   screen: Effects is a tool beside Room (below). Every old button id stays, as the hidden back end the new controls drive
   (Merge, Cut out, Split, Door, the fog trio, and `#btn-place-rooms` / `#btn-place-effects` in the hidden `.tb-seg`).
-- **Sizes**: a 36px box around a 22px icon on screen. A button and its chevron form one group,
+- **Sizes**: a 28px box (34px on screen) around an 18.5px icon. A button and its chevron form one group,
   2px apart; groups sit 8px apart.
 - **Each chevron opens Figma's list** (`openBarList`, `shapeMenu.js`): a check on the current pick,
   the icon, the name, the key; the row under the pointer wears the tint; an Effects-only shape is
@@ -368,13 +350,12 @@ slider** (`.cp-slider`'s markup, never a styled native range).
 - **Music opens on a player**: a round play/pause, the track, level bars, the state line, the
   volume slider and the download bar. Pause keeps the position.
 - **Sounds open on their volume slider and a card** naming what plays, with a round stop-all button (grey when
-  nothing plays), then 30px rows. Left click plays one more copy, right click stops the newest; ×N and the draining bar stay.
+  nothing plays), then the rows. Left click plays one more copy, right click stops the newest; ×N and the draining bar stay.
 - **One list pattern for Music, Sounds and Pictures** (`libraryList.js`): a "+ Add" word button in the header (never a bare +);
   a ⋯ on the item under the pointer holds Rename, Move to group, Delete; Ctrl+R renames, F2 does not; drag reorders with a blue
   line and a hold over another's middle groups the two; a group's ⋯ holds Rename and Ungroup, and an empty group does not exist.
   **Right-click stops or pauses, so there is no context menu**; the ⋯ is the only menu. A rename changes the shown name, never the file.
-- **The filter and URL fields are `.cp-field`.** The black inset pill means *pick one of these*
-  and never wraps a field the DM types into.
+- **The filter and URL fields are `.cp-field`.**
 - **Add from YouTube selects as the Bestiary does** (Windows, below), and a track already
   on disk wears `.sm-tick.done` and an In library chip.
 - **Delete is in ⋯, never a per-row icon.** A track, sound or picture goes to the Trash with the undo toast, which
@@ -390,13 +371,9 @@ wide, medium, narrow). A fight row's stat block opens as a copy page in it (`bes
 
 - **Every window is built from the parts in `sceneManager.css`**: `.sm-win` with `.w-s`
   (360, a question or progress), `.w-m` (480, a list) or `.w-l` (720, a reference);
-  `.sm-whead` 48px with a 14px title and the `.sm-x` close last; `.sm-wbody`, `.sm-wfoot`.
+  `.sm-whead` 48px with a 16px title and the `.sm-x` close last; `.sm-wbody`, `.sm-wfoot`.
   A free window's title is the dock's 12px bold.
 - **The title repeats the label of its opening button**, word for word.
-- **Controls in a window are 28px with no outline**, a focus ring only on keyboard focus.
-  `.sm-hbtn` is secondary, `.primary` the one action the window exists for, `.danger` the
-  destructive kind; `.sm-bare` an icon button. An icon beside a label carries
-  `--icon-nudge`; the trash (`i-trash`) does not. Icons come from `icons.js` (`uiIcon`).
 - **Selection is Gmail's.** The header never changes. A list's `.sm-ltb` toolbar starts with the
   all/none `.sm-tick`: with nothing ticked it selects what the list shows, with anything ticked
   it clears, and a partial selection shows a dash. The count and the actions take the toolbar
@@ -409,10 +386,8 @@ wide, medium, narrow). A fight row's stat block opens as a copy page in it (`bes
 
 ## Destructive actions
 
-- **A destructive action is a header icon or sits beside the control it belongs to**, wears no
-  red at rest, and asks through `confirmDialog` where the loss is not undoable. A delete into the Trash never asks. Room Delete is
+- **A destructive action is a header icon or sits beside the control it belongs to**, and asks through `confirmDialog` where the loss is not undoable. A delete into the Trash never asks. Room Delete is
   undoable and does not ask; Fog and Grid Reset ask.
-- **A destructive button has no fill and carries the trash**, red only under the pointer, and
-  sits on the right of every footer, dialog and list toolbar. A dialog that loses data ends on it,
-  any other question on primary, and Cancel holds the focus.
+- **A dialog that loses data ends on its destructive button**, any other question on primary, and
+  Cancel holds the focus.
 - The question is the whole warning, so never drop it to save a click.

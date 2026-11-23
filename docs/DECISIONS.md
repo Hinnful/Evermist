@@ -28,6 +28,13 @@ cost") and move on.
 
 ---
 
+## Audit misses
+
+In [decisions/audit-misses.md](decisions/audit-misses.md) - what the DM found after an interface audit
+said it was done, and which audit step now catches each.
+
+---
+
 ## Discoverability
 
 In [decisions/discoverability.md](decisions/discoverability.md) - which sites list Evermist,

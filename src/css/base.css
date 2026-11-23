@@ -7,6 +7,11 @@
     font-display: swap;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* Every scroller wears one thin bar; a pane that hides its bar, or sizes its own, says so itself. */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--g-pick); border-radius: 4px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-button { display: none; }
   html, body {
     width: 100%; height: 100%;
   }
@@ -17,7 +22,7 @@
     textarea, [contenteditable]:not([contenteditable=false])) { cursor: var(--cur-text); }
   body {
     background: #1a1a1a;
-    color: #e0e0e0;
+    color: var(--g-text);
     font-family: system-ui, -apple-system, sans-serif;
     overflow: hidden;
     display: flex;
@@ -26,6 +31,10 @@
     position: relative;
   }
   body.player-mode { background: var(--fog-base); }
+  /* Every action's keyboard focus and disabled look, once (.claude/rules/design-system.md, States). A disabled
+     control's own hover rule carries :not(:disabled), so the pointer changes nothing on it. */
+  :is(button, [role="button"], a[href], summary, select):focus-visible { outline: 2px solid var(--b-icon); outline-offset: 2px; }
+  :is(button, [role="button"]):is(:disabled, [aria-disabled="true"]) { opacity: 0.4; cursor: var(--cur-arrow); }
 
   /* ===== FLOATING PANELS ===== */
   /* ONE surface for every floating thing, defined here so they cannot drift. A panel that
@@ -42,28 +51,64 @@
     /* The dock's skin: grey surfaces and fields with no outline, a pick one step lighter. */
     --g-bg: #1e1e21;
     --g-line: #2c2d31;
-    --g-divider: rgba(255, 255, 255, 0.08);
     --g-field: #2a2b2f;
     --g-hover: #313237;
     --g-pick: #45474e;
+    --g-raised: #26272b;
+    /* A plate inside a row that lights under the pointer is a white layer, so it lights with the row. Over --g-bg
+       each matches the grey it is named after. */
+    --g-lay-raised: rgba(255, 255, 255, 0.04);
+    --g-lay-field: rgba(255, 255, 255, 0.058);
+    --g-lay-pick: rgba(255, 255, 255, 0.185);
     --g-text: #e4e6ea;
-    --g-dim: #8b9099;
-    /* Solid blue is press this; the tint is what is picked or on. test/blueMeaning.test.js lists what may be solid. */
-    --b-solid: #0c8ce9;
-    --b-solid-h: #2a9cf0;
+    --g-body: #c8ccd3;
+    --g-dim: #9aa0aa;
+    /* Only disabled, spent, separators and the fight table's HP sample. */
+    --g-mute: #757a83;
+    /* Solid blue is press this, and only a fill; the tint is what is picked or on; --b-icon draws every thin
+       indicator. test/blueMeaning.test.js lists what may be solid. */
+    --b-solid: #0a72bf;
+    --b-solid-h: #0a76c4;
+    --b-solid-p: #0868ad;
     --b-tint: rgba(12, 140, 233, 0.2);
     --b-tint-h: rgba(12, 140, 233, 0.28);
     --b-icon: #5cb1ff;
-    /* Red only under the pointer, on a destructive control. */
+    /* Red only under the pointer, on a destructive control; solid only on a delete question's last button. */
     --r-text: #ff8a8a;
     --r-tint: rgba(240, 82, 82, 0.16);
+    --r-tint-p: rgba(240, 82, 82, 0.26);
+    --r-solid: #c9443a;
+    --r-solid-h: #bb3a31;
+    --r-solid-p: #ad352d;
     /* Amber: something did not work and the rest still did. */
     --y-text: #f2c46d;
     --y-tint: rgba(242, 176, 60, 0.14);
+    /* On the TV now, connected. */
+    --live: #5fbf8a;
     --veil: rgba(6, 7, 9, 0.62);
     --win-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
     --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    --g-raised: #26272b;
+    /* The domain set keeps its own colours; the interface palette never reaches them. */
+    --enemy: #f0937f;
+    --enemy-tint: rgba(217, 87, 74, 0.22);
+    --enemy-line: rgba(240, 120, 100, 0.6);
+    --ally: #93d19c;
+    --ally-tint: rgba(95, 179, 107, 0.22);
+    --ally-line: rgba(110, 190, 120, 0.6);
+    --cloud-reveal: #5fe39a;
+    --cloud-reveal-tint: rgba(50, 220, 110, 0.2);
+    --cloud-reveal-glow: rgba(95, 227, 154, 0.35);
+    --cloud-half: #6fd3e4;
+    --cloud-half-tint: rgba(70, 190, 210, 0.2);
+    --cloud-hide: #b48cff;
+    --cloud-hide-tint: rgba(150, 80, 255, 0.24);
+    --cloud-hide-glow: rgba(180, 140, 255, 0.35);
+    --material-default: #ff8a3d;
+    --crystal: #3d8fe0;
+    --crystal-top: #8cc8ff;
+    --crystal-off: #5d626b;
+    --recharge: #ff8a4c;
+    --brand-word: #d5d8dd;
     /* The name plate: ONE skin for every name the DM can rename (a room, a place, a stray map, a road, a print, a
        picture). Padding and radius are em, so a plate keeps its shape at every size; the canvas room label reads
        these same values (roomPanel.js rpPlateSkin). The fills are solid, so nothing under a name shows through. */
@@ -83,14 +128,8 @@
     --plate-sel-text: var(--b-icon);
     --plate-sel-line: rgba(92, 177, 255, 0.45);
     --plate-edit-bg: var(--g-field);
-    --plate-edit-ring: var(--b-solid);
+    --plate-edit-ring: var(--b-icon);
     --plate-edit-select: rgba(12, 140, 233, 0.55);
-    /* The count of maps a place holds, a pill after its name. */
-    --plate-count-bg: rgba(255, 255, 255, 0.14);
-    --plate-count-text: #dfe5ef;
-    /* Segoe UI 12px sits its baseline 5px under the line's centre, so a label's visual centre
-       is about 1px below a box-centred icon. Every icon beside a label moves down by this. */
-    --icon-nudge: 1px;
     --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 
@@ -110,7 +149,7 @@
   #wm [contenteditable="true"]:not(.wm-hn), .wm-hl.editing, .ga-name-edit {
     background: var(--plate-edit-bg); color: var(--plate-text); --plate-hair: var(--plate-edit-ring); --plate-hair-w: 1.5; outline: none;
   }
-  #wm [contenteditable="true"]::selection, .ga-name-edit::selection { background: var(--plate-edit-select); color: white; }
+  #wm [contenteditable="true"]::selection, .ga-name-edit::selection { background: var(--plate-edit-select); color: var(--g-text); }
 
   /* ===== CANVAS LAYERS ===== */
   #canvas-container {

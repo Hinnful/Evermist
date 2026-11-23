@@ -14,7 +14,9 @@ function _naRow(r) {
   row.className = 'ap';
   row.dataset.key = r.key;
   row.dataset.noI18n = '';
-  row.append(r.name);
+  const name = document.createElement('span');
+  name.textContent = r.name;
+  row.append(name);
   small.textContent = t(r.word) + (r.where ? ' · ' + r.where : '');
   row.append(small);
   return row;
@@ -31,13 +33,13 @@ function naSync(m) {
   const rows = mxAppearsIn(mxRefOf(m), m.key);
   box.hidden = false;
   box.textContent = '';
-  const head = document.createElement('div'), car = document.createElement('span'), n = document.createElement('span');
+  const head = document.createElement('div'), car = document.createElement('span'), label = document.createElement('span'), n = document.createElement('span');
   head.className = 'aph';
-  car.className = 'car';
-  car.textContent = shut ? '▸' : '▾';
+  car.className = 'car sm-chev' + (shut ? ' shut' : '');
   n.className = 'n';
   n.textContent = String(rows.length);
-  head.append(car, t('Appears in') + ' ', n);
+  label.textContent = t('Appears in');
+  head.append(car, label, n);
   box.append(head);
   if (shut) return;
   rows.forEach(r => box.append(_naRow(r)));

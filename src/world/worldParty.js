@@ -6,7 +6,7 @@
 
 const WPT_KEY = 'evermist.worldParty';
 const WPT_STAR = '<svg width="36" height="44" viewBox="0 0 36 44">' +
-  '<path d="M18 2 L21.5 15.5 L34 19 L21.5 22.5 L18 36 L14.5 22.5 L2 19 L14.5 15.5Z" fill="var(--b-solid, #3b82f6)" stroke="#0b1020" stroke-width="1.6" stroke-linejoin="round"/>' +
+  '<path d="M18 2 L21.5 15.5 L34 19 L21.5 22.5 L18 36 L14.5 22.5 L2 19 L14.5 15.5Z" fill="var(--b-solid)" stroke="#0b1020" stroke-width="1.6" stroke-linejoin="round"/>' +
   '<path d="M18 9 L18 29 M8 19 L28 19" stroke="#fff" stroke-width="1.1" opacity=".7"/>' +
   '<circle cx="18" cy="19" r="3.2" fill="#fff"/><circle cx="18" cy="19" r="8.5" fill="none" stroke="#fff" stroke-width="1" opacity=".55"/></svg>';
 

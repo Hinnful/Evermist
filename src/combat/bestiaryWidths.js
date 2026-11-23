@@ -3,9 +3,9 @@
 // the filter row across the window and the columns; medium moves the search into the list's top, folds the filters into
 // one button and turns New monster and Import into icons; narrow, or the list hidden, shows the page alone.
 
-// In the window's own px. A page needs about 300 beside a list.
+// In the window's own px. A page needs 300 beside a list, or its stat boxes scroll sideways.
 const BSWD_WIDE = 860;
-const BSWD_NARROW = 500;
+const BSWD_PAGE_MIN = 300;
 let _bswdMode = 'wide';
 
 function bswdMode() { return _bswdMode; }
@@ -24,7 +24,7 @@ function _bswdMove(el, parent, before) {
 // Answers whether the width class changed, so the table redraws its columns.
 function bswdApply() {
   const p = _bsEl('bs-panel'), paged = bswdPaged(), w = p.offsetWidth;
-  const mode = paged && (bswListHidden() || w < BSWD_NARROW) ? 'narrow' : w >= BSWD_WIDE ? 'wide' : 'medium';
+  const mode = paged && (bswListHidden() || w - bswListWidth('medium') < BSWD_PAGE_MIN) ? 'narrow' : w >= BSWD_WIDE ? 'wide' : 'medium';
   const changed = mode !== _bswdMode;
   _bswdMode = mode;
   for (const m of ['wide', 'medium', 'narrow']) p.classList.toggle('w-' + m, m === mode);

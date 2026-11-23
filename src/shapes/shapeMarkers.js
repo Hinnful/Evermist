@@ -53,16 +53,19 @@ function drawHoleHatch(ring) {
   cursorCtx.restore();
 }
 
-// The dark label a shape being sized or rounded wears, centred on (cx, cy) and upright on screen.
-// `icon` is a 16-unit SVG path drawn at 13px before the text.
+// The label a shape being sized or rounded wears, in the name plate's skin (rpPlateSkin, roomPanel.js), centred on
+// (cx, cy) and upright on screen. `icon` is a 16-unit SVG path drawn at 13px before the text.
 function drawLabelPlate(c, cx, cy, txt, icon, iconColor) {
+  const k = rpPlateSkin();
   c.save();
   c.font = '600 12px system-ui, -apple-system, sans-serif';
   const iw = icon ? 17 : 0, w = c.measureText(txt).width + 16 + iw;
   uprightAt(c, cx, cy);
-  c.fillStyle = 'rgba(26,26,28,0.92)';
+  c.fillStyle = k.bg;
   c.beginPath(); c.roundRect(cx - w / 2, cy - 11, w, 22, 6); c.fill();
-  c.fillStyle = '#f0f1f3';
+  c.strokeStyle = k.line; c.lineWidth = 1;
+  c.beginPath(); c.roundRect(cx - w / 2 + 0.5, cy - 10.5, w - 1, 21, 5.5); c.stroke();
+  c.fillStyle = k.text;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(txt, cx + iw / 2, cy + 0.5);
   if (icon) {

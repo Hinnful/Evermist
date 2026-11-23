@@ -16,8 +16,7 @@ const NT_ICONS = {
   ngroup: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
 };
 // The words are whole strings so each one has its Russian entry.
-const NT_NEW_BTN = { monster: '+ New monster or NPC', faction: '+ New faction', lore: '+ New lore' };
-const NT_NEW_TIP = { monster: 'New monster or NPC', faction: 'New faction', lore: 'New lore' };
+const NT_NEW = { monster: 'New monster or NPC', faction: 'New faction', lore: 'New lore' };
 
 let _ntRoot = null;
 let _ntOpen = new Set();
@@ -116,7 +115,7 @@ function _ntRow(r) {
   nm.textContent = sec ? t(n.name) : n.kind === 'campaign' ? t('Campaign') : n.name;
   nm.dataset.noI18n = '';
   row.appendChild(nm);
-  const addable = sec ? NT_NEW_TIP[n.sec] : n.kind === 'faction' || n.kind === 'lore' ? 'New inside' : '';
+  const addable = sec ? NT_NEW[n.sec] : n.kind === 'faction' || n.kind === 'lore' ? 'New inside' : '';
   if (addable) {
     const a = document.createElement('span');
     a.className = 'nw-ta';
@@ -141,7 +140,7 @@ function _ntDraw() {
 
 function _ntNewLabel() {
   const n = _ntNode(_ntSel);
-  document.getElementById('nw-new').textContent = t((n && NT_NEW_BTN[n.kind]) || '+ New');
+  document.querySelector('#nw-new > span').textContent = n && NT_NEW[n.kind] ? t(NT_NEW[n.kind]) : t('+ New').replace(/^\+\s*/, '');
 }
 
 // ─── Where a click goes ──────────────────────────────────────────────────────
@@ -358,7 +357,8 @@ function ntMenuAt(at, rows) {
   menu.className = 'sm-menu nw-menu';
   menu.dataset.noI18n = '';
   for (const r of rows) {
-    if (r.sep) { menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
+    // A row left out can leave two lines together, or one at an end: a menu draws one line between groups only.
+    if (r.sep) { if (menu.lastElementChild && !menu.lastElementChild.matches('.sm-msep')) menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
     const b = document.createElement('button');
     b.className = 'sm-mi' + (r.danger ? ' danger' : '');
     b.textContent = r.raw ? r.label : t(r.label);
@@ -368,14 +368,17 @@ function ntMenuAt(at, rows) {
     b.addEventListener('click', () => { ntCloseMenu(); r.run(); });
     menu.appendChild(b);
   }
+  if (menu.lastElementChild && menu.lastElementChild.matches('.sm-msep')) menu.lastElementChild.remove();
   menu.addEventListener('mousedown', e => e.stopPropagation());
   menu.addEventListener('contextmenu', e => e.preventDefault());
   menu.addEventListener('keydown', e => e.stopPropagation());
   document.body.appendChild(menu);
   menu.style.zIndex = 400;
-  const w = menu.offsetWidth, h = menu.offsetHeight, x = at.left !== undefined ? at.left : at.x, y = at.bottom !== undefined ? at.bottom + 2 : at.y;
-  menu.style.left = Math.max(4, Math.min(x, innerWidth - w - 4)) + 'px';
-  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) + 'px';
+  // The menu wears the UI zoom, so a screen point is divided by it.
+  const z = _nwZoom(), r = menu.getBoundingClientRect(), w = r.width, h = r.height;
+  const x = at.left !== undefined ? at.left : at.x, y = at.bottom !== undefined ? at.bottom + 2 : at.y;
+  menu.style.left = Math.max(4, Math.min(x, innerWidth - w - 4)) / z + 'px';
+  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) / z + 'px';
   _ntMenu = menu;
 }
 

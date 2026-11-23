@@ -103,7 +103,8 @@ function _llMenuEl(rows, extra) {
   menu.className = 'sm-menu lib-menu' + (extra || '');
   menu.dataset.noI18n = '';
   for (const r of rows) {
-    if (r.sep) { menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
+    // A row left out can leave two lines together, or one at an end: a menu draws one line between groups only.
+    if (r.sep) { if (menu.lastElementChild && !menu.lastElementChild.matches('.sm-msep')) menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
     const b = document.createElement('button');
     b.className = 'sm-mi' + (r.danger ? ' danger' : '') + (r.on ? ' on' : '');
     b.innerHTML = (r.icon ? uiIcon(r.icon, 13) : '') + '<span class="nm"></span><span class="ky"></span>';
@@ -122,15 +123,17 @@ function _llMenuEl(rows, extra) {
     });
     menu.appendChild(b);
   }
+  if (menu.lastElementChild && menu.lastElementChild.matches('.sm-msep')) menu.lastElementChild.remove();
   menu.addEventListener('mousedown', e => e.stopPropagation());
   menu.addEventListener('contextmenu', e => e.preventDefault());
   return menu;
 }
 
+// The menu wears the UI zoom, so a screen point is divided by it.
 function _llPlace(menu, x, y, left) {
-  const w = menu.offsetWidth, h = menu.offsetHeight;
-  menu.style.left = Math.max(4, Math.min(left ? x - w : x, innerWidth - w - 4)) + 'px';
-  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) + 'px';
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2, r = menu.getBoundingClientRect(), w = r.width, h = r.height;
+  menu.style.left = Math.max(4, Math.min(left ? x - w : x, innerWidth - w - 4)) / z + 'px';
+  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) / z + 'px';
 }
 
 // Move to group's list opens to the left, toward the map, as every pop-out of the dock does.
@@ -364,6 +367,18 @@ function libMoreBtn() {
   return b;
 }
 
+// The one empty state of every library: a title, one line, the Add plate (music.css .ui-empty).
+function libEmptyState(title, line, onAdd) {
+  const el = document.createElement('div');
+  el.className = 'ui-empty';
+  el.innerHTML = '<b></b><span></span><button class="dk-addb" type="button">' + uiIcon('plus', 14, 2) + '<span></span></button>';
+  el.querySelector('b').textContent = title;
+  el.querySelector('span').textContent = line;
+  el.querySelector('button > span').textContent = t('Add');
+  el.querySelector('button').addEventListener('click', onAdd);
+  return el;
+}
+
 // A section: the heading (fold arrow, name, count, ⋯ unless it is Ungrouped) and a body the pane fills.
 function libSection(gk, name, count, shut) {
   const sec = document.createElement('div');
@@ -371,8 +386,7 @@ function libSection(gk, name, count, shut) {
   sec.dataset.libGroup = gk || '';
   const h = document.createElement('div');
   h.className = 'lib-gh';
-  h.innerHTML = '<svg class="car" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" ' +
-    'stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span class="lib-name"></span><span class="c"></span><span class="sp"></span>';
+  h.innerHTML = '<span class="car sm-chev"></span><span class="lib-name"></span><span class="c"></span><span class="sp"></span>';
   h.querySelector('.lib-name').textContent = name;
   h.querySelector('.c').textContent = String(count);
   if (gk) h.appendChild(libMoreBtn());

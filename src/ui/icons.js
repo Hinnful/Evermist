@@ -16,6 +16,8 @@ const UI_ICON_PATHS = {
   plan: '<path d="M12 3l8.5 6.2-3.2 10.3H6.7L3.5 9.2z"/>',
   collapse: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M8 10l2 2-2 2"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+  // ↺, before the word on every Reset.
+  reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 3.5v4h4"/>',
   dup: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
   brush: '<path d="M20.5 3.5c-2 .4-6.6 4.6-8.7 7.4l2.3 2.3c2.8-2.1 7-6.7 6.4-9.7z"/><path d="M10.9 12.4c-1.9-.3-3.6 1-3.9 3-.2 1.6-1 2.6-3.5 3.1 3.6 1.9 8.3.6 9.2-2.6.3-1.3-.2-2.6-1.8-3.5z"/>',
   cloud: '<path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/>',

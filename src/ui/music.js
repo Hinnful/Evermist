@@ -177,10 +177,7 @@ function _muRenderList() {
 
   list.innerHTML = '';
   if (!_muTracks.length) {
-    const empty = document.createElement('div');
-    empty.className = 'mt-status mu-empty';
-    empty.textContent = t('No music yet. Use + Add.');
-    list.appendChild(empty);
+    list.appendChild(libEmptyState(t('No music yet'), t('Add files, or add from YouTube.'), () => _muEl('btn-mu-add').click()));
     _muRenderCount();
     return;
   }
