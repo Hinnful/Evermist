@@ -1048,8 +1048,9 @@ building anything if the arithmetic is wrong. Then the gate (`gate.yml` builds t
 and Linux at once. On each platform one machine builds the installer and checks its update
 pointer, and another builds the packaged app and drives it through the rig: the blocker set on
 Windows and Mac, `launch` alone on Linux, whose runner has no graphics card and draws at five
-frames a second. No sharding. A run whose app never started reruns once; any other failure is red,
-and all three platforms block the release. Every scenario runs against the real
+frames a second. No sharding. A run whose app never started reruns once; any other failure is red.
+`rerun-unstarted.yml` reruns a run whose only red jobs never got a machine, after a pause, at most twice; a job that ran and failed stays red.
+All three platforms block the release. Every scenario runs against the real
 packaged application rather than the loose source files, which catches a file that works during
 development and is simply missing from the installer. Alongside the gate, `update-proofs.yml`
 proves each platform's update: it installs the new build, lets it walk back to an older one and
