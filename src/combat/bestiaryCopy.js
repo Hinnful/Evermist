@@ -40,13 +40,17 @@ function bcClose(rowId) {
   cbRender();
 }
 
-// An edit in the table reaches the page: a field being edited follows in place, a read page redraws.
+// An edit in the table reaches the page: a value on a page being edited follows in place, a read page redraws.
 function bcRowEdited(row, field) {
   if (bs.copy !== row.id) return;
   _bcSavedRow = null;
   if (!bs.editing) { _bsRenderPage(); return; }
-  const f = _bsEl('bs-page').querySelector(`[data-p="${field}"]`);
-  if (f) f.textContent = row.sb[field];
+  const page = _bsEl('bs-page'), set = (p, v) => { const f = page.querySelector(`[data-p="${p}"]`); if (f) f.textContent = v; };
+  if (field === 'ac' || field === 'hp') {
+    const v = combatSplitBig(row.sb[field]);
+    set(field + '.n', v.n);
+    set(field + '.note', v.note);
+  } else set(field, row.sb[field]);
   _bcHeadSync(row);
 }
 
@@ -65,7 +69,7 @@ function _bcStripHtml(row, e) {
 function bcHtml(row) {
   const e = _bcEntry(row), name = `<h2 data-no-i18n>${_cbEsc(row.name)}</h2>`;
   const head = bs.editing
-    ? `<div class="bs-page-head editing"><div class="t"><span class="bs-mode">Editing</span>${name}</div>
+    ? `<div class="bs-page-head editing"><div class="t">${bpEditHead(cbRowBlock(row))}</div>
         <button class="sm-hbtn primary bs-done" data-c="edit">${BS_ICONS.done}<span>Done</span></button></div>`
     : `<div class="bs-page-head"><div class="t">${name}</div><div class="bs-tools">
         <button class="bs-ib" data-c="edit" title="Edit">${BS_ICONS.edit}</button>${
@@ -82,7 +86,8 @@ function bcMount(page, row) {
 function bcCrumbs(row) { const f = _cfOpen(); return [f ? _cfName(f) : '', row.name]; }
 
 function _bcHeadSync(row) {
-  const page = _bsEl('bs-page'), h = page.querySelector('.bs-page-head h2');
+  // Editing, the head's name is the copy's own value, and typing in it must keep it.
+  const page = _bsEl('bs-page'), h = !bs.editing && page.querySelector('.bs-page-head h2');
   if (h) h.textContent = row.name;
   page.querySelector('.bc-strip').innerHTML = _bcStripHtml(row, _bcEntry(row));
   bswCrumbs(bcCrumbs(row));
@@ -122,7 +127,6 @@ function bcInit(page) {
   page.addEventListener('input', e => {
     const r = bcRow(), f = e.target.dataset;
     if (!r) return;
-    if (f.lore !== undefined) { r.sb.lore = e.target.value; _bcCopyEdited(r, 'lore'); cbSaveSoon(); }
     const en = f.notes !== undefined && _bcEntry(r);
     if (en) { en.notes = neStoredText(e.target); mxBump(); cbSaveSoon(); }
   });

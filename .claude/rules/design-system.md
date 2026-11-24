@@ -30,9 +30,8 @@ is a decision for this file, never a one-off.
 - **A plate round one label is a press.** Radius 6.
 - **A frame round several things is a container**: a menu, a well, a group's frame, a toast at radius 8; a
   window, pane or the dock at 10.
-- **A pill is hover for details.** Only a thing whose hover shows more wears one (a spell, a condition). Two
-  wear it ahead of their details: a spell, until spell descriptions exist, and a challenge rating, until
-  BACKLOG 311.
+- **A pill is hover for details.** Only a thing whose hover shows more wears one (a spell, a condition, a challenge
+  rating). A spell wears it ahead of its details, until spell descriptions exist.
 - **A sunk rectangle is a field you type into.** The well's pick-one pill never wraps a field.
 - **A lone icon is a press**, and at rest it has no plate; the plate comes only with a state.
 - **Plain text is text.** A count is plain dim text, never a badge.
@@ -161,13 +160,16 @@ atom.
 and 16 from the block above; a section title 12 from its content. Switch rows of one group touch, 28 each, and
 read as one list.
 
-**Alignment**: every text in one row stands on one baseline, whatever its size. An icon or a switch centres on the
-capitals of the text it belongs to (an icon on its own label; a switch in a header on the header's text). Text in
-a plate centres on cap height (`text-box: trim-both cap alphabetic`), and the plate centres on its row: a pill's text
-follows its pill, never the row's baseline. A row whose texts differ in size lifts the
-smaller side onto the larger's baseline with a `cap` calc, never a pixel nudge. A source tag after a name (`.bs-src`)
-is the one text that centres instead: its capitals on the name's x-height, since a name is mostly lowercase. The rig's alignment sweep
-(`lib.alignSweep`, the `design-sweep` scenario) measures every row and fails one off by more than 0.5px.
+**Alignment: one row, one centre line.** Everything in a row centres on the same horizontal line: a text of any
+size by the middle of its capitals, a glyph with no capitals (›, ↑, ✓, ·) by its ink, an icon, a plate, a switch
+or a tag by the middle of its box. Texts share a baseline only inside one run of words of one size. Text in a plate
+centres on cap height (`text-box: trim-both cap alphabetic`), and the plate centres on the row; a row centres its
+items (`align-items: center`) with each text trimmed to its capitals, never a pixel nudge. A tag inside a line of
+text (the source after a monster's name) centres its capitals on the line's with a `cap` calc. A glyph with no
+capitals that must sit beside text (›, ✓, an arrow key) is drawn as an icon, which centres by its box. There is no
+exception for a label beside a big number. The rig's alignment sweep (`lib.alignSweep`, the
+`design-sweep` scenario) measures every item of every row against the row's centre line and fails one off by more
+than 0.5px; a window anywhere between the smallest and largest text is not a pass.
 
 The interface font is the system's; Alegreya is the TV's alone. **No
 uppercase**: a heading is sentence case. Text in a button, a plate or beside an icon centres on cap height
@@ -350,8 +352,7 @@ A molecule is atoms in one order, taken whole rather than redrawn per screen.
 - **Table row**: cells that are fields, an action bar on hover, 32 tall, hover `--g-hover`.
 - **Dock section**: a title, its switch, sub-headers, wells and fields; 10/14 padding, a line under it.
   Switch rows sit together as one block after the wells and fields, never between them.
-- **Header row**: the title, a text button and a switch; the texts share the title's baseline and the switch
-  centres on their capitals.
+- **Header row**: the title, a text button and a switch, all on the title's centre line.
 - **Popover**: an 8-radius surface of buttons and fields, 200, 260 or 320 wide.
 - **Add**: one look everywhere a list grows, the secondary plate with the + icon and the word (`.dk-addb`): Music,
   Sounds, Pictures, the Notes tree's New, an empty Campaign.

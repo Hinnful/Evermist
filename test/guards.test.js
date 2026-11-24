@@ -92,6 +92,7 @@ describe('builder guard', () => {
     '**Cause:** the cleanup deletes a blob whose record has not arrived yet; the rig log shows it.',
     '**Change:** skip blobs with no record younger than an hour in syncRemote.js.',
     '**Done-check:** syncPlan.test.js case fails before the change and passes after it.',
+    '**Accept:** the DM deletes a map on one laptop → the other laptop keeps its blob until the record lands.',
   ].join('\n');
   const launch = (input) => builder.verdict({ tool_name: 'Agent', tool_input: { subagent_type: 'builder', ...input } });
   it('allows a full brief on Opus or the default model', () => {
@@ -102,6 +103,17 @@ describe('builder guard', () => {
     assert.ok(launch({ prompt: 'Fix the failing sync-travel check C.' }));
     assert.ok(launch({ prompt: BRIEF.replace(/\*\*Cause:\*\*.*\n/, '') }));
     assert.ok(launch({ prompt: BRIEF.replace(/(Done-check:\*\*).*/, '$1 tbd') }));
+  });
+  it('refuses an Accept: with no user action, and reads a spec it points at', () => {
+    assert.ok(launch({ prompt: BRIEF.replace(/(Accept:\*\*).*/, '$1 read the title attribute in the rig and compare it') }));
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'accept-'));
+    fs.mkdirSync(path.join(root, '.claude/private/specs'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude/private/specs/a.md'), '## Definition of Done\n1. The DM hovers the badge → sees the XP.\n## Out of scope\n');
+    fs.writeFileSync(path.join(root, '.claude/private/specs/b.md'), '## Definition of Done\n1. The badge has a title.\n## Risk\nnone → none\n');
+    assert.equal(builder.acceptsUser('every DoD line of .claude/private/specs/a.md', root), true);
+    assert.equal(builder.acceptsUser('every DoD line of .claude/private/specs/b.md', root), false);
+    assert.equal(builder.acceptsUser('every DoD line of .claude/private/specs/missing.md', root), false);
   });
   it('allows Sonnet only with a Mechanical: field', () => {
     assert.ok(launch({ prompt: BRIEF, model: 'sonnet' }));

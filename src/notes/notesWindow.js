@@ -127,7 +127,7 @@ function _nwCrumbEl(c, last) {
 function _nwSep() {
   const s = document.createElement('span');
   s.className = 'nw-sep';
-  s.textContent = '›';
+  s.innerHTML = uiIcon('chev', 12, 2);
   return s;
 }
 

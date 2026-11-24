@@ -1601,3 +1601,17 @@ merges with what it lies on and its text stays readable. WCAG asks no contrast o
 ### The Bestiary opens over a fight table with no room beside it · `SETTLED` (2026-11-23)
 Product call. With room beside the fight table the Bestiary opens there and stays below the table in z-order; with none it opens over
 the table and on top of it.
+
+### One row, one centre line · `SETTLED` (2026-11-24)
+Replaces the rule that put mixed-size texts in a row on one baseline and centred an icon anywhere between the row's
+smallest and largest capitals. Measured on the 312 edit head: buttons at 179.0, the name at 179.7, the source tag and
+small texts at 182.6, and the check passed. Everything in a row now centres on one line: a text by the middle of its
+capitals, a box by its middle, a glyph with no capitals drawn as an icon (the crumbs' ›, the shape list's ✓, the
+search's arrow keys, an empty speed's dash). A tag inside a line of text keeps a `cap` calc. Rejected: the source
+tag centred on the name's x-height, which made a second line in the same row.
+
+### Monster edit mode is the read page, typeable in place · `SETTLED` (2026-11-24, BACKLOG 312)
+Edit keeps the read page's layout, on an entry's page and a fight row's copy. No field at rest: the value under the pointer takes the field fill (a tile, the page ground), a click gives the 1px `--b-icon` edit ring, and an action's text or the Lore rings the whole paragraph once. The strip says "Правка" with a dim hint. Empty lines are hidden and "Add line" offers only the missing ones; Add and Add section are Add plates; × shows on hover. AC and HP edit as a number and a note, joined as "N (note)" only when one is typed (`combatSplitBig`/`combatJoinBig`); a score updates modifier, save and Initiative live; spells read as text while editing. **Rejected:** a separate form layout (property sheet, grouped form); a grey field box round every value at rest (values overlap); a whole-block highlight with pencil icons floating beside blocks; a bigger score over the modifier (breaks WYSIWYG); the page as a raised sheet with its own box (kills the contrast of plates and pills, a mode ground is full width and height, never a new box). **Known next look, not built:** page ground unchanged, editable rows on the rename fill as edge-to-edge bands flush with the tiles, tiles one grey step lighter, the rename ring 1.5px on the row or tile being typed in, a click anywhere on a tile putting the caret in its value, Add in the section heading plus one "Добавить" menu in the strip, the edit head at the read head's height.
+
+### The challenge badge carries its XP in a tooltip · `SETTLED` (2026-11-24, BACKLOG 311)
+The Bestiary list's badge shows a native tooltip "Опасность 12 · 8 400 опыта · бонус мастерства +4" from the 2024 XP and proficiency table (`bsCrTable`, `bestiaryPlan.js`); no rating, no tooltip. The design-system pill line no longer lists the CR as a pill ahead of its details.

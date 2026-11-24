@@ -362,8 +362,8 @@
     border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); text-align: left;
     color: var(--g-text); font: 400 12px/1 system-ui, -apple-system, sans-serif;
   }
-  .dd-it .ck { width: 14px; flex: none; text-align: center; font-size: 11px; }
-  .dd-it .ck, .dd-it .nm, .dd-it .ky { text-box: trim-both cap alphabetic; }
+  .dd-it .ck { width: 14px; flex: none; display: flex; justify-content: center; }
+  .dd-it .nm, .dd-it .ky { text-box: trim-both cap alphabetic; }
   .dd-it .ic { display: flex; flex: none; }
   .dd-it .ic svg { width: 16px; height: 16px; }
   .dd-it .nm { flex: 1; white-space: nowrap; }

@@ -548,3 +548,13 @@ dozen faults surfaced after it (`audit-misses.md`). The audit now walks an inven
 with machine checks for alignment, plate merging and hover, native controls, control padding, state shifts, clipped letters and menu size.
 An outside reviewer given only the rules and the close-ups reads them, the report opens with what was not checked, and each later finding
 becomes a line in `audit-misses.md` and a fixed step. Rejected: auditing against the previous release, which carries its faults forward.
+
+### Acceptance is the DM's action, performed, for every item · `SETTLED` (2026-11-23)
+BACKLOG 311 ("hover the CR badge, see its XP") shipped with the hover itself unchecked although the rig drives real
+input: the builder's brief asked for the title attribute to be read, the item had no DoD because it was small, and the
+builder's "not hovered with a real mouse" went into the report as an accepted ending. 312's report then said all lines
+passed while one was never exercised. Now every item, small ones included, has a spec whose DoD lines read what the DM
+does → what the DM sees, from the item's words; a builder brief carries them as `Accept:` (`guard-builder.js` refuses
+one without); the rig performs each with CDP mouse and keys; the main session re-checks each line and marks how it was
+proven; `ship.js --accept` refuses a release with an unmarked line. A memory note alone had not held: the same rule was
+already there and was skipped for a small item.

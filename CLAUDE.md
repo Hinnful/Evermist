@@ -168,6 +168,9 @@ error goes through it; no `alert()` ships.
 - **The `blockers` rig set is the release gate** (CI), and `/commit` runs only
   tests, lint and guards. Locally the rig is a look, not a set. A blocker failing over a working
   app is rewritten or deleted that day, never loosened.
+- **Every item ships against DoD lines of what the DM does → what the DM sees**, small ones too,
+  each proven by the rig doing that action with real input. Reading state or an attribute proves no
+  such line, and a reachable line is never reported unchecked. `ship.js --accept` holds the marks.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance are
   theirs; correctness is yours. Backup, export and restore are the exception - the save dialog is
   native and cannot be driven.

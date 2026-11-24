@@ -41,6 +41,42 @@ function backlogCheck({ branch, paths, noBacklog, amend }) {
   return 'a release must carry docs/BACKLOG.md (close what shipped, file what was deferred). Add it to the paths, or pass --no-backlog when the backlog truly has nothing to change.';
 }
 
+// The Definition of Done's numbered lines, each with its continuation lines joined.
+function dodLines(text) {
+  const m = String(text).replace(/\r/g, '').match(/^## Definition of Done\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
+  if (!m) return null;
+  const lines = [];
+  for (const row of m[1].split('\n')) {
+    const n = row.match(/^(\d+)\.\s+(.*)$/);
+    if (n) lines.push({ n: +n[1], text: n[2] });
+    else if (lines.length && /^\s+\S/.test(row)) lines[lines.length - 1].text += ' ' + row.trim();
+    else if (lines.length && !row.trim()) lines.push(null);
+  }
+  return lines.filter(Boolean);
+}
+
+// How a line was proven, as the session marked it after checking: the rig doing what the DM does, a unit
+// test for pure logic, the DM's eye, or a part nothing can reach with the check made around it.
+const VERDICT = /\[(?:rig|unit):\s*[^\]\s][^\]]*\]\s*$|\[eye\]\s*$|\[unreachable:\s*[^;\]]+;\s*around:\s*[^\]\s][^\]]*\]\s*$/;
+// A line the DM acts on reads "does → sees"; only a unit-tested line may be about logic alone.
+const USER_LINE = /→/;
+
+// A release ships only when every DoD line of every spec it carries says how it was proven.
+function acceptCheck({ branch, amend, accept }) {
+  if (amend || !String(branch).startsWith('release/')) return null;
+  if (!accept || !accept.length) return 'a release needs --accept <spec> for each item it ships: the spec whose Definition of Done was checked, line by line. A small item gets a short spec too.';
+  const bad = [];
+  for (const { file, text } of accept) {
+    const lines = dodLines(text);
+    if (!lines || !lines.length) { bad.push(file + ': no numbered Definition of Done'); continue; }
+    const open = lines.filter((l) => !VERDICT.test(l.text)).map((l) => l.n);
+    if (open.length) bad.push(file + ': line ' + open.join(', ') + ' carries no [rig: …], [unit: …], [eye] or [unreachable: …; around: …]');
+    const flat = lines.filter((l) => /\[(rig|eye|unreachable)/.test(l.text) && !USER_LINE.test(l.text)).map((l) => l.n);
+    if (flat.length) bad.push(file + ': line ' + flat.join(', ') + ' is not written as what the DM does → what the DM sees');
+  }
+  return bad.length ? 'acceptance not proven - ' + bad.join('; ') : null;
+}
+
 // A test or a rig scenario edited to turn a run green must be named in disclosure.txt.
 const isTestEdit = (p) => /^(test\/|tools\/rig\/scenarios\/)/.test(norm(p));
 
@@ -81,4 +117,4 @@ function prStep({ open, ownBranch, branch, title, bodyFile }) {
   return { run: 'gh pr close ' + open.number + ' --comment ' + shq('Superseded by a pull request this session opens, so its CI monitor can be armed.') + ' && ' + create };
 }
 
-module.exports = { updatesElectron, withLock, lockedElectron, prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };
+module.exports = { dodLines, acceptCheck, updatesElectron, withLock, lockedElectron, prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };

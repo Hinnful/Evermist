@@ -5,7 +5,7 @@
 //
 // Criteria:
 // - Every entry opens; one that does not is named and fails the run.
-// - Every text in a row stands on one baseline, within 0.5px; every icon and switch centres on its text's capitals.
+// - Everything in a row stands on one centre line, within 0.5px: a text by its capitals, a glyph by its ink, a box by its middle.
 // - A plate inside anything the pointer lights never merges with what it lies on, and stands off it under the
 //   pointer at least as well as at rest.
 // - No control is the browser's own, and text in a filled control keeps 6px from its sides.

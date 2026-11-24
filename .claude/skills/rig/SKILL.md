@@ -161,6 +161,15 @@ measures every row with `lib.alignSweep` and every hover with `lib.hoverSweep`.
 **A file's criteria ARE its header.** Plain-language lines at the top, each with its check directly
 beneath, in the same order. There is no separate criteria document.
 
+**A criterion is a DoD line performed, never inspected.** The line reads what the DM does → what the
+DM sees, and the check does exactly that with real CDP input: `Input.dispatchMouseEvent` to hover or
+click, `Input.dispatchKeyEvent` and `Input.insertText` to type, then asserts what is on screen.
+Aim at the element's first line box (`getClientRects()[0]`), since a wrapped value's bounding box
+starts under the text before it, and assert `elementFromPoint` hits the target. Reading a `title`, a
+dataset or a store in place of the action proves nothing about it: BACKLOG 311's hover shipped
+unchecked that way. A part the OS draws (a native tooltip, a save dialog) is named as unreachable and
+everything up to it is checked.
+
 **A scenario that has never been red has proven nothing.** Written before the fix, run it against
 the unfixed code and confirm it fails on the right line. Written after, break the thing it covers,
 confirm the FAIL names it, then put it back. A check that passes for some reason other than the

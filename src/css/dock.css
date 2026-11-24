@@ -69,8 +69,6 @@
   }
   .dk-head .cp-adv-title { font: 600 16px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); min-width: 0;
                            white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; text-box: trim-both cap alphabetic; }
-  /* The 12px controls beside the 16px title, lifted onto its baseline: 1cap here is the title's. */
-  .dk-head > .cp-row { font-size: 16px; translate: 0 calc(1cap / 8); }
   .dk-scroll { flex: 1; overflow-y: auto; min-height: 0; }
   .dk-scroll::-webkit-scrollbar { width: 0; }
 
@@ -84,8 +82,6 @@
   .dk-sh > .cp-label, #dock .dk-bare > span, .dk-swrow > span { text-box: trim-both cap alphabetic; }
   /* Blocks of a section stand 16 apart, the title 12 from the first. */
   .dk-sh { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin: 0 -2px -4px 0; }
-  /* The 12px Reset and the switch, lifted onto the 14px title's baseline: 1cap here is the title's. */
-  .dk-sh > .dk-hr { font-size: 14px; translate: 0 calc(1cap / 14); }
   .dk-blk { display: flex; flex-direction: column; gap: 4px; }
   .dk-sub { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
   .dk-secbody { display: flex; flex-direction: column; gap: 16px; }

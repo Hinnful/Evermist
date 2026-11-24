@@ -194,38 +194,6 @@
   .cb-side-switch .cp-segtab { flex: none; height: 24px; padding: 0 12px; }
   .cb-side-switch .cp-segtab[data-side="enemy"].active { border-color: var(--enemy-line); background: var(--enemy-tint); color: var(--enemy); }
   .cb-side-switch .cp-segtab[data-side="ally"].active { border-color: var(--ally-line); background: var(--ally-tint); color: var(--ally); }
-  .cb-sb { padding: 10px 16px 16px; max-height: calc(100vh / var(--ui-zoom, 1.2) - 120px); overflow-y: auto; }
-  .cb-sb::-webkit-scrollbar { width: 6px; }
-  .cb-sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
-  .cb-sb [contenteditable] { outline: none; border-radius: 4px; padding: 0 2px; margin: 0 -2px; cursor: var(--cur-text); }
-  .cb-sb [contenteditable]:hover { background: var(--g-raised); }
-  .cb-sb [contenteditable]:focus { background: var(--g-field); box-shadow: 0 0 0 1.5px var(--b-icon); }
-  .cb-sb [contenteditable]:empty::before { content: attr(data-ph); color: var(--g-dim); }
-  .cb-sb-name { font: 700 19px/1.2 system-ui, sans-serif; color: var(--b-icon); }
-  .cb-sb-meta { font: italic 13px/1.4 system-ui, sans-serif; color: var(--g-dim); margin-top: 2px; display: block; }
-  .cb-sb-source { font-size: 12px; color: var(--g-dim); margin-top: 3px; }
-  .cb-sb-source [contenteditable] { color: var(--g-body); }
-  .cb-sb-rule { height: 2px; margin: 8px 0; background: linear-gradient(90deg, var(--b-icon), transparent); }
-  .cb-sb-line { font-size: 13px; line-height: 1.55; color: var(--g-body); }
-  .cb-sb-line b { color: var(--b-icon); font-weight: 600; }
-  .cb-sb-abil { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; text-align: center; }
-  .cb-sb-abil .k { font: 700 11px/1 system-ui, sans-serif; color: var(--b-icon); letter-spacing: .5px; margin-bottom: 4px; }
-  .cb-sb-abil .v { display: inline-block; min-width: 18px; font: 600 13px/1.2 system-ui, sans-serif; color: var(--g-text); font-variant-numeric: tabular-nums; }
-  .cb-sb-abil .m { font-size: 12px; color: var(--g-dim); }
-  .cb-sb-sec { margin-top: 12px; }
-  .cb-sb-sechd {
-    display: flex; align-items: center; justify-content: space-between; padding-bottom: 3px; margin-bottom: 6px;
-    border-bottom: 1px solid var(--b-icon); font: 600 14px/1 system-ui, sans-serif; color: var(--b-icon);
-  }
-  .cb-sb-sechd .cb-iconbtn { visibility: hidden; }
-  .cb-sb-sec:hover .cb-sb-sechd .cb-iconbtn { visibility: visible; }
-  .cb-sb-entry { position: relative; margin-bottom: 6px; padding-right: 16px; font-size: 13px; line-height: 1.5; color: var(--g-body); }
-  .cb-sb-entry .n { font-weight: 700; font-style: italic; color: var(--g-text); }
-  .cb-sb-entry .x { position: absolute; right: -4px; top: 0; width: 18px; height: 18px; visibility: hidden; }
-  .cb-sb-entry:hover .x { visibility: visible; }
-  .cb-sb-add { padding: 2px 0; font-size: 12px; color: var(--g-dim); cursor: var(--cur-pointer); }
-  .cb-sb-add:hover { color: var(--g-body); }
-  .cb-sb-addsec { margin-top: 14px; }
   .cb-save { margin-left: auto; }
 
   /* ===== The bestiary: a free window (bestiaryWindow.js), a table, and a page beside it ===== */
@@ -415,16 +383,6 @@
     border: 1.5px solid var(--g-line); background: var(--g-raised); color: var(--g-text); font: 500 14px/1.55 system-ui, sans-serif;
   }
   .bp-notes:focus { border-color: var(--b-icon); }
-  .bp-lore { min-height: 140px; }
-  /* The editor keeps its own layout, set to the page's size. */
-  .bp-editing { max-width: 760px; padding: 16px 28px 48px; }
-  .bp-editing .cb-sb { padding: 0; max-height: none; overflow: visible; }
-  .bp-editing .cb-sb-name { font-size: 24px; }
-  .bp-editing .cb-sb-meta, .bp-editing .cb-sb-source { font-size: 13px; }
-  .bp-editing .cb-sb-line, .bp-editing .cb-sb-entry { font-size: 14px; }
-  .bp-editing .cb-sb-abil .v { font-size: 16px; }
-  .bp-editing .cb-sb-sechd { font-size: 19px; padding-bottom: 5px; margin-bottom: 8px; }
-  .bp-edit-h { margin-top: 22px; cursor: var(--cur-arrow); }
 
   /* ===== THE WINDOW SKIN =====
      The window parts (sceneManager.css) applied to the fight table, the stat block and the
@@ -584,7 +542,6 @@
   .cb-side-switch .cp-segtab:hover:not(.active) { background: var(--g-hover); color: var(--g-text); }
   .cb-side-switch .cp-segtab[data-side="enemy"].active { border: 0; background: var(--enemy-tint); color: var(--enemy); }
   .cb-side-switch .cp-segtab[data-side="ally"].active { border: 0; background: var(--ally-tint); color: var(--ally); }
-  .cb-sb [contenteditable]:focus { background: var(--g-field); box-shadow: 0 0 0 1px var(--b-icon); }
 
   /* ── Bestiary: chrome ── */
   #bs-panel { border: 1px solid var(--g-line); }
@@ -688,31 +645,6 @@
   .cb-grp .gx { font: 500 12px/1 system-ui, sans-serif; }
   .cb-empty { color: var(--g-dim); border-bottom: 1px solid var(--g-line); }
 
-  /* ── One stat block: the editor reads at the Bestiary page's sizes. The book's order and
-     blocks stay. ── */
-  .cb-sb { padding: 12px 16px 16px; font-size: 13px; }
-  .cb-sb [contenteditable] { border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
-  .cb-sb [contenteditable]:hover { background: var(--g-field); }
-  .cb-sb [contenteditable]:empty::before { color: var(--g-dim); }
-  .cb-sb-name { font: 700 24px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.2px; color: var(--g-text); }
-  .cb-sb-meta { font: 400 13px/1.45 system-ui, -apple-system, sans-serif; color: var(--g-dim); margin-top: 4px; }
-  .cb-sb-source { font-size: 12px; color: var(--g-dim); margin-top: 4px; }
-  .cb-sb-source [contenteditable] { color: var(--g-body); }
-  .cb-sb-rule { height: 1px; margin: 12px 0; background: var(--g-line); }
-  .cb-sb-line { font-size: 13px; line-height: 1.7; color: var(--g-text); }
-  .cb-sb-line b { color: var(--g-dim); font-weight: 500; margin-right: 2px; }
-  .cb-sb-abil { gap: 4px; }
-  .cb-sb-abil > div { background: var(--g-field); border-radius: 6px; padding: 8px 0 7px; }
-  .cb-sb-abil .k { font: 500 11px/1 system-ui, sans-serif; color: var(--g-dim); letter-spacing: 0; margin-bottom: 5px; }
-  .cb-sb-abil .v { font: 700 16px/1.2 system-ui, sans-serif; color: var(--g-text); }
-  .cb-sb-abil .m { font-size: 12px; color: var(--g-dim); margin-top: 1px; }
-  .cb-sb-sec { margin-top: 18px; }
-  .cb-sb-sechd { padding-bottom: 7px; margin-bottom: 10px; border-bottom: 1px solid var(--g-pick); font: 700 19px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.1px; color: var(--g-text); }
-  .cb-sb-sechd .cb-iconbtn { width: 24px; height: 24px; }
-  .cb-sb-entry { margin-bottom: 8px; font-size: 13px; line-height: 1.6; color: var(--g-body); }
-  .cb-sb-entry .n { font-weight: 700; font-style: normal; color: var(--g-text); }
-  .cb-sb-add { font-size: 12px; color: var(--g-dim); padding: 3px 0; }
-  .cb-sb-add:hover { color: var(--g-text); }
 
   /* ── Bestiary: table and page in the dock's type and greys ── */
   #bs-panel { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
@@ -737,7 +669,8 @@
   .bs-page-head h2 { font: 700 24px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.2px; color: var(--g-text); }
   /* The tag centres on the name's lowercase, which most of a name is: raised by half the gap between the
      name's x-height (24/11 of the tag's own ex) and the tag's cap-height. */
-  .bs-page-head h2 .bs-src { margin-left: 8px; vertical-align: calc((24ex / 11 - 1cap) / 2); }
+  /* The source tag sits inside the name's line: its capitals centre on the name's, 1cap here being the tag's. */
+  .bs-page-head h2 .bs-src { margin-left: 8px; vertical-align: calc((24 * 1cap / 11 - 1cap) / 2); }
   .bp-read { padding: 16px 28px 40px; font-size: 13px; line-height: 1.6; color: var(--g-body); }
   .bp-meta { margin-bottom: 14px; font-style: normal; font-size: 13px; color: var(--g-dim); }
   .bp-hi { color: var(--g-text); font-weight: 700; }
@@ -747,7 +680,12 @@
   .bp-big .v { margin-top: 8px; font: 800 34px/1 system-ui, -apple-system, sans-serif; letter-spacing: -0.5px; color: var(--g-text); }
   .bp-big .sub { margin-top: 6px; font-size: 12px; color: var(--g-dim); }
   .bp-big .sub .bp-hi { color: var(--g-body); }
-  .bp-minor { padding: 10px 16px; }
+  /* Label and value centre on one line; the value keeps its line's height around its trimmed capitals. */
+  .bp-minor { padding: 10px 16px; align-items: center; }
+  .bp-minor .k { text-box: trim-both cap alphabetic; }
+  .bp-minor b { text-box: trim-both cap alphabetic; padding-block: calc((1.2em - 1cap) / 2); }
+  /* No speed reads as a drawn dash one cap tall, centred like the digits it stands for. */
+  .bp-minor b > svg { display: block; height: 1cap; width: auto; }
   .bp-minor b, .bp-minor b.bp-hi { font: 700 19px/1.2 system-ui, sans-serif; color: var(--g-text); }
   .bp-key { gap: 8px; padding: 0; border: 0; background: none; font: 500 11px/1 system-ui, sans-serif; align-items: flex-end; }
   .bp-key .km { color: var(--g-text); }
@@ -770,8 +708,36 @@
   .bp-sec-b p .n { font-weight: 700; font-style: normal; color: var(--g-text); }
   .bp-sec-b .bp-none { color: var(--g-dim); }
   .bp-notes { font: 400 13px/1.55 system-ui, -apple-system, sans-serif; }
-  .bp-editing .cb-sb-name { font-size: 24px; }
-  .bp-editing .cb-sb-sechd { font-size: 19px; }
+
+  /* Edit mode is the read page itself: a value shows its field only under the pointer or in focus, the fill and
+     the edit ring drawn as spread shadows so nothing moves. On a tile the fill is the page's ground. */
+  .bp-ed [data-p], .bs-page-head.editing [data-p] {
+    outline: none; border-radius: 4px; cursor: var(--cur-text); white-space: pre-wrap;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .bp-ed [data-p]:hover:not(:focus), .bs-page-head.editing [data-p]:hover:not(:focus) { background: var(--g-field); box-shadow: 0 0 0 4px var(--g-field); }
+  .bp-ed [data-p]:focus, .bs-page-head.editing [data-p]:focus { background: var(--g-field); box-shadow: 0 0 0 4px var(--g-field), 0 0 0 5px var(--b-icon); }
+  .bp-ed .bp-big [data-p]:hover:not(:focus), .bp-ed .bp-minor [data-p]:hover:not(:focus), .bp-ed .bp-ab-c [data-p]:hover:not(:focus) { background: var(--g-bg); box-shadow: 0 0 0 4px var(--g-bg); }
+  .bp-ed .bp-big [data-p]:focus, .bp-ed .bp-minor [data-p]:focus, .bp-ed .bp-ab-c [data-p]:focus { background: var(--g-bg); box-shadow: 0 0 0 4px var(--g-bg), 0 0 0 5px var(--b-icon); }
+  .bp-ed [data-p]:empty::before, .bs-page-head.editing [data-p]:empty::before { content: attr(data-ph); color: var(--g-dim); }
+  /* An action's text and the lore ring their whole paragraph once, not each line. */
+  .bp-ed .bp-t:focus { background: none; box-shadow: none; }
+  .bp-ed .bp-ent:has(.bp-t:focus), .bp-ed .bp-lore-ed:has(.bp-t:focus) { border-radius: 4px; background: var(--g-field); box-shadow: 0 0 0 6px var(--g-field), 0 0 0 7px var(--b-icon); }
+  .bp-ed .bp-big .v, .bp-ed .bp-big .sub { width: fit-content; min-width: 1ch; }
+  .bp-ed .bp-big .sub { min-height: 1lh; }
+  .bp-ed .bp-ab-c .sc { min-width: 2ch; text-align: center; color: var(--g-text); }
+  .bp-ed [data-p$=".n"]:empty + .bp-dot { display: none; }
+  .bp-ed [data-p$=".n"]:empty { margin-right: 6px; }
+  .bp-ed .bp-ent { position: relative; padding-right: 32px; }
+  .bp-ed .bp-x { position: absolute; right: 0; top: -2px; visibility: hidden; }
+  .bp-ed .bp-ent:hover .bp-x, .bp-ed .bp-sec-h:hover .bp-sx { visibility: visible; }
+  .bp-ed .bp-sx { margin-left: auto; visibility: hidden; }
+  .bp-ed .bp-lore-ed { margin: 0; }
+  .bp-ed .bp-add { margin: 2px 0 6px; }
+  .bp-ed .bp-addsec { margin: 0 0 24px; }
+  .bp-ed .bp-addline { margin-top: 8px; }
+  .bs-page-head.editing .bs-mode { display: flex; align-items: baseline; gap: 8px; }
+  .bs-hint { color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; }
 
   /* ── The Bestiary window's shell and its three widths (bestiaryWindow.js, bestiaryWidths.js) ── */
   .bsw-head { height: 48px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: var(--cur-move); }
@@ -820,8 +786,8 @@
   .w-medium .bs-t td.nm { max-width: 0; width: 100%; }
   .w-medium .bs-page-head, .w-narrow .bs-page-head { padding: 10px 10px 10px 20px; }
   .w-medium .bs-page-head h2, .w-narrow .bs-page-head h2 { font-size: 21px; }
-  .w-medium .bs-page-head h2 .bs-src, .w-narrow .bs-page-head h2 .bs-src { vertical-align: calc((21ex / 11 - 1cap) / 2); }
-  .w-medium .bp-read, .w-narrow .bp-read, .w-medium .bp-editing, .w-narrow .bp-editing { padding: 12px 20px 24px; }
+  .w-medium .bs-page-head h2 .bs-src, .w-narrow .bs-page-head h2 .bs-src { vertical-align: calc((21 * 1cap / 11 - 1cap) / 2); }
+  .w-medium .bp-read, .w-narrow .bp-read { padding: 12px 20px 24px; }
   /* The copy's strip: whose copy this is, what differs from its entry, and Save to Bestiary. */
   .bc-strip { flex: none; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px 6px 20px; border-bottom: 1px solid var(--g-line); background: var(--g-raised); font-size: 12px; color: var(--g-body); }
   .bc-strip .t { flex: 1; min-width: 0; }

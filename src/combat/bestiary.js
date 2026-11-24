@@ -36,8 +36,14 @@ function _bsQueueHtml() {
         <span class="u">${t(q.state === 'waiting' ? 'Waiting: {host}…' : 'Reading {host}…', { host: _cbEsc(q.host) })}</span><button data-q="drop" data-qid="${q.id}">Cancel</button></div>`).join('');
 }
 
+function _bsCrTitle(cr) {
+  const r = bsCrTable(cr);
+  if (!r) return '';
+  return ` title="${_cbEsc(t('Challenge {cr} · {xp} XP · proficiency bonus +{pb}', { cr, xp: new Intl.NumberFormat(I18N_LANG).format(r.xp), pb: r.pb }))}"`;
+}
+
 function _bsCell(b, k) {
-  if (k === 'cr') return `<td class="num"><span class="bs-crb">${_cbEsc(bsCr(b))}</span></td>`;
+  if (k === 'cr') return `<td class="num"><span class="bs-crb"${_bsCrTitle(bsCr(b))}>${_cbEsc(bsCr(b))}</span></td>`;
   if (k === 'name') return `<td class="nm">${_cbEsc(b.name)}${bs.fresh.has(b.id) ? '<span class="bs-new">' + t('New') + '</span>' : ''}</td>`;
   if (k === 'size') return `<td>${_cbEsc(t(bsSize(b)))}</td>`;
   if (k === 'type') return `<td>${_cbEsc(t(bsType(b)))}</td>`;
@@ -67,7 +73,7 @@ const BS_ICONS = {
 // that says so and holds Done, as Figma's mode bar does.
 function _bsPageHtml(b) {
   const head = bs.editing
-    ? `<div class="bs-page-head editing"><div class="t"><span class="bs-mode">Editing</span><h2 data-no-i18n>${_cbEsc(b.name)}</h2></div>
+    ? `<div class="bs-page-head editing"><div class="t">${bpEditHead(b)}</div>
         <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done}<span>Done</span></button></div>`
     : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || t('no source'))}</span></h2></div>
         <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
@@ -275,7 +281,7 @@ function _bsNew() {
   const b = cbNewBlock(combatUniqueName(cbState.blocks, t('New monster'), ''));
   cbSave();
   _bsShow(b.id, true);
-  const name = _bsEl('bs-page').querySelector('.cb-sb-name');
+  const name = _bsEl('bs-page').querySelector('.bs-page-head [data-p="name"]');
   name.focus();
   document.getSelection().selectAllChildren(name);
 }
@@ -420,11 +426,10 @@ function initBestiary() {
 
   bpWire(_bsEl('bs-page'), {
     block: () => cbState.blocks[bs.open],
-    // The page's own heading and the table follow a rename without redrawing the editor.
+    // The crumbs and the table follow a rename without redrawing the page being typed in.
     edited: field => {
       if (field !== 'name' && field !== 'source' && field !== 'meta' && field !== 'cr' && field !== 'ac' && field !== 'hp') return;
       const b = cbState.blocks[bs.open];
-      _bsEl('bs-page').querySelector('.bs-page-head h2').textContent = b.name;
       bswCrumbs([t('Bestiary'), b.name]);
       bestiaryRender();
     },

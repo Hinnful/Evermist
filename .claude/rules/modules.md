@@ -221,7 +221,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/combatTracker.js` | The fight table: saving, row edits, menus, drag, columns, wiring |
 | `combat/combatRows.js` | The fight table's rows: the cells, conditions in the Name cell, the hover toolbar, the row's menu, the Defeated line |
 | `combat/combatHead.js` | The fight table's header: search, Clean up, close; the bestiary suggestions the search and a row's Name share |
-| `combat/combatStatBlock.js` | The stat block editor an entry's page and a fight row's copy share |
+| `combat/combatStatBlock.js` | Typing into a stat block in edit mode, on an entry's page and a fight row's copy: values, Enter, add and remove, Add line |
 | `combat/combatFights.js` | The fight picker and its list |
 | `combat/combatSort.js` | The fight table's Sort button, lit while the rows are out of initiative order |
 | `combat/initiativeTv.js` | The fight table's Start fight / End fight and the slots sent to the TV; only the DM ends a fight |

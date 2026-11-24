@@ -25,7 +25,9 @@
   .nw-crumb[data-go], .nw-crumb.more { cursor: var(--cur-pointer); }
   .nw-crumb[data-go]:hover, .nw-crumb.more:hover { color: var(--g-text); background: var(--g-field); }
   .nw-crumb.last { flex: 0 1 auto; min-width: 40px; font-weight: 600; color: var(--g-text); }
-  .nw-sep { flex: none; padding: 0 1px; color: var(--g-mute); text-box: trim-both cap alphabetic; }
+  /* The separator is a drawn chevron, centred by its box: the › glyph's ink sits below the capitals. */
+  .nw-sep { flex: none; display: flex; padding: 0 1px; color: var(--g-mute); }
+  .nw-sep svg { rotate: -90deg; }
 
   .nw-body { display: flex; flex: 1; min-height: 0; }
   .nw-tree { position: relative; width: 200px; flex: none; border-right: 1px solid var(--g-line); display: flex; flex-direction: column; min-height: 0; }

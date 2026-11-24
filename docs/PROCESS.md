@@ -63,7 +63,8 @@ becomes a rule in one of the public files above, where a check or a reader can f
 1. **`/brief`** reads the backlog and the ledgers and recommends a session-sized chunk. It asks
    nothing and stops at the recommendation.
 2. **`/spec`** drills the pick into a Definition of Ready and a Definition of Done in plain
-   language, one question at a time, and writes a spec file.
+   language, one question at a time, and writes a spec file. Every item gets one, a small item a short
+   one: each DoD line reads what the DM does → what the DM sees, in the item's own words.
 3. **On "build it", the `builder` agent builds it** from the spec file or a brief the main
    session writes, and the main session checks the result. "Build it here" keeps the build in
    the main session.
@@ -100,9 +101,10 @@ A bug report is an ordinary message and needs no command.
 - **The main session keeps diagnosis, design and release notes, and hands the rest to a
   subagent.** `scout` (Sonnet) searches the code and reads CI logs and long test output. `builder`
   (Opus) builds a spec or a fix whose cause is known. `filer` (Sonnet) runs `/commit`'s Step 4.
-- **A builder starts from a brief with `Cause:`, `Change:` and `Done-check:`.** A failing check
-  with no known cause is diagnosed in the main session first. `guard-builder.js` refuses a brief
-  missing a field, and a builder below Opus unless a `Mechanical:` field says why the change
+- **A builder starts from a brief with `Cause:`, `Change:`, `Done-check:` and `Accept:`.** A failing check
+  with no known cause is diagnosed in the main session first. `Accept:` holds what the DM does → what the DM
+  sees, or names the spec whose DoD does. `guard-builder.js` refuses a brief missing a field, an `Accept:`
+  with no such line, and a builder below Opus unless a `Mechanical:` field says why the change
   needs no judgment; then Sonnet may build it.
 - **A builder gets two rig runs.** Past them it stops and reports, and the main session diagnoses;
   `guard-rig.js` counts them.
@@ -112,6 +114,13 @@ A bug report is an ordinary message and needs no command.
   look like and get the DM's agreement. New UI goes to a mockup board (the `mockup` skill).
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
+- **A DoD line is proven only by doing what it says.** The rig performs the DM's action with real CDP input
+  (mouse, keys, text) and asserts what the DM would see; reading state or an attribute instead proves nothing.
+  A part the rig cannot reach (an OS-drawn tooltip, a native dialog) is named exactly and everything around it
+  is checked. The main session re-checks every line against the builder's report and marks it in the spec:
+  `[rig: <scenario> "<check>"]`, `[unit: <test>]` for pure logic, `[eye]`, or `[unreachable: <what>; around:
+  <check>]`. A reachable line is never reported unchecked; it is checked first. `ship.js --accept <spec>`
+  refuses a release whose spec has a line without a mark.
 - **Correctness work gets its check during the build.** Claude proves a behaviour without asking,
   with a unit test or one rig scenario run once and then deleted. A scenario stays only when it
   guards the DM's data (sync, backup, trash, rollback, upgrade), and is re-run when that code changes.
@@ -242,6 +251,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 | `test/designSystem.test.js` | CI, every push; `/commit` | Colours, radii, type sizes, gaps and atom sizes against `.claude/rules/design-system.md` |
 | The rig's `design-sweep` | Every interface change, locally | Every inventory entry in every state: rows on one baseline, icons and switches on the capitals, no plate merging with its row or swallowed by its hover, no native control, text 6px clear of a control's side, nothing moving when a state changes, menus one size |
 | `check-notes.js` | `/commit` | Release-note mechanics |
+| `guard-builder.js` | Every builder launch | A brief's four fields, an `Accept:` of what the DM does → sees |
+| `ship.js --accept` | `/commit`, every release | Every DoD line of every shipped spec marked as proven, user lines written as does → sees |
 | `permissions.deny` in `.claude/settings.json` | Always | No Chrome browser tool |
 
 Everything else in this file depends on being read. A habit that keeps slipping earns a check in

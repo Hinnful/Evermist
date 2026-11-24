@@ -95,8 +95,8 @@ const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
 // ─── The alignment sweep ─────────────────────────────────────────────────────
-// .claude/rules/design-system.md, "Alignment": every text in a row stands on one baseline, and an icon or a
-// switch centres on the capitals of the row's text. A row is any visible flex row with two or more in-flow items;
+// .claude/rules/design-system.md, "Alignment": everything in a row centres on one line - a text by its capitals, a
+// glyph with none by its ink, a box by its middle. A row is any visible flex row with two or more in-flow items;
 // a field, a multi-line block and a graphic taller than 30px are left out, since none has one line to meet.
 const ALIGN_SWEEP = `
 globalThis.__rigAlignSweep = (rootSel, tol) => {
@@ -109,7 +109,8 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
   };
   const firstText = (e) => {
     const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => (n.textContent.trim() && shown(n.parentElement) ? 1 : 3) });
+      // A sign hung outside its number (position: absolute) is not where the row's text stands.
+      acceptNode: (n) => (n.textContent.trim() && shown(n.parentElement) && getComputedStyle(n.parentElement).position !== 'absolute' ? 1 : 3) });
     return w.nextNode();
   };
   const lines = (e) => {
@@ -136,8 +137,17 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
     const r = probe.getBoundingClientRect();
     probe.remove();
     if (wrap) { wrap.replaceWith(node); }
-    return { base: r.bottom, capC: (r.top + r.bottom) / 2, size: parseFloat(getComputedStyle(parent).fontSize),
-      text: node.textContent.trim().slice(0, 24) };
+    const text = node.textContent.trim();
+    // A text with no letter or digit (›, ·, ×) has no capitals: the eye reads where its ink sits.
+    let inkC = null;
+    if (!/[\\p{L}\\p{N}]/u.test(text)) {
+      const ctx = (globalThis.__rigInk = globalThis.__rigInk || document.createElement('canvas').getContext('2d'));
+      ctx.font = getComputedStyle(parent).font;
+      const m = ctx.measureText(text);
+      inkC = r.bottom + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
+    }
+    return { base: r.bottom, capC: (r.top + r.bottom) / 2, inkC, size: parseFloat(getComputedStyle(parent).fontSize),
+      text: text.slice(0, 24) };
   };
   const name = (e) => {
     const bits = [];
@@ -174,6 +184,8 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
             const m = metrics(n);
             if (m) texts.push(m);
           } else {
+            // An empty value's dim placeholder is ::before text on the baseline, with no text node to measure.
+            if ([c, ...c.querySelectorAll('*')].some((e) => !e.firstChild && getComputedStyle(e, '::before').content.startsWith('"'))) continue;
             const r = c.getBoundingClientRect();
             if (r.height <= 30) marks.push({ c: (r.top + r.bottom) / 2, what: name(c) });
           }
@@ -182,16 +194,12 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
         if (fl.items.some((c) => c.matches('input:not([type=range]), textarea'))) continue;
         if (!texts.length || texts.length + marks.length < 2) continue;
         rows++;
-        const bases = texts.map((t) => t.base), lo = Math.min(...texts.map((t) => t.capC)), hi = Math.max(...texts.map((t) => t.capC));
-        const spread = Math.max(...bases) - Math.min(...bases);
-        if (spread > tol) {
-          faults.push(name(row) + ': baselines differ by ' + spread.toFixed(2) + 'px (' +
-            texts.map((t) => '"' + t.text + '" ' + t.size + 'px ' + (t.base - bases[0]).toFixed(2)).join(', ') + ')');
-        }
-        for (const m of marks) {
-          const off = m.c < lo ? m.c - lo : m.c > hi ? m.c - hi : 0;
-          if (Math.abs(off) > tol) faults.push(name(row) + ': ' + m.what + ' sits ' + off.toFixed(2) + 'px off the capitals of "' + texts[0].text + '"');
-        }
+        // One centre line: a text by the middle of its capitals (its ink when it has none), a box by its middle.
+        // The median item sets the line, so one stray item is named, not the rest of the row.
+        const items = [...texts.map((t) => ({ c: t.inkC === null ? t.capC : t.inkC, what: '"' + t.text + '"' })), ...marks.map((m) => ({ c: m.c, what: m.what }))];
+        const sorted = items.map((i) => i.c).sort((a, b) => a - b), line = sorted[Math.floor((sorted.length - 1) / 2)];
+        const off = items.filter((i) => Math.abs(i.c - line) > tol);
+        if (off.length) faults.push(name(row) + ': off the centre line of the row ' + off.map((i) => i.what + ' ' + (i.c - line).toFixed(2) + 'px').join(', '));
       }
     }
   }

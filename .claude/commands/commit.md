@@ -62,6 +62,9 @@ notes. It finishes before the notes, so its edits ride into this commit.
 
 ## Step 5 - Hand over the notes and the backlog proposal, then stop
 
+A release first has every DoD line of each item's spec marked with how it was proven (`.claude/commit/push.md`,
+"Refuse a release without proven acceptance"). A line you cannot mark is checked now, before the notes.
+
 Read `.claude/commit/notes.md` now. The notes go to `notes.txt` in this session's run folder,
 `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`, and pass
 `check-notes.js` before the user sees them. **Then STOP** and offer to push, open the pull request and watch CI (one yes covers all three). `ship.js` enforces the stop: it needs the DM's message after the notes passed.

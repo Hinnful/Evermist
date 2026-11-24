@@ -159,7 +159,7 @@ module.exports = async function spellsRollback(rig) {
     await entryPage(dm);
     await click(dm, `document.querySelector('#bs-page [data-a="edit"]')`);
     await lib.settle(dm, 'bs.editing === true', 5000);
-    rig.check(await dm.evaluate('bs.editing === true && !!document.querySelector("#bs-page .bp-editing")'), '4b: the pencil should open the editor');
+    rig.check(await dm.evaluate('bs.editing === true && !!document.querySelector("#bs-page .bp-ed")'), '4b: the pencil should open the editor');
     rig.check(await dm.evaluate('document.querySelectorAll("#bs-page .sp-grp").length') === 0, '4b: the editor should show no rows');
     const typed = await dm.evaluate(`(el => { if (!el) return false; el.textContent = el.textContent.replace('2nd level (3 slots)', '2nd level (4 slots)');
       el.dispatchEvent(new Event('input', { bubbles: true })); return /2nd level \\(4 slots\\)/.test(${ENTRY('Mage')}.secs.Traits[0].t); })(document.querySelector('#bs-page [data-p="secs.Traits.0.t"]'))`);

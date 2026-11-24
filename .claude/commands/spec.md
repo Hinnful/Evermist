@@ -77,6 +77,12 @@ A line that is not met is not a blocker on its own. Say what would meet it.
 Each line is one thing, phrased so it can be checked rather than argued about. Number them,
 because the DM reports against them by number and asks "where are we on the DoD".
 
+**Write each line as what the DM does → what the DM sees, starting from the item's own words.**
+The item's first sentence is the first line: "hover the CR badge → see its XP" is checked by hovering,
+never by reading the attribute behind it. Only pure logic (a table of values, a parser) may be a line
+without an action, proven by a unit test. **A small item gets a short spec too**; `ship.js` refuses a
+release without one.
+
 Three things you owe the DM here:
 
 - **Name what the DM's version adds that yours missed**, and say what each addition costs in sittings.
@@ -128,6 +134,10 @@ Rules the step list follows:
 - **Never tell the build session to halt between steps.** It posts a line per step and keeps
   going. It stops only if something contradicts the spec, and says what.
 - **No commit, version or release step.** Those belong to `/commit`, which the DM starts.
+- **Every DoD line with an action gets a rig check in the steps that performs it with real input**
+  (CDP mouse, keys, text) and asserts what the DM would see. Name the line's number in the check.
+- **The last step marks every DoD line** with how it was proven: `[rig: <scenario> "<check>"]`,
+  `[unit: <test>]`, `[eye]`, or `[unreachable: <what>; around: <check>]`. `ship.js --accept` reads the marks.
 - **The rig goes in the numbered steps whenever the work touches shipped code** - anything under
   `src/`, or `index.html`, `main.js`, `preload.js`. A pointer at the end is read too late.
   A feature writes its acceptance scenario in the same step as the behaviour, or the one after.

@@ -25,13 +25,17 @@ already done before acting, so a re-run after a stop finishes the tail and repea
   only for a pull request it watched this session open. The app arms Auto-fix
   only for a pull request it watched this session open, never one a script opened. If the call is
   refused anyway, say so to the DM in one line and end the turn; never ask the DM to run it.
+- **Refuse a release without proven acceptance.** Pass `--accept <spec>` for every item the release ships.
+  The script refuses a spec whose DoD has a line with no mark of how it was proven, or a user line not
+  written as does → sees. Mark the lines before Step 5, after checking each one yourself; never mark a
+  line from a builder's report alone.
 - **Refuse without the yes, the backlog or a disclosure.** The script checks them itself: notes that
   passed `check-notes.js` unchanged, then a message from the DM; `docs/BACKLOG.md` among the paths of
   a new release (`--no-backlog` when it truly has nothing); a disclosure line for each test an amend edits.
 - **Record the push** in `pushed.json` in the run folder, and clear `notes.txt`.
 
 ```
-node .claude/commit/ship.js [--slug <short-slug>] -- <path> <path>
+node .claude/commit/ship.js [--slug <short-slug>] [--accept .claude/private/specs/<item>.md]... -- <path> <path>
 ```
 
 It prints the branch, the short hash and the pull request URL or the line that opens it, and fails loudly at the stage that

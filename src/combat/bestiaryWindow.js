@@ -146,7 +146,7 @@ function bswCrumbs(names) {
   const box = document.getElementById('bs-crumbs');
   box.textContent = '';
   names.forEach((n, i) => {
-    if (i) { const s = document.createElement('span'); s.className = 'nw-sep'; s.textContent = '›'; box.appendChild(s); }
+    if (i) { const s = document.createElement('span'); s.className = 'nw-sep'; s.innerHTML = uiIcon('chev', 12, 2); box.appendChild(s); }
     const c = document.createElement('span');
     c.className = 'nw-crumb' + (i === names.length - 1 ? ' last' : '');
     c.textContent = c.title = n;

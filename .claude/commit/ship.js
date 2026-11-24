@@ -1,7 +1,7 @@
 'use strict';
 
 // ship.js - /commit's tail: commit, the branch rules, push, pull request.
-// Usage: node .claude/commit/ship.js [--slug <name>] [--amend] [--no-backlog] -- <path>...
+// Usage: node .claude/commit/ship.js [--slug <name>] [--amend] [--no-backlog] [--accept <spec>]... -- <path>...
 // An untagged version goes to release/<version>; anything else to change/<slug>.
 // Every stage checks whether it is already done, so a re-run after a stop repeats nothing.
 
@@ -35,7 +35,8 @@ function parseArgs(argv) {
   const flags = sep < 0 ? argv : argv.slice(0, sep);
   const paths = sep < 0 ? [] : argv.slice(sep + 1);
   const si = flags.indexOf('--slug');
-  return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), noBacklog: flags.includes('--no-backlog'), paths };
+  const accept = flags.flatMap((f, i) => (f === '--accept' && flags[i + 1] ? [flags[i + 1]] : []));
+  return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), noBacklog: flags.includes('--no-backlog'), accept, paths };
 }
 
 // The version on disk may be another session's uncommitted bump; it counts only when this commit carries it.
@@ -219,6 +220,7 @@ function main() {
   const stages = [
     ['yes', () => stageYes(opts, notes)],
     ['backlog', () => must(rules.backlogCheck(opts), 'carried')],
+    ['acceptance', () => must(rules.acceptCheck({ ...opts, accept: opts.accept.map((f) => ({ file: f, text: readText(path.resolve(ROOT, f)) })) }), 'every DoD line proven')],
     ['disclosure', () => must(rules.disclosureCheck({ ...opts, disclosure: readText(path.join(RUN, 'disclosure.txt')) }), 'none needed')],
     ['base', stageBase],
     ['guards', stageGuards],

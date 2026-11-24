@@ -214,3 +214,32 @@ describe('release checklist hooks', () => {
     assert.equal(rules.isFromDm(''), false);
   });
 });
+
+describe('ship.js acceptance', () => {
+  const spec = (dod) => '# Item\n\n## What we are fixing\nx\n\n## Definition of Done\n' + dod + '\n\n## Out of scope\n- y\n';
+  const a = (text) => ({ branch: 'release/5.21.0', amend: false, accept: [{ file: 'specs/x.md', text }] });
+  it('refuses a release with no spec, a spec with no DoD, or a DoD line not proven', () => {
+    assert.match(rules.acceptCheck({ branch: 'release/5.21.0', amend: false, accept: [] }), /--accept/);
+    assert.match(rules.acceptCheck(a('# Item\n\nno dod here')), /no numbered Definition of Done/);
+    // The 311 slip: the hover was the item's first line, and it shipped marked as nothing.
+    assert.match(rules.acceptCheck(a(spec('1. The DM hovers the CR badge → sees XP and PB.\n2. Table values match the rules. [unit: bestiaryCrTable.test.js]'))), /line 1 carries no/);
+  });
+  it('allows every DoD line proven, a wrapped line read whole', () => {
+    const dod = '1. The DM hovers the CR badge → sees "Опасность 12 · 8 400 опыта · бонус мастерства +4".\n'
+      + '   Checked in Russian. [rig: cr-hover "badge title under the real pointer"]\n'
+      + '2. Table values match the rules. [unit: bestiaryCrTable.test.js]\n'
+      + '3. The DM looks at the page → it reads well. [eye]\n'
+      + '4. The DM hovers → the OS tooltip shows. [unreachable: the OS draws the tooltip; around: rig checks the pointer hits the badge and its title]';
+    assert.equal(rules.acceptCheck(a(spec(dod))), null);
+    assert.deepEqual(rules.dodLines(spec(dod)).map((l) => l.n), [1, 2, 3, 4]);
+  });
+  it('refuses an empty rig mark, an unreachable mark with nothing checked around it, and a user line with no action', () => {
+    assert.match(rules.acceptCheck(a(spec('1. The DM clicks Done → the edit is kept. [rig: ]'))), /line 1 carries no/);
+    assert.match(rules.acceptCheck(a(spec('1. The DM saves → a dialog. [unreachable: native dialog]'))), /line 1 carries no/);
+    assert.match(rules.acceptCheck(a(spec('1. The badge has a title attribute. [rig: probe "title read"]'))), /line 1 is not written as/);
+  });
+  it('holds only a fresh release', () => {
+    assert.equal(rules.acceptCheck({ branch: 'change/docs', amend: false, accept: [] }), null);
+    assert.equal(rules.acceptCheck({ branch: 'release/5.21.0', amend: true, accept: [] }), null);
+  });
+});

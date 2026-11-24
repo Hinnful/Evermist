@@ -83,13 +83,14 @@
   .sm-tick.done::after { border-color: var(--g-dim); }
 
   /* A status word: a dot and the word, no plate. */
+  /* A status word: the dot is drawn at the middle of the word's trimmed capitals, so both share the row's line. */
   .sm-chip {
-    display: inline-flex; align-items: center; gap: 4px; flex: none;
+    --dot: var(--g-dim);
+    display: inline-block; flex: none; padding-left: 10px; text-box: trim-both cap alphabetic;
+    background: radial-gradient(circle at 3px 50%, var(--dot) 2.6px, transparent 3.2px) no-repeat;
     color: var(--g-body); font: 500 11px/1 system-ui, -apple-system, sans-serif;
   }
-  .sm-chip::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--g-dim); }
-  .sm-chip.on { color: var(--b-icon); }
-  .sm-chip.on::before { background: var(--b-icon); }
+  .sm-chip.on { color: var(--b-icon); --dot: var(--b-icon); }
 
   /* A window: 360 for a question or a progress bar, 480 for a list, 720 for a reference. The
      library and the Bestiary fill the screen. */

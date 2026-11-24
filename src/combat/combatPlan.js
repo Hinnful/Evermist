@@ -67,6 +67,21 @@ function combatSetFirstNum(s, n) {
   return /\d+/.test(line) ? line.replace(/\d+/, n) : n;
 }
 
+// AC and HP as the read page shows them: the large number and the note under it, outer brackets dropped. A line with
+// no leading number stays whole in the number.
+function combatSplitBig(v) {
+  const s = String(v == null ? '' : v), m = s.match(/^\s*(\d+)\s*(.*)$/);
+  return m ? { n: m[1], note: m[2].replace(/^\((.*)\)$/, '$1') } : { n: s, note: '' };
+}
+
+// The two values back into one line: "11 (hide)", "11" alone, or the raw text when there is no number to lead it.
+function combatJoinBig(n, note) {
+  const a = String(n || '').trim(), b = String(note || '').trim();
+  if (!/^\d+$/.test(a)) return [a, b].filter(Boolean).join(' ');
+  if (!b) return a;
+  return b[0] === '(' ? `${a} ${b}` : `${a} (${b})`;
+}
+
 // Two entries may share a name when their sources differ; a third with the same pair is "Goblin (1)".
 function combatUniqueName(blocks, name, source) {
   const taken = new Set(Object.values(blocks).filter(b => (b.source || '') === (source || '')).map(b => b.name));
@@ -337,5 +352,5 @@ if (typeof module !== 'undefined' && module.exports) {
     combatAddEntry, combatRowFromEntry, combatRowIsFresh, combatCleanBlock, combatCleanRow, combatRowHpState, combatSourceName, combatNewBlocks,
     combatSearchBlocks, combatNextName, combatDuplicateRow, combatIsDefeated, combatIsCleaned, combatToClean, combatCleanUp,
     combatRenderOrder, combatReviveRows, combatReturnRow, combatPickInto, combatLiveSorted, combatSortLive, combatAddIndex,
-    combatHpHits, combatHpTail, combatReadCols, combatEntryOf, combatCopyDiffs, combatBackfillUids };
+    combatHpHits, combatHpTail, combatReadCols, combatEntryOf, combatCopyDiffs, combatBackfillUids, combatSplitBig, combatJoinBig };
 }

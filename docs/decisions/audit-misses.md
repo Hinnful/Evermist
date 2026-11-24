@@ -31,3 +31,16 @@ pop-up, menu or row state, and read whole screens at a quarter size.
 The first inventory run then found what no one had reported: 70 rows off on surfaces the sweep had never opened,
 and the outside reviewers found the cap trim cutting the tails of у and р in every search and filter field, which
 `lib.surfaceSweep`'s clip check now catches.
+
+## 2026-11-23, BACKLOG 311 and 312
+
+| Finding | Should have caught it | Now caught by |
+|---|---|---|
+| The CR badge's hover, the item's first line, never performed | A check written from the item's words, run with real input | `guard-builder.js` `Accept:`, `ship.js --accept` |
+| 312's new-action placeholder reported as passed, never exercised | Re-checking each DoD line against the builder's report | `ship.js --accept` marks per line |
+
+## 2026-11-24, the vertical-alignment bug, again
+
+| Finding | Should have caught it | Now caught by |
+|---|---|---|
+| Small texts 3.6px below the buttons in a head with a big title; the crumbs' › 2px low; 13 more rows | An alignment check measuring what the eye sees | `lib.alignSweep`: every item on the row's centre line (capitals, ink, box), no window between texts |

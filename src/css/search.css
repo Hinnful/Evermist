@@ -56,4 +56,7 @@
   .sr-lnk { margin-left: auto; color: var(--g-text); cursor: var(--cur-pointer); font-weight: 500; }
   .sr-lnk:hover { text-decoration: underline; }
   .sr-keys { flex: none; display: flex; gap: 12px; align-items: center; padding: 8px 16px 10px; border-top: 1px solid var(--g-line); color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; }
-  .sr-keys kbd { font: 600 11px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; padding: 3px 5px; margin-right: 4px; }
+  /* Keys and words centre on one line: an arrow key is drawn and centred by its box, words trim to their capitals. */
+  .sr-keys > span { display: inline-flex; align-items: center; gap: 4px; }
+  .sr-keys kbd { display: inline-flex; align-items: center; height: 20px; box-sizing: border-box; padding: 0 5px; font: 600 11px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; }
+  .sr-keys .t { text-box: trim-both cap alphabetic; }
