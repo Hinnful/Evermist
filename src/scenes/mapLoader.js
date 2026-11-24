@@ -102,8 +102,9 @@ function mapJobStopped() { return !!(_mapJob && _mapJob.stopped); }
 
 // ⚠ The overlay sits above every dialog, so it steps aside while the question is up.
 function _mapProgressPaint() {
-  const el = document.getElementById('map-progress');
-  el.style.display = _mapProgressUp && !_mapProgressAsking ? 'flex' : 'none';
+  const el = document.getElementById('map-progress'), win = el.querySelector('.sm-win'), veil = el.querySelector('.mp-shade');
+  if (_mapProgressUp && !_mapProgressAsking) motionShow(win, 'toast', { veil, reveal: () => { el.style.display = 'flex'; } });
+  else motionHide(win, 'toast', { veil, done: () => { el.style.display = 'none'; } });
   el.classList.toggle('stoppable', !!(_mapJob && !_mapJob.stopped));
 }
 

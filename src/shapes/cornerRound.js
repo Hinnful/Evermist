@@ -171,11 +171,13 @@ function cornerRoundDblClick(poly, raw) {
   el.classList.toggle('rp-per-vertex', one);
   el.style.display = 'flex';
   _cornerPlaceField(poly);
+  motionShow(el, 'popup', { from: _cornerFieldAt });
   num.focus();
   num.select();
   return true;
 }
 
+let _cornerFieldAt = null;   // the circle it was placed beside: it grows from there and goes back into it
 function _cornerPlaceField(poly) {
   if (!cornerField) return;
   if (!poly || poly.id !== cornerField.id) { cornerFieldClose(true); return; }
@@ -186,6 +188,7 @@ function _cornerPlaceField(poly) {
   const p = viewToClient(s.sx, s.sy), q = viewToClient(v.sx, v.sy);
   const el = document.getElementById('corner-field'), box = el.getBoundingClientRect();
   const away = { x: p.x >= q.x ? 1 : -1, y: p.y >= q.y ? 1 : -1 };
+  _cornerFieldAt = p;
   const st = _rpScreenToStyle(el, p.x + away.x * 10 - (away.x < 0 ? box.width : 0),
                                   p.y + away.y * 10 - (away.y < 0 ? box.height : 0));
   el.style.left = st.left + 'px';
@@ -210,7 +213,8 @@ function cornerFieldClose(keep) {
   if (!cornerField) return;
   const f = cornerField, poly = _cornerFieldPoly();
   cornerField = null;
-  document.getElementById('corner-field').style.display = 'none';
+  const el = document.getElementById('corner-field');
+  motionHide(el, 'popup', { from: _cornerFieldAt, done: () => { el.style.display = 'none'; } });
   if (poly && f.pushed) {
     if (!keep) {
       if (f.before.r === undefined) delete poly.cornerRadius; else poly.cornerRadius = f.before.r;

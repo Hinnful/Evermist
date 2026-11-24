@@ -1,4 +1,4 @@
-/* controlPanel.css — the stock pane controls: groups, labels, pills, fields, buttons, sliders, the colour picker. Defines @keyframes cpAdvIn, which roomCard.css also uses, so this must load before roomCard.css. */
+/* controlPanel.css — the stock pane controls: groups, labels, pills, fields, buttons, sliders, the colour picker. Motion is motion.js's; this sheet defines no keyframes. */
   #cp-legacy { display: none; }
 
   /* The well, a pick-one: .cp-tabs holds words (Auto/Manual, Shrink big maps), .cp-seg icons. 28 tall, 24 items, the
@@ -178,7 +178,6 @@
   .cp-chip-pre input:focus { outline: none; }
 
   /* Floating Advanced Settings panel */
-  @keyframes cpAdvIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
   .cp-adv-head {
     padding: 9px 9px 2px 14px;
     display: flex; align-items: center; justify-content: space-between;

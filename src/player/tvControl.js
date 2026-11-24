@@ -106,7 +106,7 @@ function tvPlayerLoaded() {
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
 
-function _tvClose() { _tvMenu = null; _tvEl('tv-pop').hidden = true; }
+function _tvClose() { _tvMenu = null; const pop = _tvEl('tv-pop'); motionHide(pop, 'popup', { from: _tvEl('tv-go'), done: () => { pop.hidden = true; } }); }
 
 // Opens the Player if it is shut, then puts it on the screen. The rig's --offscreen answers
 // `skipped`, and the Player then stays a window.
@@ -164,7 +164,7 @@ async function _tvShow() {
   await _tvLoadDisplays();
   const sel = _tvSelected();
   if (sel.kind === 'none') _tvGoSelected(sel);
-  else if (!_tvSetupSeen) _tvSetupOpen();
+  else if (!_tvSetupSeen) _tvSetupOpen(_tvEl('tv-go'));
   else _tvGoSelected(sel);
 }
 
@@ -217,8 +217,8 @@ function _tvOpen(kind) {
   pop.textContent = '';
   pop.classList.toggle('help', kind === 'help');
   pop.append(kind === 'help' ? _tvHelp() : _tvAsk());
-  pop.hidden = false;
-  tvRefresh();
+  const go = _tvEl('tv-go'), at = go && go.getBoundingClientRect();
+  motionShow(pop, 'popup', { from: at, reveal: () => { pop.hidden = false; tvRefresh(); } });
 }
 
 function _tvRow(cls, kids, onClick) { return _tvBtn('tv-row2' + (cls ? ' ' + cls : ''), '', kids, onClick); }
@@ -263,22 +263,27 @@ function _tvHelp() {
 
 // ─── TV setup ────────────────────────────────────────────────────────────────
 
-function _tvSetupOpen() {
+// Opens out of what was pressed: Show on TV, ···, the screen caption's ▼ or 1 inch (a click, or the button itself).
+function _tvSetupOpen(from) {
+  const src = from && from.currentTarget ? from.currentTarget : from, at = src && src.isConnected ? src.getBoundingClientRect() : null;
+  // On its way into ···, a press turns it back and it stays.
+  if (_tvSetupBusy) { _tvSetupBusy = false; _tvEl('tv-setup').style.pointerEvents = ''; motionShow(_tvEl('tv-setup').querySelector('.sm-win'), 'window'); tvRefresh(); return; }
   if (_tvSetup) return;
   _tvClose();
   _tvSetup = true;
   _tvSetupDd = false;
   _tvSetupBusy = false;
-  const veil = _tvMake('div', 'tvs');
+  const veil = _tvMake('div', 'tvs'), shade = _tvMake('div', 'tvs-shade');
   veil.id = 'tv-setup';
   veil.style.right = _tvEl('dock-rail').getBoundingClientRect().width + 'px';
-  veil.addEventListener('mousedown', e => { if (e.target === veil) _tvSetupClose(); });
-  document.body.append(veil);
+  veil.addEventListener('mousedown', e => { if (e.target === veil || e.target === shade) _tvSetupClose(); });
+  veil.append(shade); document.body.append(veil);
   tvRefresh();
   if (!veil.querySelector('.sm-win')) _tvSetupRender();
+  motionShow(veil.querySelector('.sm-win'), 'window', { from: at, veil: shade });
 }
 
-// Closing shrinks the window into the ··· button, which glows for a moment.
+// Closing sends the window into the ··· button, which glows for a moment.
 function _tvSetupClose(then) {
   if (!_tvSetup || _tvSetupBusy) return;
   _tvSetupBusy = true;
@@ -298,12 +303,8 @@ function _tvSetupClose(then) {
     setTimeout(() => { _tvHot = false; tvRefresh(); }, 900);
   };
   if (!win || !more) { finish(); return; }
-  const a = win.getBoundingClientRect(), b = more.getBoundingClientRect(), z = _uiZoom();
-  const dx = (b.left + b.width / 2 - (a.left + a.width / 2)) / z, dy = (b.top + b.height / 2 - (a.top + a.height / 2)) / z;
-  win.classList.add('fly');
-  win.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.06)';
-  veil.style.background = 'transparent';
-  setTimeout(finish, 450);
+  veil.style.pointerEvents = 'none';
+  motionHide(win, 'window', { from: more, veil: veil.querySelector('.tvs-shade'), done: finish });
 }
 
 function _tvSetupGo() {
@@ -372,8 +373,6 @@ function _tvSetupRender() {
   const sel = _tvSelected();
   const sub = text => _tvText('sm-sub', text);
   const win = _tvMake('div', 'sm-win w-s');
-  // The pop-in plays once, when the window first appears, not on each rebuild of its parts.
-  if (veil.querySelector('.sm-win')) win.style.animation = 'none';
   const x = _tvBtn('sm-x', t('Close'), [], () => _tvSetupClose());
   x.innerHTML = uiIcon('x');
   win.append(_tvMake('div', 'sm-whead', [_tvText('sm-wtitle', t('TV setup')), _tvMake('span', 'sm-sp'), x]));
@@ -446,8 +445,9 @@ function _tvSetupRender() {
   }
   win.append(foot);
 
+  // A rebuild swaps the parts and keeps the window itself, so a window still flying in keeps flying.
   const old = veil.querySelector('.sm-win');
-  if (old) old.replaceWith(win); else veil.append(win);
+  if (old) old.replaceChildren(...win.childNodes); else veil.append(win);
 }
 
 // ─── The picture's controls ──────────────────────────────────────────────────

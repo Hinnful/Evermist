@@ -26,14 +26,12 @@ function cbSortRefresh() {
   b.title = t(sorted ? 'The rows are already in initiative order' : 'Sort by initiative');
 }
 
-// The rows that moved flash once, so the DM sees what the sort did.
+// The rows glide to their new places, so the DM sees what the sort did.
 function cbSortRows() {
   if (combatLiveSorted(cbState.rows)) return;
-  const before = cbState.rows.slice();
-  cbState.rows = combatSortLive(cbState.rows);
-  cbSave();
-  cbRender();
-  cbState.rows.forEach((r, i) => {
-    if (before[i] !== r) document.querySelector(`#cb-list .cb-row[data-id="${r.id}"]`).classList.add('moved');
+  motionRows(document.getElementById('cb-list'), '.cb-row', el => el.dataset.id, () => {
+    cbState.rows = combatSortLive(cbState.rows);
+    cbSave();
+    cbRender();
   });
 }

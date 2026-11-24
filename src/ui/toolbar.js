@@ -447,8 +447,8 @@ function initToolbar() {
     togglePlayerWindow();
   };
 
-  // Off the boot path: warming it while the DM comes up trades one wait for another.
-  if (!appInBackground) setTimeout(prewarmPlayer, 2000);
+  // Under the splash, so the window answers the moment it shows and the TV opens warm.
+  bootUnderSplash();
 
   // ⚠ WRAPPED, never assigned bare: a bare handler receives the click event, which lands in
   // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.

@@ -161,8 +161,9 @@ function createDMWindow() {
   const tellMoved = () => { clearTimeout(movedTimer); movedTimer = setTimeout(() => sendTo(win, 'displays-changed', { kind: 'moved' }), 300); };
   win.on('move', tellMoved);
   win.on('resize', tellMoved);
-  // Hand off from splash to app once the renderer has painted. A minimum keeps it from flashing,
-  // and a cap keeps a slow init from leaving the splash up.
+  // Hand off from splash to app once the renderer has painted AND finished its start-up work, so
+  // the window answers the moment it shows. A minimum keeps it from flashing, and a cap keeps a slow
+  // init from leaving the splash up.
   const MIN_SPLASH_MS = 1000;
   let handedOff = false;
   const handOff = () => {
@@ -179,7 +180,17 @@ function createDMWindow() {
 
     }, wait);
   };
-  win.once('ready-to-show', handOff);
+  let painted = false, idle = false;
+  const wc = win.webContents;   // read after the window is destroyed, win.webContents throws
+  const onBootIdle = (event) => {
+    if (event.sender !== wc) return;
+    ipcMain.removeListener('boot-idle', onBootIdle);
+    idle = true;
+    if (painted) handOff();
+  };
+  ipcMain.on('boot-idle', onBootIdle);
+  win.once('closed', () => ipcMain.removeListener('boot-idle', onBootIdle));
+  win.once('ready-to-show', () => { painted = true; if (idle) handOff(); });
   setTimeout(handOff, 6000); // safety cap
 
   // Allow window.open() in the renderer to create the player BrowserWindow, and nothing else: a new window gets the preload.

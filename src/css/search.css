@@ -1,13 +1,11 @@
 /* Search (search.js): one box over a veil, from any view. It is the app's window parts: .sm-win, .sm-x, the .sm-field
-   skin, the window scroll bar and the menus' divider. The veil and the box fade and rise on their own, since the
-   window's pop-in would fight the centring. */
-  #sr-veil { position: fixed; inset: 0; z-index: 450; display: none; background: var(--veil); animation: srVeil .18s ease-out; }
-  body.searching #sr-veil { display: block; }
-  @keyframes srVeil { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes srRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+   skin, the window scroll bar and the menus' divider. It opens and closes as a dialog (motion.js); the shade under
+   the box is the backdrop, and only the shade and the box take clicks, so neither does while it leaves. */
+  #sr-veil { position: fixed; inset: 0; z-index: 450; display: none; pointer-events: none; }
+  .sr-shade { position: absolute; inset: 0; background: var(--veil); pointer-events: auto; }
   #sr-box {
     position: absolute; left: 0; right: 0; top: 9vh; margin: 0 auto; width: 520px; max-width: calc(100vw / var(--ui-zoom, 1.2) - 48px);
-    overflow: hidden; animation: srRise .2s cubic-bezier(.2, .8, .2, 1);
+    overflow: hidden; pointer-events: auto;
   }
   .sr-q { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 12px; border-bottom: 1px solid var(--g-line); }
   .sr-q .sm-field { flex: 1; height: 36px; padding: 0 10px; gap: 8px; }

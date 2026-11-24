@@ -48,7 +48,7 @@ function tvOneInchPress() {
   if (!inches) {
     _tviWant = true;
     _tviMark = true;
-    _tvSetupOpen();
+    _tvSetupOpen(document.querySelector('#tv-ui [data-tv-inch]'));
     return;
   }
   const z = tvInchZoom(inches, display, tvInchCellPx(paneScope().gridConfig));

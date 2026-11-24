@@ -280,7 +280,8 @@ function refreshRoomPanel() {
 function _rpScreenToStyle(panel, screenLeft, screenTop) {
   const r  = panel.getBoundingClientRect();
   const cs = getComputedStyle(panel);
-  const z  = panel.offsetWidth > 0 ? (r.width / panel.offsetWidth) : 1;
+  // The element's own zoom, read exactly: offsetWidth is a whole pixel, so a ratio to it puts every re-placement a fraction off.
+  const z  = panel.currentCSSZoom || (panel.offsetWidth > 0 ? (r.width / panel.offsetWidth) : 1);
   const originX = r.left - (parseFloat(cs.left) || 0) * z;
   const originY = r.top  - (parseFloat(cs.top)  || 0) * z;
   return { left: (screenLeft - originX) / z, top: (screenTop - originY) / z };

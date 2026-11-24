@@ -137,7 +137,7 @@ function _bsShow(id, editing) {
   cbRender();
 }
 
-function _bsClosePop() { if (bs.pop) { bs.pop.remove(); bs.pop = null; } }
+function _bsClosePop() { if (bs.pop) { const p = bs.pop; motionHide(p, 'menu', { done: () => p.remove() }); bs.pop = null; } }
 
 function _bsPlace(el, anchor) {
   document.body.appendChild(el);
@@ -146,6 +146,7 @@ function _bsPlace(el, anchor) {
   el.style.left = (Math.max(8, Math.min(r.left, innerWidth - el.getBoundingClientRect().width - 8)) / z) + 'px';
   el.style.top = ((r.bottom + 6) / z) + 'px';
   bs.pop = el;
+  motionShow(el, 'menu', { from: anchor });
 }
 
 function _bsFilterPop(anchor, k) {

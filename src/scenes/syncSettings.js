@@ -11,7 +11,7 @@ let _ssSyncAt = -1;       // the last sync the Campaign map's kept pictures were
 let _ssBusy = false;      // a button's call is running
 
 const _ssEl = id => document.getElementById(id);
-const _ssPaneOpen = () => !_ssEl('dock-pane-settings').hidden;
+const _ssPaneOpen = () => dockActivePane() === 'settings';
 
 function _ssWhen(at) {
   const d = new Date(at), today = new Date().toDateString() === d.toDateString();

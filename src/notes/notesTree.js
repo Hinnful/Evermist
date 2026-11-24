@@ -346,7 +346,7 @@ function _ntNewFromRow(key) {
 // ─── Menu ────────────────────────────────────────────────────────────────────
 
 function ntCloseMenu() {
-  if (_ntMenu) { _ntMenu.remove(); _ntMenu = null; }
+  if (_ntMenu) { const m = _ntMenu; motionHide(m, 'menu', { done: () => m.remove() }); _ntMenu = null; }
 }
 
 // `at` is a rect or a point; rows are { label, run, off, danger, raw, hint, sep }.
@@ -380,6 +380,7 @@ function ntMenuAt(at, rows) {
   menu.style.left = Math.max(4, Math.min(x, innerWidth - w - 4)) / z + 'px';
   menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) / z + 'px';
   _ntMenu = menu;
+  motionShow(menu, 'menu', { from: at });
 }
 
 function ntRowsFor(n) {

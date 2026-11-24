@@ -105,15 +105,17 @@ function _fxpResize(s) {
 // Placed over the effect's top edge, centred on it and kept in the map area the dock leaves; under it when there is no space
 // above. A drag of the effect puts it away until the drop.
 let _fxpKey = '';
+let _fxpAt = null;   // the effect's box it was last placed over: it grows from there and goes back into it
 function refreshEffectPopup() {
   const el = document.getElementById('fx-pop');
   if (!el) return;
   const rec = _fxpRec();
   if (!rec || selectDragging()) {
-    el.style.display = 'none';
     _fxpKey = '';
     const pal = document.getElementById('mat-pal');
-    if (pal && pal.parentNode === el) pal.hidden = true;
+    if (pal && pal.parentNode === el) { motionSettle(pal); pal.hidden = true; }
+    // A drag puts it away at once; a deselect sends it back into the effect.
+    if (rec) { motionSettle(el); el.style.display = 'none'; } else motionHide(el, 'popup', { from: _fxpAt, done: () => { el.style.display = 'none'; } });
     return;
   }
   let l = Infinity, r = -Infinity, top = Infinity, bottom = -Infinity;
@@ -123,8 +125,10 @@ function refreshEffectPopup() {
   }
   const p = _fxpPreset(rec), mat = rec.light ? 'light' : String(rec.material);
   const key = [rec.id, mat, p ? p.s : 'hand', l, r, top, bottom, innerWidth, innerHeight, dockMapInset()].join('|');
-  if (key === _fxpKey && el.style.display === 'flex') return;
+  if (key === _fxpKey && motionOpen(el)) return;
   _fxpKey = key;
+  const was = motionOpen(el);
+  _fxpAt = { left: l, top, width: r - l, height: bottom - top };
   const m = effectsMaterials().find(x => x[0] === mat);
   const btn = el.querySelector('#fxp-mat .mt-btn');
   btn.style.color = m ? effectsMaterialColor(mat) : '';
@@ -148,4 +152,5 @@ function refreshEffectPopup() {
   const st = _rpScreenToStyle(el, left, y);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';
+  if (!was) motionShow(el, 'popup', { from: _fxpAt });
 }

@@ -38,13 +38,12 @@ const syncMerge = (() => {
   }
 
   function context() {
-    const cb = document.getElementById('cb-fight');
     return {
       openScene: currentScene ? currentScene.id : null,
       tvScene: tvSceneId,
       paneScenes: panesActive ? livePanes().map(id => panes[id].sceneId).filter(Boolean) : [],
       // A page in the Bestiary being edited holds the bestiary back as the fight table does.
-      fightTable: (!!cb && cb.style.display === 'block') || (typeof bsEditing === 'function' && bsEditing()),
+      fightTable: (typeof cbIsOpen === 'function' && cbIsOpen()) || (typeof bsEditing === 'function' && bsEditing()),
       openNoteKey: openNoteKey(),
     };
   }

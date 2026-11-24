@@ -31,6 +31,9 @@ const PORT = 9333;
 const APP = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'evermist-appimage-')), 'Evermist.AppImage');
 const READY = "(document.querySelector('#about-update .about-update-btn') || {}).textContent === 'Restart to update'";
 const MATCH = 'Evermist.AppImage|mount_Evermi';
+// Every copy logs here, the one the updater relaunches included (it inherits the environment), so a copy that dies
+// leaves its reason behind for the FAIL line.
+const LOG = path.join(path.dirname(APP), 'electron.log');
 
 const pointerVersion = dir =>
   /^version:\s*['"]?([^'"\s]+)/m.exec(fs.readFileSync(path.join(dir, 'latest-linux.yml'), 'utf8'))[1];
@@ -62,7 +65,8 @@ const server = http.createServer((req, res) => {
 
 async function launch() {
   // No GPU on the runner; see SOFTWARE_GL in rig/run.js.
-  const proc = spawn(APP, ['--enable-unsafe-swiftshader', '--remote-debugging-port=' + PORT], { stdio: 'ignore' });
+  const proc = spawn(APP, ['--enable-unsafe-swiftshader', '--remote-debugging-port=' + PORT],
+    { stdio: 'ignore', env: Object.assign({}, process.env, { ELECTRON_ENABLE_LOGGING: '1', ELECTRON_LOG_FILE: LOG }) });
   const target = await cdp.waitForTarget(PORT,
     t => t.url.includes('index.html') && !t.url.includes('mode=player'), 90000, 'the DM window');
   const dm = await cdp.connect(target.webSocketDebuggerUrl, 'dm');
@@ -125,4 +129,10 @@ async function main() {
 }
 
 main().then(() => { server.close(); console.log('Linux update proof: all green'); process.exit(0); })
-  .catch(async err => { console.error('FAIL ' + err.message); await killAll(); process.exit(1); });
+  .catch(async err => {
+    console.error('FAIL ' + err.message);
+    try { console.error('--- the app\'s log, last 80 lines ---\n' + fs.readFileSync(LOG, 'utf8').split('\n').slice(-80).join('\n')); }
+    catch (_) { console.error('(no app log at ' + LOG + ')'); }
+    await killAll();
+    process.exit(1);
+  });

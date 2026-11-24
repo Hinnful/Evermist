@@ -60,9 +60,9 @@ function initMusicDownload() {
 function openMusicDownload() {
   const modal = _muEl('mu-modal');
   if (!modal) return;
-  modal.style.display = 'flex';
   const backdrop = _muEl('mu-backdrop');
-  if (backdrop) backdrop.style.display = 'block';
+  motionShow(modal, 'window', { from: _muEl('dock-tab-music'), veil: backdrop,
+    reveal: () => { modal.style.display = 'flex'; backdrop.style.display = 'block'; } });
   // ⚠ A RUNNING QUEUE SURVIVES A REOPEN. Clearing the lookup here would mean pasting the link
   // again to see how far a download that is still going has got.
   if (!_muBusy) {
@@ -79,10 +79,10 @@ function openMusicDownload() {
 
 function _muCloseDownload() {
   // ⚠ Shuts the panel, never the queue: a close would lose 50MB already waited for.
-  const modal = _muEl('mu-modal');
-  if (modal) modal.style.display = 'none';
-  const backdrop = _muEl('mu-backdrop');
-  if (backdrop) backdrop.style.display = 'none';
+  const modal = _muEl('mu-modal'), backdrop = _muEl('mu-backdrop');
+  if (!modal) return;
+  motionHide(modal, 'window', { from: _muEl('dock-tab-music'), glow: true, veil: backdrop,
+    done: () => { modal.style.display = 'none'; backdrop.style.display = 'none'; } });
 }
 
 function _muSetStatus(text, isError) {

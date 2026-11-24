@@ -41,7 +41,7 @@ function libraryList(root, o) {
 // ⚠ A LIST IS NEVER REDRAWN UNDER A DRAG OR AN OPEN NAME FIELD: a redraw (a track's length read, a sound ending)
 // would take the dragged row or the field away. The pane asks here first; the redraw it skipped runs when they end.
 function libHold(root) {
-  const d = _llDrag, busy = !!(d && d.on && d.list.root === root) || !!root.querySelector('.lib-edit, .ga-name-edit');
+  const d = _llDrag, busy = !!(d && d.on && d.list.root === root) || motionGliding(root) || !!root.querySelector('.lib-edit, .ga-name-edit');
   root._libStale = busy;
   return busy;
 }
@@ -94,7 +94,7 @@ function _llRename(list, el) {
 // ─── The ⋯ menu ──────────────────────────────────────────────────────────────
 
 function libCloseMenu() {
-  if (_llMenu) { _llMenu.remove(); _llMenu = null; }
+  if (_llMenu) { const m = _llMenu; motionHide(m, 'menu', { done: () => m.remove() }); _llMenu = null; }
   document.querySelectorAll('.lib-more.lit, .dk-addb.lit').forEach(b => b.classList.remove('lit'));
 }
 
@@ -109,7 +109,8 @@ function _llMenuEl(rows, extra) {
     b.className = 'sm-mi' + (r.danger ? ' danger' : '') + (r.on ? ' on' : '');
     b.innerHTML = (r.icon ? uiIcon(r.icon, 13) : '') + '<span class="nm"></span><span class="ky"></span>';
     b.querySelector('.nm').textContent = r.raw ? r.label : t(r.label);
-    b.querySelector('.ky').textContent = r.key || '';
+    // A submenu's arrow has no capitals to centre on, so it is drawn as an icon, which centres by its box.
+    if (r.sub) b.querySelector('.ky').innerHTML = uiIcon('next', 12); else b.querySelector('.ky').textContent = r.key || '';
     b.disabled = !!r.off;
     // A greyed row says why in the row itself: a disabled button shows no tooltip.
     if (r.off && r.hint) { b.classList.add('why'); const w = document.createElement('span'); w.className = 'nw-why'; w.textContent = r.hint; b.appendChild(w); }
@@ -144,6 +145,7 @@ function _llSub(row, rows) {
   _llMenu.appendChild(sub);
   const r = row.getBoundingClientRect();
   _llPlace(sub, r.left - 2, r.top - 5, true);
+  motionShow(sub, 'menu', { from: row });
 }
 
 // A menu under `btn`, its right edge on the button's. Rows: { label, raw, key, icon, danger, off, sub(), run() } or { sep }.
@@ -155,6 +157,7 @@ function libMenuAt(btn, rows) {
   btn.classList.add('lit');
   const r = btn.getBoundingClientRect();
   _llPlace(menu, r.right, r.bottom + 2, true);
+  motionShow(menu, 'menu', { from: btn });
 }
 
 // The same menu at a point: a right-click.
@@ -165,6 +168,7 @@ function libMenuAtPoint(x, y, rows) {
   document.body.appendChild(menu);
   _llMenu = menu;
   _llPlace(menu, x, y, false);
+  motionShow(menu, 'menu', { from: { x, y } });
 }
 
 function _llOpenMenu(list, btn) {
@@ -180,7 +184,7 @@ function _llItemRows(list, item) {
     if (here != null) rows.push({ sep: true }, { label: 'No group', run: () => o.moveTo(key, null) });
     return rows.length ? rows : [{ label: 'No groups yet', off: true, run: () => {} }];
   };
-  return [{ label: 'Rename', key: 'Ctrl+R', run: () => o.rename(key) }, { label: 'Move to group', key: '›', sub: move },
+  return [{ label: 'Rename', key: 'Ctrl+R', run: () => o.rename(key) }, { label: 'Move to group', sub: move },
     { sep: true }, { label: 'Delete', icon: 'trash', danger: true, run: () => o.del(key) }];
 }
 
@@ -313,11 +317,19 @@ function _llUp(e) {
   d.ghost.remove();
   d.line.remove();
   d.item.classList.remove('lib-faded');
-  d.list.root.classList.remove('lib-dragging');
   _llSwallow = e.timeStamp;
-  const at = d.at;
-  if (at) _llDrop(d, at);
-  _llFresh(d.list.root);
+  const at = d.at, root = d.list.root;
+  // The rows glide from where they stood, the dropped one from where the ghost let go; a redraw held meanwhile
+  // glides in turn when they land. The empty groups a drag shows go inside the change, or every row below them
+  // jumps up before the glide is measured.
+  // The dropped row starts where the pointer held it, not from the ghost's box, which a zoomed fixed element can misreport.
+  const from = { left: e.clientX - d.dx, top: e.clientY - d.dy };
+  _llGlide(root, () => { root.classList.remove('lib-dragging'); if (at) _llDrop(d, at); _llFresh(root); }, { [d.key]: from });
+}
+
+const _llRowKey = el => el.dataset.libKey !== undefined ? el.dataset.libKey : 'gh:' + _llGroupOf(el);
+function _llGlide(root, change, from) {
+  motionRows(root, '[data-lib-key], .lib-gh', _llRowKey, change, { from, done: () => { if (root._libStale) _llGlide(root, () => _llFresh(root)); } });
 }
 
 function _llDrop(d, at) {

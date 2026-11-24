@@ -17,9 +17,9 @@ function initEffectsRow() {
   document.getElementById('context-row').appendChild(pal);
   pal.querySelector('#mat-find').addEventListener('input', _renderPalette);
   pal.addEventListener('mousedown', e => e.stopPropagation());
-  document.addEventListener('mousedown', e => { if (!pal.hidden && !e.target.closest('#mat-pick, #fxp-mat')) pal.hidden = true; });
+  document.addEventListener('mousedown', e => { if (motionOpen(pal) && !e.target.closest('#mat-pick, #fxp-mat')) materialPaletteClose(); });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !pal.hidden) { pal.hidden = true; e.stopImmediatePropagation(); }
+    if (e.key === 'Escape' && motionOpen(pal)) { materialPaletteClose(); e.stopImmediatePropagation(); }
   }, true);
   _buildShapeWell();
   refreshMaterialButton();
@@ -92,10 +92,16 @@ function refreshMaterialButton() {
 // The palette opens above whichever field asked: the row's, or a picked effect's or light's popup (`host`,
 // effectPopup.js), which ticks that shape's material, `on`, and sets that shape alone, Light included.
 // `noLight` greys Light: an effect of several pieces cannot turn into one.
+function materialPaletteClose() {
+  const pal = document.getElementById('mat-pal');
+  motionHide(pal, 'menu', { done: () => { pal.hidden = true; } });
+}
+
 function toggleMaterialPalette(host, on, noLight) {
   const pal = document.getElementById('mat-pal');
   const to = host || document.getElementById('context-row');
-  if (!pal.hidden && pal.parentNode === to) { pal.hidden = true; return; }
+  if (motionOpen(pal) && pal.parentNode === to) { materialPaletteClose(); return; }
+  motionSettle(pal);
   to.appendChild(pal);
   pal.dataset.picked = host ? '1' : '';
   pal.dataset.on = on || '';
@@ -108,6 +114,7 @@ function toggleMaterialPalette(host, on, noLight) {
   pal.style.left = '';
   const r = pal.getBoundingClientRect(), edge = innerWidth - dockMapInset() - 8;
   if (r.right > edge) pal.style.left = -(r.right - edge) / (r.width / pal.offsetWidth) + 'px';
+  motionShow(pal, 'menu', { from: to.querySelector('#fxp-mat, #mat-pick') });
   find.focus();
 }
 
@@ -137,7 +144,7 @@ function _renderPalette() {
       b.dataset.material = id;
       b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
       b.lastChild.textContent = t(name);
-      b.onclick = () => { if (pal.dataset.picked) setPickedMaterial(id); else setMaterial(id); pal.hidden = true; };
+      b.onclick = () => { if (pal.dataset.picked) setPickedMaterial(id); else setMaterial(id); materialPaletteClose(); };
       if (id === 'light' && pal.dataset.nolight) { b.disabled = true; b.title = t('An effect of several pieces cannot become a light'); }
       grid.appendChild(b);
     }

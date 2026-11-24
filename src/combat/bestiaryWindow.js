@@ -71,24 +71,26 @@ function _bswAtLastPlace() {
   _bswSize(n(g.left) ? g.left : (iw - width) / 2, n(g.top) ? g.top : (ih - height) / 2, width, height);
 }
 
-function bsIsOpen() { const w = _bswEl(); return !!w && !w.hidden; }
+function bsIsOpen() { return motionOpen(_bswEl()); }
 
 // `fromFight` places it beside the table with the list hidden, unless it is open already: then it stays as it is.
 function bswShow(fromFight) {
   if (_bsw.cal) return false;
   const w = _bswEl();
-  if (!w.hidden) return true;
+  if (bsIsOpen()) return true;
   _bsw.fromFight = !!fromFight;
   _bsw.fightListHidden = true;
   w.hidden = false;
   if (fromFight) _bswBesideFight(); else _bswAtLastPlace();
+  motionShow(w, 'window', { from: document.getElementById('btn-bestiary') });
   return true;
 }
 
 function bswHide() {
-  _bswEl().hidden = true;
-  _bswEl().classList.remove('over-fight');
+  const w = _bswEl();
   _bsw.fromFight = false;
+  motionHide(w, 'window', { from: document.getElementById('btn-bestiary'), glow: true,
+    done: () => { w.hidden = true; w.classList.remove('over-fight'); } });
 }
 
 // Grid calibration needs the map to itself; the window comes back after unless the DM shut it meanwhile.

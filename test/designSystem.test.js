@@ -43,6 +43,10 @@ function readLists(md) {
     }))),
     outside: table(md, 'Outside').flatMap((r) => ticks(r[1])),
     pairs: table(md, 'Text').map((r) => ({ text: ticks(r[0])[0], on: ticks(r[1])[0], min: parseFloat(r[2]) })),
+    motion: table(md, 'Motion').map((r) => ({ kind: ticks(r[0])[0], in: ticks(r[1])[0], out: ticks(r[2])[0] })),
+    curves: table(md, 'Curve').map((r) => ({ name: ticks(r[0])[0], value: ticks(r[1])[0] })),
+    loops: table(md, 'Loop').flatMap((r) => ticks(r[1])),
+    exempt: table(md, 'Exempt').flatMap((r) => ticks(r[1])),
   };
 }
 const LISTS = readLists(RULES);
@@ -160,9 +164,50 @@ const fontPx = (prop, value) => {
 };
 const fontOnScale = (n) => LISTS.fontSizes.includes(n) || LISTS.fontRanges.some(([lo, hi]) => n >= lo && n <= hi);
 
+// A transition or animation rides the motion tokens, is the hover colour at 120ms, or plays a registered Loop.
+const MOTION_PROPS = /^(?:transition|transition-duration|transition-timing-function|animation|animation-name)$/;
+const HOVER_PROPS = new Set(['color', 'background', 'background-color', 'border-color', 'fill']);
+const TOKEN_TIME = /^var\(\s*--m-[\w-]+\s*\)$/;
+const TOKEN_CURVE = /^(?:var\(\s*--m-[\w-]+\s*\)|linear)$/;
+function motionOk(prop, value) {
+  const v = value.replace(/\s*!important$/, '').trim();
+  if (v === 'none') return true;
+  if (prop === 'transition-duration') return splitTop(v).every((d) => TOKEN_TIME.test(d));
+  if (prop === 'transition-timing-function') return splitTop(v).every((d) => TOKEN_CURVE.test(d));
+  if (prop.startsWith('animation')) {
+    return splitTop(v).every((part) => part.split(/\s+/).some((w) => LISTS.loops.includes(w)));
+  }
+  return splitTop(v).every((part) => {
+    const words = part.match(/var\([^)]*\)|cubic-bezier\([^)]*\)|\S+/g) || [];
+    const [what, time, curve, ...rest] = words;
+    if (what === 'none') return true;
+    if (TOKEN_TIME.test(time || '') && (curve === undefined || TOKEN_CURVE.test(curve)) && rest.length === 0) return true;
+    return HOVER_PROPS.has(what) && /^(?:0?\.12s|120ms)$/.test(time || '') && curve === undefined;
+  });
+}
+
+// Script code moves only through motion.js; the Player's scene cover and the undo timer bar keep their own.
+const MOTION_JS_OWNERS = new Set(['ui/motion.js', 'player/playerMap.js', 'scenes/sceneDelete.js']);
+function motionInScripts(dir) {
+  const faults = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+      const r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) walk(r);
+      else if (e.name.endsWith('.js') && !MOTION_JS_OWNERS.has(r)) {
+        fs.readFileSync(path.join(dir, r), 'utf8').split('\n').forEach((line, i) => {
+          if (/\.animate\(|\.style\.(?:transition|animation)\b/.test(line)) faults.push(r + ':' + (i + 1) + ' ' + line.trim());
+        });
+      }
+    }
+  };
+  walk('');
+  return faults;
+}
+
 // Every rule's breaks, by rule name and file.
 function scan(dir) {
-  const found = { colours: {}, radii: {}, heights: {}, fontSizes: {}, roles: {}, gaps: {}, uppercase: {}, borderLeft: {} };
+  const found = { colours: {}, radii: {}, heights: {}, fontSizes: {}, roles: {}, gaps: {}, uppercase: {}, borderLeft: {}, motion: {} };
   const where = {};
   const hit = (rule, file, what) => {
     found[rule][file] = (found[rule][file] || 0) + 1;
@@ -204,6 +249,9 @@ function scan(dir) {
           }
         }
         if (prop === 'text-transform' && /uppercase/i.test(value)) hit('uppercase', file, label);
+        if (MOTION_PROPS.test(prop) && !rule.sels.every((sel) => touches(sel, LISTS.exempt)) && !motionOk(prop, value)) {
+          hit('motion', file, label + ' ' + prop + ': ' + value);
+        }
         if (/^border-(?:left|inline-start)(?:-color)?$/.test(prop)) {
           const lits = colourLiterals(value).map(rgbOf);
           const chromatic = lits.some((c) => !c || c[0] !== c[1] || c[1] !== c[2]);
@@ -224,6 +272,7 @@ const WHY = {
   roles: 'an atom with a Type cell takes that size: window titles 16, section titles 14, sub-headers 11',
   uppercase: 'headings are sentence case; no text-transform: uppercase',
   borderLeft: 'no coloured stripe on a block\'s left edge; a divider is a grey line',
+  motion: 'a transition or animation rides the --m-* tokens, is the hover colour at 120ms, plays a Loop keyframe or sits on an Exempt selector (design-system.md, "Motion")',
 };
 
 // Counts held against the frozen allowance: no growth, no slack, no stale entry.
@@ -305,6 +354,28 @@ describe('design system: stylesheets', () => {
     assert.deepEqual(gone, [], 'a registry row names a class no stylesheet has, so its checks pass on nothing - fix the row');
   });
 
+  it('reads the Motion, Curve, Loop and Exempt tables, and base.css holds their values', () => {
+    const map = tokens(fs.readFileSync(path.join(CSS_DIR, 'base.css'), 'utf8'));
+    const faults = [];
+    assert.ok(LISTS.motion.length >= 9 && LISTS.curves.length >= 3 && LISTS.loops.length && LISTS.exempt.length, 'a motion table is empty');
+    for (const m of LISTS.motion) {
+      const want = m.out ? [['--m-' + m.kind + '-in', m.in], ['--m-' + m.kind + '-out', m.out]] : m.in ? [['--m-' + m.kind, m.in]] : [];
+      for (const [tok, val] of want) if (map[tok] !== val) faults.push(tok + ' is ' + map[tok] + ', the Motion table says ' + val);
+    }
+    for (const c of LISTS.curves) {
+      if (!c.name.startsWith('--')) continue;
+      if ((map[c.name] || '').replace(/\s+/g, '') !== c.value.replace(/\s+/g, '')) faults.push(c.name + ' is ' + map[c.name] + ', the Curve table says ' + c.value);
+    }
+    const css = fs.readdirSync(CSS_DIR).filter((f) => f.endsWith('.css')).map((f) => fs.readFileSync(path.join(CSS_DIR, f), 'utf8')).join('\n');
+    for (const k of LISTS.loops) if (!new RegExp('@keyframes\\s+' + k + '\\b').test(css)) faults.push('Loop names ' + k + ', which no stylesheet defines');
+    assert.deepEqual(faults, []);
+  });
+
+  it('moves script code only through motion.js', () => {
+    assert.deepEqual(motionInScripts(path.join(ROOT, 'src')), [],
+      'open or close a surface with motionShow / motionHide (motion.js), never .animate() or style.transition / style.animation');
+  });
+
   it('meets each contrast pair in .claude/rules/design-system.md', () => {
     const map = tokens(fs.readFileSync(path.join(CSS_DIR, 'base.css'), 'utf8'));
     assert.deepEqual(contrastFaults(map, LISTS.pairs, ALLOW.contrast || []), [],
@@ -327,6 +398,9 @@ describe('design system: the scan bites', () => {
     '.sm-whead { height: 48px; } .rail-ind { height: 30px; } .sm-hbtn { height: 30px; }',
     '.row { gap: 5px 8px; font: 500 12.5px/1 sans-serif; } .col { row-gap: 16px; column-gap: var(--x); }',
     '.sm-wtitle { font: 600 14px/1 sans-serif; } .dk-sub { font-size: 11px; }',
+    '.fade { transition: opacity .3s; } .ok { transition: opacity var(--m-menu-in) linear, transform var(--m-menu-in) var(--m-enter); }',
+    '.hov { transition: background .12s, color .12s; } .spin { animation: bsSpin .8s linear infinite; } .pop { animation: smPopIn .16s ease; }',
+    '.car { transition: transform .12s; } .slow { transition: background .3s; }',
   ].join('\n'));
   const { found } = scan(dir);
 
@@ -349,6 +423,16 @@ describe('design system: the scan bites', () => {
   it('sees uppercase and a coloured left border, not a grey divider', () => {
     assert.deepEqual(found.uppercase, { 'x.css': 1 });
     assert.deepEqual(found.borderLeft, { 'x.css': 1 });
+  });
+  it('sees a transition or animation off the motion system, passing tokens, the hover colour, a Loop and an Exempt selector', () => {
+    assert.deepEqual(found.motion, { 'x.css': 3 });
+  });
+  it('sees an .animate() or a style.transition outside motion.js', () => {
+    const js = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-js-'));
+    fs.mkdirSync(path.join(js, 'ui'));
+    fs.writeFileSync(path.join(js, 'ui', 'motion.js'), 'el.animate([], 1);');
+    fs.writeFileSync(path.join(js, 'ui', 'x.js'), 'el.animate([], 1);\nel.style.transition = "none";\nel.style.opacity = 1;');
+    assert.equal(motionInScripts(js).length, 2);
   });
   it('fails a pair under its threshold and an allowance that now passes', () => {
     const map = { '--g-bg': '#1e1e21', '--g-dim': '#8b9099', '--g-text': '#e4e6ea' };

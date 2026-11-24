@@ -88,6 +88,35 @@
     --veil: rgba(6, 7, 9, 0.62);
     --win-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
     --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    /* Motion: the values of every kind (design-system.md, "Motion"; motion.js reads them). Opacity is linear. */
+    --m-enter: cubic-bezier(0, 0, 0, 1);
+    --m-exit: cubic-bezier(0, 0, .2, 1);
+    --m-move: cubic-bezier(0, 0, .2, 1);
+    --m-menu-in: 90ms;
+    --m-menu-out: 60ms;
+    --m-popup-in: 90ms;
+    --m-popup-out: 60ms;
+    --m-window-in: 150ms;
+    --m-window-out: 100ms;
+    --m-pane-in: 160ms;
+    --m-pane-out: 110ms;
+    --m-pane-switch: 90ms;
+    --m-dialog-in: 140ms;
+    --m-dialog-out: 100ms;
+    --m-layer-in: 50ms;
+    --m-layer-out: 40ms;
+    --m-bar-in: 90ms;
+    --m-bar-out: 60ms;
+    --m-toast-in: 150ms;
+    --m-toast-out: 100ms;
+    --m-list: 180ms;
+    --m-hover: 120ms;
+    --m-scale: 0.96;
+    --m-window-shift: 20px;
+    --m-pane-shift: 24px;
+    --m-popup-shift: 4px;
+    --m-bar-shift: 6px;
+    --m-toast-shift: 12px;
     /* The domain set keeps its own colours; the interface palette never reaches them. */
     --enemy: #f0937f;
     --enemy-tint: rgba(217, 87, 74, 0.22);

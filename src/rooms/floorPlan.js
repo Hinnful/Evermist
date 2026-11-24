@@ -216,7 +216,7 @@ function _fpBuildNotice() {
 }
 
 function hideFloorPlanNotice() {
-  if (_fpNoticeRoot) _fpNoticeRoot.style.display = 'none';
+  hideToast(_fpNoticeRoot);
 }
 
 function showFloorPlanNotice(sceneName, derived) {

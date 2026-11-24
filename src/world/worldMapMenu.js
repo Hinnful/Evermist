@@ -8,7 +8,7 @@ let _wmAddIn = '';               // the group the next maps are added into, once
 let _wmKeptPics = new Map();         // scene id → its newest kept picture's file name
 
 function worldMapMenuClose() {
-  if (_wmMenu) { _wmMenu.remove(); _wmMenu = null; }
+  if (_wmMenu) { const m = _wmMenu; motionHide(m, 'menu', { done: () => m.remove() }); _wmMenu = null; }
 }
 
 // The blocks of a menu in order, a block left empty dropped and one separator between those that stay.
@@ -179,6 +179,7 @@ function _wmMenuShow(rows, e) {
   menu.style.left = Math.max(4, Math.min(e.clientX, innerWidth - w - 4)) / z + 'px';
   menu.style.top = Math.max(4, Math.min(e.clientY, innerHeight - h - 4)) / z + 'px';
   _wmMenu = menu;
+  motionShow(menu, 'menu', { from: { x: e.clientX, y: e.clientY } });
 }
 
 // A click anywhere else, the wheel, or the layer closing puts the menu away.

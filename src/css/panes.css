@@ -95,7 +95,7 @@
     zoom: var(--ui-zoom, 1.2);
     background: var(--g-bg); color: var(--g-text);
     opacity: 0;
-    transition: opacity .12s, background .12s;
+    transition: opacity var(--m-hover) linear, background .12s;
   }
   .pane-col:hover .pane-close { opacity: 1; }
   .pane-close:hover { background: var(--g-field); }

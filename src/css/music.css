@@ -1,6 +1,6 @@
 /* music.css — the dock's Music and Sounds panes, and the Add from YouTube window. Loads after about.css
-   and before dock.css: it uses @keyframes cpAdvIn from controlPanel.css, and it borrows
-   .cp-field, .cp-slider and the window parts in sceneManager.css rather than restyling any of them. */
+   and before dock.css: it borrows .cp-field, .cp-slider and the window parts in sceneManager.css rather than
+   restyling any of them. */
 
   /* ===== THE PLAYER ===== */
   /* Players, not forms: Scene control's field rules stop here, and volume is always a slider. */
@@ -9,7 +9,7 @@
   .pl-play {
     width: 36px; height: 36px; flex: none; padding: 0; border: 0; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: var(--g-text); color: var(--g-bg); cursor: var(--cur-pointer); transition: transform .1s, background .12s;
+    background: var(--g-text); color: var(--g-bg); cursor: var(--cur-pointer); transition: transform var(--m-hover) var(--m-move), background .12s;
   }
   .pl-play:hover { background: var(--g-text); transform: scale(1.04); }
   .mu-resting .pl-play { opacity: 0.35; cursor: var(--cur-arrow); transform: none; }
@@ -43,7 +43,7 @@
   .pl-dl { display: none; flex-direction: column; gap: 4px; font: 400 11px/1 system-ui, sans-serif; color: var(--g-dim); }
   .mu-downloading .pl-dl { display: flex; }
   .pl-dl .bar { height: 3px; border-radius: 999px; background: var(--g-pick); overflow: hidden; }
-  .pl-dl .bar i { display: block; height: 100%; width: 0; background: var(--g-dim); transition: width .25s linear; }
+  .pl-dl .bar i { display: block; height: 100%; width: 0; background: var(--g-dim); transition: width var(--m-list) linear; }
 
   /* ===== THE TRACK LIST ===== */
   .mu-toprow { display: flex; align-items: center; gap: 8px; padding: 12px 12px 6px 14px; }

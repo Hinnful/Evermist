@@ -80,6 +80,15 @@ function _bfBuild() {
   return { cv, gl, light, dark, kinds: {}, buf: gl.createBuffer() };
 }
 
+// Built under the splash (playerWindow.js, bootUnderSplash), every program at once: compiling them on the first press
+// of Effects, or the first pick of a material, froze the window for a few frames.
+function effectsBarFireWarm() {
+  if (isPlayer || isPane || _bf || _bfBroken) return;
+  _bf = _bfBuild();
+  if (!_bf) return;
+  for (const kind of Object.keys(_FX_KIND_FRAG)) _bf.kinds[kind] = _bfProgram(_bf.gl, _FX_KIND_FRAG[kind]);
+}
+
 function _bfRoundRect(x, y, w, h, r, n) {
   const out = [], cs = [[x + w - r, y + r, -Math.PI / 2], [x + w - r, y + h - r, 0], [x + r, y + h - r, Math.PI / 2], [x + r, y + r, Math.PI]];
   for (const [cx, cy, a0] of cs) {

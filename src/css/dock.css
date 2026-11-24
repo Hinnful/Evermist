@@ -4,9 +4,12 @@
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 100;
     zoom: var(--ui-zoom, 1.2);
     display: flex; flex-direction: row-reverse;
-    background: var(--g-bg); border-left: 1px solid var(--g-line);
+    border-left: 1px solid var(--g-line);
     color: var(--g-text);
   }
+  /* The rail and the pane carry the grey each, so the pane slides out from the rail on its own (motion.js); open,
+     the pane draws the dock's edge with it. */
+  #dock.open { border-left-color: transparent; }
   body.player-mode #dock, body.pane-mode #dock { display: none !important; }
 
   /* ===== THE RAIL ===== */
@@ -14,6 +17,7 @@
     width: 60px; flex: none; padding: 10px 0;
     display: flex; flex-direction: column; align-items: center; gap: 12px;
     overflow-y: auto; scrollbar-width: none;   /* a short window scrolls the rail rather than clipping its end */
+    background: var(--g-bg);
     border-left: 1px solid transparent;   /* always there, or opening the pane widens the rail and shifts the toolbar */
   }
   #dock.open .dk-rail { border-left-color: var(--g-line); }
@@ -54,7 +58,8 @@
   .rail-end { margin-top: auto; }
 
   /* ===== THE PANE ===== */
-  .dk-pw { position: relative; width: var(--dock-pane-w, 230px); display: flex; flex-direction: column; min-height: 0; }
+  .dk-pw { position: relative; width: var(--dock-pane-w, 230px); display: flex; flex-direction: column; min-height: 0;
+           background: var(--g-bg); box-shadow: -1px 0 0 var(--g-line); }
   #dock:not(.open) .dk-pw { display: none; }
   .dk-sec { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .dk-sec[hidden] { display: none; }
@@ -269,7 +274,7 @@
   .dk-pop, #anim-advanced-panel {
     position: fixed; z-index: 110; zoom: var(--ui-zoom, 1.2); width: 250px; left: 0; top: 0;
     background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow); overflow: hidden; animation: cpAdvIn .15s ease;
+    box-shadow: var(--panel-shadow); overflow: hidden;
   }
   .dk-pop[hidden], #anim-advanced-panel[hidden] { display: none; }
   .dk-pop .cp-adv-title, #anim-advanced-panel .cp-adv-title { font: 600 12px/1 system-ui, sans-serif; color: var(--g-text); }
@@ -281,7 +286,7 @@
     position: fixed; left: 16px; bottom: 16px; z-index: 100; zoom: var(--ui-zoom, 1.2);
     width: 240px; height: 135px; border-radius: 10px; background: #0d0e12;
     --tv-halo: 0 12px 34px 6px rgba(0, 0, 0, 0.72), 0 0 70px 26px rgba(0, 0, 0, 0.45);
-    pointer-events: all; user-select: none; transition: box-shadow .3s;
+    pointer-events: all; user-select: none; transition: box-shadow var(--m-window-in) var(--m-move);
   }
   /* Off: a faint blue glow. Live: the same glow, breathing. */
   #minimap-panel.tv-off { box-shadow: 0 0 0 1px var(--b-tint-h), 0 0 14px 1px var(--b-tint), var(--tv-halo); }

@@ -50,7 +50,14 @@ function updateContextPanels() {
   // by this strip's height every time the DM picks Select and drop back on the next shape.
   const row = document.getElementById('context-row');
   if (row) {
-    row.style.visibility = (brush || fx || door || aids) ? '' : 'hidden';
+    // It rises out of the toolbar and goes back into it (design-system.md, "Motion", bar). The first call only sets it.
+    const want = !!(brush || fx || door || aids), first = row._ctxShown === undefined;
+    if (want !== row._ctxShown) {
+      row._ctxShown = want;
+      if (want) { row.style.visibility = ''; if (!first) motionShow(row, 'bar'); }
+      else if (first) row.style.visibility = 'hidden';
+      else motionHide(row, 'bar', { done: () => { if (!row._ctxShown) row.style.visibility = 'hidden'; } });
+    }
     row.classList.toggle('er-on', edit);   // the blue frame of an open edit
   }
   const cellLabel = document.getElementById('door-cell-label');
@@ -102,8 +109,11 @@ function pickShapeByKey(s) {
 
 function toggleLegend() {
   legendVisible = !legendVisible;
-  document.getElementById('shortcut-legend').style.display = legendVisible ? '' : 'none';
-  document.getElementById('legend-backdrop').style.display = legendVisible ? '' : 'none';
+  const root = document.getElementById('shortcut-legend'), veil = document.getElementById('legend-backdrop');
+  const win = document.getElementById('legend-win'), btn = document.getElementById('btn-help');
+  const show = on => () => { root.style.display = on ? '' : 'none'; veil.style.display = on ? '' : 'none'; };
+  if (legendVisible) motionShow(win, 'window', { from: btn, veil, reveal: show(true) });
+  else motionHide(win, 'window', { from: btn, glow: true, veil, done: show(false) });
 }
 
 // ─── Input registration ───────────────────────────────────────────────────────

@@ -396,8 +396,11 @@ function gridCalRefreshUI() {
   if (wrap) wrap.style.display = gridCalSpan ? '' : 'none';
   if (hint) hint.style.display = gridCalSpan ? 'none' : '';
   if (!hud) return;
-  hud.style.display = gridCalArmed ? 'flex' : 'none';
-  if (gridCalArmed) gridCalPlaceHud();
+  if (!gridCalArmed) { motionHide(hud, 'popup', { done: () => { hud.style.display = 'none'; } }); return; }
+  const was = motionOpen(hud);
+  hud.style.display = 'flex';
+  gridCalPlaceHud();
+  if (!was) motionShow(hud, 'popup', {});
 }
 
 // Under the square, flipped above near the window's bottom. Called from the draw path, so it

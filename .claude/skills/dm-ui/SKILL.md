@@ -334,8 +334,8 @@ A floating row over the map, borrowing the app's controls.
   `#context-row`, which is hidden for the whole of calibration.
 - **`pointer-events` sit on the children, never the box.** A box straddling the shape would
   eat the drag that moves it.
-- No entry animation: `cpAdvIn` slides on `translateX`, and the placer measures the box every
-  frame.
+- It opens and closes as a popup (`motion.js`), shown only once placed: the placer measures the box every
+  frame, so a pan inside the 130ms entry lands a scale's few px off until the next draw places it.
 
 **Arming calibration puts the dock pane and the Notes window away, and gives them back.** The pane
 shuts, **without touching `selectedPolygonId`**, and leaving restores the pane that was open,

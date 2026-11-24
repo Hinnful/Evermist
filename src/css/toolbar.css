@@ -355,7 +355,7 @@
     position: fixed; left: 0; top: 0; z-index: 220; zoom: var(--ui-zoom, 1.2);
     min-width: 200px; padding: 4px; display: flex; flex-direction: column;
     background: var(--g-bg); border: 1px solid var(--g-line); border-radius: 8px;
-    box-shadow: var(--pop-shadow); animation: cpAdvIn .12s ease;
+    box-shadow: var(--pop-shadow);
   }
   .dd-it {
     display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 6px;
@@ -450,7 +450,7 @@
 
 /* Hovering Reveal all or Hide all: a frame in the result's colour, ending at the dock (fogPreview.js). */
 #fp-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; box-sizing: border-box;
-  opacity: 0; transition: opacity 180ms ease; border: 2px solid var(--fp-c); box-shadow: inset 0 0 22px var(--fp-glow); }
+  opacity: 0; transition: opacity var(--m-dialog-in) linear; border: 2px solid var(--fp-c); box-shadow: inset 0 0 22px var(--fp-glow); }
 #fp-frame.on { opacity: 1; }
 #fp-frame[data-kind="reveal"] { --fp-c: var(--cloud-reveal); --fp-glow: var(--cloud-reveal-glow); }
 #fp-frame[data-kind="hide"] { --fp-c: var(--cloud-hide); --fp-glow: var(--cloud-hide-glow); }

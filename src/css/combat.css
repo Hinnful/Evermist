@@ -90,9 +90,6 @@
   .cb-row.dragging { opacity: 0.4; }
   .cb-row.drop-above { box-shadow: inset 0 2px 0 var(--b-icon); }
   .cb-row.drop-below { box-shadow: inset 0 -2px 0 var(--b-icon); }
-  /* A row that Sort moved flashes once (combatSort.js). */
-  .cb-row.moved { animation: cbMoved 1.2s ease-out; }
-  @keyframes cbMoved { from { background: var(--b-tint); } }
 
   .cb-cell { position: relative; min-height: 32px; min-width: 0; border-right: 1px solid var(--g-line); }
   .cb-cell.atk { border-right: none; }

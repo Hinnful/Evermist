@@ -38,7 +38,7 @@ function searchInit() {
   document.getElementById('sr-x').addEventListener('click', searchClose);
   _srInput.addEventListener('input', _srTyped);
   _srInput.addEventListener('keydown', _srKey);
-  veil.addEventListener('mousedown', e => { if (e.target === veil) searchClose(); });
+  veil.addEventListener('mousedown', e => { if (e.target === veil || e.target.classList.contains('sr-shade')) searchClose(); });
   // A press on a row must not take the focus from the field, or the keys stop walking the rows.
   _srList.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
   _srList.addEventListener('mousemove', e => {
@@ -59,6 +59,8 @@ function searchIsOpen() { return document.body.classList.contains('searching'); 
 function searchOpen() {
   if (isPlayer || isPane || searchIsOpen()) return;
   document.body.classList.add('searching');
+  const veil = document.getElementById('sr-veil');
+  motionShow(document.getElementById('sr-box'), 'dialog', { veil: veil.querySelector('.sr-shade'), reveal: () => { veil.style.display = 'block'; } });
   for (const id of ['tb-find', 'wm-find']) document.getElementById(id).classList.add('active');
   _srInput.value = '';
   _srOpenGroups = new Set();
@@ -70,9 +72,13 @@ function searchOpen() {
 function searchClose() {
   if (!searchIsOpen()) return;
   document.body.classList.remove('searching');
+  const veil = document.getElementById('sr-veil');
+  motionHide(document.getElementById('sr-box'), 'dialog', { veil: veil.querySelector('.sr-shade'), done: () => {
+    veil.style.display = 'none';
+    _srInput.value = '';
+    _srList.textContent = '';
+  } });
   for (const id of ['tb-find', 'wm-find']) document.getElementById(id).classList.remove('active');
-  _srInput.value = '';
-  _srList.textContent = '';
   _srRows = [];
   if (_wmQuery) { _wmQuery = ''; worldMapRefresh(); }
 }

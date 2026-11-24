@@ -199,6 +199,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `content/pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `ui/confirmDialog.js` | The app's only sanctioned confirmation dialog |
 | `ui/icons.js` | The window icons: one cross, one trash, the rest of the set |
+| `ui/motionPlan.js` | Pure interface-motion kernel: a surface's origin and shift toward its trigger, its states per kind, a curve read at a moment, a turn-back's time. Tested |
+| `ui/motion.js` | Every surface's open and close by its kind and trigger, the turn-back, the hide held until the exit ends, the trigger's glow, `motionOpen`; a list's rows gliding to their new places (`motionRows`) |
 | `ui/about.js` | The About block in Settings: mark, version, repo, What's new |
 | `ui/changelogData.js` | The release list. GENERATED; never edit it |
 | `ui/changelog.js` | The What’s new panel |
@@ -316,7 +318,7 @@ Declarations must precede use at init time. All under `src/` except `lib/`, whic
 repo root:
 
 ```
-cursor/cursorPack.js → cursor/companionLogic.js → cursor/companionSwitch.js → cursor/companion.js → i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogShader.js → render/playerFogPass.js → render/playerFogTrans.js →
+cursor/cursorPack.js → cursor/companionLogic.js → cursor/companionSwitch.js → cursor/companion.js → i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → ui/motionPlan.js → ui/motion.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogShader.js → render/playerFogPass.js → render/playerFogTrans.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
 fog/fogGeometry.js → fog/fogTransitionPlan.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → render/timeOfDayPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/fogControls.js → shapes/roomOps.js → shapes/roomPieces.js →

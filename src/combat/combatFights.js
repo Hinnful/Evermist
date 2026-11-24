@@ -39,7 +39,7 @@ function _cfDraw() {
 }
 
 function cbCloseFights() {
-  if (_cfMenu) _cfMenu.remove();
+  if (_cfMenu) { const m = _cfMenu; motionHide(m, 'menu', { done: () => m.remove() }); }
   _cfMenu = null;
   const b = document.getElementById('cb-fightpick');
   if (b) b.classList.remove('open');
@@ -108,6 +108,7 @@ function _cfToggle() {
   _cfMenu.style.left = (r.left / z + 6) + 'px';
   _cfMenu.style.top = (r.bottom / z + 2) + 'px';
   document.getElementById('cb-fightpick').classList.add('open');
+  motionShow(_cfMenu, 'menu', { from: document.getElementById('cb-fightpick') });
   _cfMenu.addEventListener('mousedown', e => e.stopPropagation());
   _cfMenu.addEventListener('keydown', e => e.stopPropagation());
   _cfMenu.addEventListener('click', e => {

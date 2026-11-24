@@ -38,12 +38,13 @@
      The .sm-win shell at the question width. Above #mt-modal's 502/503, because the import
      panel's own Remove asks through this. The title asks, the body says what is lost, and the
      footer ends on the button that names the action. No close: Esc means Cancel. */
+  /* Clicks reach only the backdrop and the question, so neither takes one while it leaves (motion.js). */
   #cd-anchor {
     position: fixed; inset: 0; z-index: 620;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center; pointer-events: none;
   }
-  #cd-backdrop { position: absolute; inset: 0; background: var(--veil); }
-  #cd-modal { outline: none; }
+  #cd-backdrop { position: absolute; inset: 0; background: var(--veil); pointer-events: auto; }
+  #cd-modal { outline: none; pointer-events: auto; }
   .cd-body { padding: 18px 18px 4px; }
   #cd-title { line-height: 1.35; margin-bottom: 8px; }
   /* pre-line keeps a caller's own line breaks. */
@@ -103,16 +104,18 @@
     position: fixed;
     inset: 0;
     z-index: 10000;
-    background: var(--veil);
     display: none;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
   }
+  .mp-shade { position: absolute; inset: 0; background: var(--veil); pointer-events: auto; }
+  #map-progress > .sm-win { pointer-events: auto; }
   .mp-body { padding: 18px; }
   .mp-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
   #map-progress-label { line-height: 1.35; }
   .sm-track { height: 4px; border-radius: 999px; background: var(--g-field); overflow: hidden; }
-  .sm-track i { display: block; width: 0; height: 100%; border-radius: 999px; background: var(--b-solid); transition: width 0.12s ease-out; }
+  .sm-track i { display: block; width: 0; height: 100%; border-radius: 999px; background: var(--b-solid); transition: width var(--m-hover) var(--m-move); }
   .mp-file { margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mp-file:empty { display: none; }
   #map-progress-foot { display: none; }

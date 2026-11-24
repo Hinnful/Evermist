@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // The window NAME, so main shows the right one: two-column mode opens a Player per column.
   playerReveal: (name) => ipcRenderer.send('player-reveal', name),
+  // The start-up work is done (playerWindow.js): main hands off from the splash.
+  bootIdle: () => ipcRenderer.send('boot-idle'),
 
   // Show on TV (src/player/tvControl.js). Main owns the screens; the DM window only asks.
   listDisplays: () => ipcRenderer.invoke('displays-list'),

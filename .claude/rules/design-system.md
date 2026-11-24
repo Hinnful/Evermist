@@ -10,7 +10,7 @@ paths:
 Loaded when you work on the interface. It holds every look rule: shape, fill, colour, line, tokens, sizes,
 contrast, which selector is which atom. Layout and behaviour per screen stay in the `dm-ui` skill.
 `test/designSystem.test.js` reads the tables below whose first column is Radius, Height, Style, Gap, Atom,
-Outside or Text, so each list lives here once. `test/designSystem.allow.json` holds what the CSS may still
+Outside, Text, Motion, Curve, Loop or Exempt, so each list lives here once. `test/designSystem.allow.json` holds what the CSS may still
 break, counted per file; a count may only shrink, and a new entry is a decision for this file.
 
 ## Four axes
@@ -361,6 +361,76 @@ A molecule is atoms in one order, taken whole rather than redrawn per screen.
 - **Toast**: text, a link action, close; bottom centre with a timer line.
 - **Rename in place**: one look, the name plate's edit ring (`--plate-edit-bg` with a 1.5px inset
   `--plate-edit-ring`).
+
+## Motion
+
+Every surface that opens and closes moves by its kind, through `motion.js` and nothing else; the values are the
+`--m-*` tokens in `base.css`, which the test holds to these tables. `test/designSystem.test.js` also reads the
+Motion, Curve, Loop and Exempt tables, and fails any `transition` or `animation` in a stylesheet that is not on a
+token, the hover colour, a Loop or an Exempt selector, and any `.animate(`, `style.transition` or `style.animation`
+in `src/` outside `motion.js`, `player/playerMap.js` (the Player's scene cover) and `scenes/sceneDelete.js` (the undo
+timer bar).
+
+| Motion | In | Out | From | How |
+|---|---|---|---|---|
+| `menu` | `90ms` | `60ms` | what was pressed or right-clicked | there at once, no fade in: grows from scale .96 at the point nearest its trigger; fades out to .98 |
+| `popup` | `90ms` | `60ms` | its anchor (a room, an effect, a control) | there at once, no fade in: 4px toward its anchor and .96; fades out half that |
+| `window` | `150ms` | `100ms` | its rail button or opener | 20px toward the trigger and .96, from the window's point nearest it; leaves the same way, and the trigger glows once |
+| `pane` | `160ms` | `110ms` | the rail | slides 24px from the rail's side, no scale |
+| `pane-switch` | `90ms` | | | the content fades in; the pane does not move |
+| `dialog` | `140ms` | `100ms` | the centre | .96 from the centre, the backdrop darkening on the same time; leaves to .98 |
+| `toast` | `150ms` | `100ms` | the bottom | rises 12px; leaves 6px |
+| `layer` | `50ms` | `40ms` | the whole screen | the Campaign: a full-screen layer, fades in at once over the map and out the same way; its camera flies on its own |
+| `bar` | `90ms` | `60ms` | the toolbar | a row over the toolbar (the brush, effects, door and edit rows): there at once, rises 6px out of the toolbar; goes back down |
+| `list` | `180ms` | | | a row glides to its new place on `--m-move` |
+| `hover` | `120ms` | | | a colour or background change under the pointer |
+| `still` | | | | what never opens or closes: the rail, bars, the minimap, rows of controls |
+
+| Curve | Value | Use |
+|---|---|---|
+| `--m-enter` | `cubic-bezier(0, 0, 0, 1)` | everything that opens: starts at once, settles softly |
+| `--m-exit` | `cubic-bezier(0, 0, .2, 1)` | everything that closes: starts at once, like an opening; a slow start reads as lag |
+| `--m-move` | `cubic-bezier(0, 0, .2, 1)` | what starts and ends on screen: a row, a progress bar; starts at once |
+| `opacity` | `linear` in, `--m-exit` out | on its own track; on the way in it is done by a third of the movement, on the way out it fades on the exit curve |
+
+The rules:
+
+- **A surface comes from its trigger and leaves to it.** Opened from code with no trigger, a window comes from its
+  rail button and anything else from the centre.
+- **Exit is about two thirds of enter.** Opacity is done by a third of the movement on the way in, so nothing hangs
+  see-through over the map.
+- **Never from scale 0, and no bounce or spring anywhere**: nothing here has momentum.
+- **Interruptible.** Closed while opening, a surface turns back from where it stands; a reopen cancels a pending
+  hide, and the surface stays open.
+- **Open state flips at the press; only the picture lingers.** Code asks `motionOpen(el)`, never `hidden` or
+  `style.display`, and a leaving surface takes no clicks.
+- **What never moves**: the hover colour (it changes, at 120ms), a drag under the pointer, typing, the map and its
+  fog, a scene switch, the TV and the Player.
+- **Measured from the press, every time.** A surface is fully seen within its fade plus 50ms of the press (a menu, popup or
+  bar, which do not fade, within 50ms), and at rest within its entry plus 50ms. `design-sweep` times every inventory
+  entry from the real click, or from the call for one code opens, lists the times and fails one over.
+- **A new surface takes its kind.** A surface no kind fits is a decision for this file.
+
+| Loop | Keyframes | What |
+|---|---|---|
+| Spinners | `bsSpin` `muSpin` `tvSpin` | something is being read |
+| Pulses | `tvPulse` | a live dot |
+| Breathe | `tvBreathe` | the minimap while the TV is live |
+| Bob | `wpBob` | the party marker on the Campaign |
+| Music bars | `plBar` | the player's level bars |
+| Search bar | `srSlide` | the search reading maps |
+| Hint blink | `hintcallBlink` | the control a hint points at, three times |
+
+| Exempt | Selectors | Why |
+|---|---|---|
+| Scene cover and switch | `#scene-fade` `#dm-switch-veil` | the map's own tuned motion |
+| TV picture | `#tv-picture` | the TV's |
+| Campaign cards | `.wm-card` `.wm-fc` `.wm-lm` | the Campaign's own glide |
+| Party marker | `.wp-here` `.wmist-hole` | its glide and the mist hole that follows it |
+| Minimap | `#minimap-canvas` | the minimap's own dimming |
+| Switch knob | `.dk-switch` | the knob slides as everywhere else |
+| Chevrons | `.car` `.sm-chev` `.nw-tw` `.nw-lore-chev` | a fold's chevron turns |
+| Column frame | `.pane-col::after` | the toolbar's column highlight |
 
 ## Building a screen
 

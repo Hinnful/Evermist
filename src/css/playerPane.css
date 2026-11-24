@@ -28,7 +28,7 @@
     pointer-events: auto; position: relative; height: 28px; min-width: 28px; padding: 0; border-radius: 6px;
     border: 1px solid var(--g-pick); background: var(--g-hover); color: var(--g-text);
     display: inline-flex; align-items: center; justify-content: center; cursor: var(--cur-pointer);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); opacity: 0.4; transition: opacity .15s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); opacity: 0.4; transition: opacity var(--m-hover) linear;
   }
   #minimap-panel:hover .tv-ov, .tv-ov.active { opacity: 1; }
   .tv-ov:hover { background: var(--g-pick); }
@@ -122,8 +122,8 @@
   .tv-lnk:hover { color: var(--g-text); text-decoration: underline; text-underline-offset: 3px; }
 
   /* ===== TV SETUP (tvControl.js): an .sm-win at the question width, centred over the map ===== */
-  .tvs { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
-         background: var(--veil); transition: background .45s; }
+  .tvs { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .tvs-shade { position: absolute; inset: 0; background: var(--veil); }
   .tvs .sm-wbody { overflow: visible; display: flex; flex-direction: column; padding: 14px 16px 16px; }
   .tvs .sm-sub { margin: 16px 0 4px; }
   .tvs .sm-sub:first-child { margin-top: 0; }
@@ -154,7 +154,6 @@
                background: var(--g-field); color: var(--g-text); text-align: right; font: 500 12px/1 system-ui, -apple-system, sans-serif; outline: none; }
   .tvs-field:focus { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-icon); }
   .tvs-field.empty { box-shadow: 0 0 0 2px var(--b-icon); }
-  .tvs .sm-win.fly { transition: transform .45s cubic-bezier(.5, 0, .3, 1), opacity .45s; opacity: 0; }
   .tvs-note { margin-top: 16px; color: var(--g-dim); font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
   .tvs-note .kmore { display: inline-grid; place-items: center; width: 18px; height: 16px; margin: 0 1px; border-radius: 4px;
                      background: var(--g-field); color: var(--g-text); vertical-align: -3px; }

@@ -55,7 +55,7 @@ function refreshShapeButton() {
 
 function _tbCloseList() {
   const dd = document.getElementById('tb-dd');
-  if (dd) dd.remove();
+  if (dd) motionHide(dd, 'menu', { done: () => dd.remove() });
   document.querySelectorAll('.tb-chev.open, .op-chev.open').forEach(c => c.classList.remove('open'));
   _tbOpen = null;
   _tbPickFn = null;
@@ -72,6 +72,7 @@ function _tbRows() {
 // the same chevron closes it; `onPick(id)` is what a row does.
 function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
   _tbCloseList();
+  document.querySelectorAll('#tb-dd').forEach(old => old.remove());   // one list replaces another at once
   _tbOpen = kind;
   _tbPickFn = onPick;
   if (chevEl) chevEl.classList.add('open');
@@ -101,6 +102,7 @@ function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
   const st = _rpScreenToStyle(dd, left, r.top - 10 - box.height);
   dd.style.left = st.left + 'px';
   dd.style.top = st.top + 'px';
+  motionShow(dd, 'menu', { from: chevEl || anchor });
 }
 
 function _tbOpenShapeList() {

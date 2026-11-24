@@ -198,6 +198,7 @@ function cbMenu(items, rect, owner) {
   if (mr.right > innerWidth) m.style.left = (Math.max(4, innerWidth - mr.width - 4) / z) + 'px';
   _cbMenuOwner = owner || null;
   if (owner) owner.classList.add('open');
+  motionShow(m, 'menu', { from: owner || rect });
   // Capture phase: the panels stop mousedown from bubbling, so a bubbling listener never heard a
   // click anywhere inside the table.
   // A menu picked before this tick is gone, and listeners added for it would swallow the next Enter.
@@ -219,7 +220,8 @@ function _cbMenuKey(e) {
 }
 function cbCloseMenu() {
   const m = document.getElementById('cb-menu');
-  if (m) m.remove();
+  // Its id goes at the press: whatever asks for #cb-menu from then on is asking about a menu that is shut.
+  if (m) { m.removeAttribute('id'); motionHide(m, 'menu', { done: () => m.remove() }); }
   if (_cbMenuOwner) _cbMenuOwner.classList.remove('open');
   _cbMenuOwner = null;
   document.removeEventListener('mousedown', _cbMenuOutside, true);
@@ -277,17 +279,20 @@ function _cbDragRow(rowEl) {
     }
     if (target && target !== rowEl) target.classList.add(below ? 'drop-below' : 'drop-above');
   };
+  // The neighbours slide apart and the dropped row settles into its place.
   const up = () => {
     window.removeEventListener('mousemove', move);
     clear();
     rowEl.classList.remove('dragging');
-    if (target && target !== rowEl) {
-      const dest = _cbRowOf(target);
-      cbState.rows = cbState.rows.filter(x => x !== moving);
-      cbState.rows.splice(cbState.rows.indexOf(dest) + (below ? 1 : 0), 0, moving);
-      cbSave();
-    }
-    cbRender();
+    motionRows(list, '.cb-row', el => el.dataset.id, () => {
+      if (target && target !== rowEl) {
+        const dest = _cbRowOf(target);
+        cbState.rows = cbState.rows.filter(x => x !== moving);
+        cbState.rows.splice(cbState.rows.indexOf(dest) + (below ? 1 : 0), 0, moving);
+        cbSave();
+      }
+      cbRender();
+    });
   };
   window.addEventListener('mousemove', move);
   window.addEventListener('mouseup', up, { once: true });
@@ -445,12 +450,15 @@ function _cbPlaceFight(el) {
   _cbClampFight(el, pos ? pos.left : innerWidth / z - w - CB_EDGE / z, pos ? pos.top : 64 / z);
 }
 
+function cbIsOpen() { return motionOpen(document.getElementById('cb-fight')); }
+
 function cbSetOpen(open) {
-  const el = document.getElementById('cb-fight');
-  el.style.display = open ? 'block' : 'none';
-  document.getElementById('btn-combat').classList.toggle('active', open);
+  const el = document.getElementById('cb-fight'), btn = document.getElementById('btn-combat');
+  if (open) motionShow(el, 'window', { from: btn, reveal: () => { el.style.display = 'block'; cbRender(); cbFightsTitle(); _cbPlaceFight(el); } });
+  else motionHide(el, 'window', { from: btn, glow: true, done: () => { el.style.display = 'none'; } });
+  btn.classList.toggle('active', open);
   dockRefreshRail();
-  if (open) { cbRender(); cbFightsTitle(); _cbPlaceFight(el); hintsFightOpened(cbState.rows.length); return; }
+  if (open) { hintsFightOpened(cbState.rows.length); return; }
   cbCloseMenu(); cbCloseFights(); hintsFightClosed();
   bcClose();
 }
@@ -473,7 +481,7 @@ function initCombatTracker() {
     <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
   document.body.append(fight);
   _cbApplyCols(fight);
-  window.addEventListener('resize', () => { if (fight.style.display === 'block') _cbPlaceFight(fight); });
+  window.addEventListener('resize', () => { if (cbIsOpen()) _cbPlaceFight(fight); });
 
   // The map's own handlers listen on the document; nothing typed or clicked here is theirs.
   fight.addEventListener('keydown', e => {
@@ -564,7 +572,7 @@ function initCombatTracker() {
   initCombatRows(fight, list);
 
   document.getElementById('cb-close').addEventListener('click', () => cbSetOpen(false));
-  document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
+  document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(!cbIsOpen()));
 
   initBestiary();
   initCombatHead(); initCombatFights(); initCombatSort(); initInitiativeTv();

@@ -177,10 +177,10 @@ describe('stylesheets', () => {
       'Drop the @import/@layer at the lines named and link the file from index.html.');
   });
 
-  it('defines @keyframes cpAdvIn exactly once', () => {
-    const found = cssHits(/@keyframes\s+cpAdvIn\b/);
-    assert.equal(found.length, 1, '@keyframes cpAdvIn must live once, in controlPanel.css; found: ' +
-      (found.join(', ') || 'none') + '. Keep one definition.');
+  it('defines each @keyframes once', () => {
+    const names = cssHits(/@keyframes\s+[\w-]+/).map(h => /@keyframes\s+([\w-]+)/.exec(h)[1]);
+    const twice = names.filter((n, i) => names.indexOf(n) !== i);
+    assert.deepEqual(twice, [], 'a @keyframes lives once, in the stylesheet of the region that plays it: ' + twice.join(', '));
   });
 
   it('puts no <style> block in index.html', () => {

@@ -60,16 +60,17 @@ function _mtRenderModal(status, isError) {
 
 function openModuleTextModal() {
   _mtRenderModal();
-  _mtEl('mt-backdrop').style.display = '';
-  const modal = _mtEl('mt-modal');
-  modal.style.display = '';
+  const veil = _mtEl('mt-backdrop'), modal = _mtEl('mt-modal');
+  motionShow(modal, 'window', { from: _mtEl('dock-tab-settings'), veil,
+    reveal: () => { veil.style.display = ''; modal.style.display = ''; } });
   // Focus the panel itself (tabindex="-1") so Escape has somewhere to land.
   modal.focus();
 }
 
 function closeModuleTextModal() {
-  _mtEl('mt-backdrop').style.display = 'none';
-  _mtEl('mt-modal').style.display = 'none';
+  const veil = _mtEl('mt-backdrop'), modal = _mtEl('mt-modal');
+  motionHide(modal, 'window', { from: _mtEl('dock-tab-settings'), glow: true, veil,
+    done: () => { veil.style.display = 'none'; modal.style.display = 'none'; } });
 }
 
 // Bytes → text, UTF-8 first and Windows-1251 second. `fatal: true` turns silent mojibake into a
@@ -341,6 +342,9 @@ function mtOpenDropdown() {
     _mtOpen = true;
     _mtActive = -1;
     _mtDD.style.display = 'block';
+    _mtRender();
+    motionShow(_mtDD, 'menu', { from: _mtNameEl });
+    return;
   }
   _mtRender();
 }
@@ -349,7 +353,8 @@ function mtCloseDropdown() {
   if (!_mtDD || !_mtOpen) return;
   _mtOpen = false;
   _mtActive = -1;
-  _mtDD.style.display = 'none';
+  const dd = _mtDD;
+  motionHide(dd, 'menu', { done: () => { dd.style.display = 'none'; } });
 }
 
 function _mtScrollActiveIntoView() {

@@ -12,9 +12,11 @@ Split by screen region: `base.css`, `controlPanel.css`, `toolbar.css`, `roomCard
 
 - **`index.html` has no `<style>` block.** A guard hook blocks one in the head.
 - **The `<link>` order in `index.html` IS the cascade.** `base.css` first (it defines
-  `--ui-zoom`), `overlays.css` last, and `controlPanel.css` before `roomCard.css` because it
-  defines `@keyframes cpAdvIn`, which must stay defined exactly once and which `music.css`
-  also uses. `dock.css` sits after every stylesheet whose controls it reskins.
+  `--ui-zoom` and the motion tokens), `overlays.css` last. `dock.css` sits after every stylesheet whose
+  controls it reskins.
+- **No stylesheet opens or closes a surface.** A window, menu, popup, pane, dialog or toast moves through
+  `motion.js`; a `transition` or `animation` here rides the `--m-*` tokens, is the hover colour, plays a Loop or sits on
+  an Exempt selector (design-system.md, "Motion"), and `designSystem.test.js` fails anything else.
 - **No `player-mode.css`.** The `body.player-mode` overrides deliberately sit next to what
   they override, in `toolbar.css`, `sceneManager.css` and `music.css`.
 - No `@import`, no preprocessor, no runtime style injection.

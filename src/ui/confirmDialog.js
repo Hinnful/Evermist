@@ -48,7 +48,7 @@ function _cdShowConfirm(o) {
   _cdOnCancel  = typeof o.onCancel  === 'function' ? o.onCancel  : null;
 
   _cdRoot.classList.remove('cd-solo');
-  _cdRoot.style.display = 'flex';
+  _cdReveal();
   // CANCEL takes focus, not confirm. Enter is the reflex key for dismissing things, so
   // the reflex answer must be the one that changes nothing.
   _cdEl('cd-cancel').focus();
@@ -71,15 +71,23 @@ function _cdShowMessage(o) {
   _cdOnConfirm = _cdOnCancel = fn;
 
   _cdRoot.classList.add('cd-solo');
-  _cdRoot.style.display = 'flex';
+  _cdReveal();
   // The only button takes focus. Cancel's reasoning — reflex Enter must change nothing —
   // has nothing to guard against here.
   _cdEl('cd-ok').focus();
 }
 
+// The question grows from the centre over a darkening backdrop, and leaves faster. A question its answer raises
+// takes the same window, so the leaving one turns back and stays.
+function _cdReveal() {
+  const root = _cdRoot;
+  motionShow(_cdEl('cd-modal'), 'dialog', { veil: _cdEl('cd-backdrop'), reveal: () => { root.style.display = 'flex'; } });
+}
+
 function _cdClose(confirmed) {
-  if (!_cdRoot) return;
-  _cdRoot.style.display = 'none';
+  if (!_cdRoot || !_cdOpen) return;
+  const root = _cdRoot;
+  motionHide(_cdEl('cd-modal'), 'dialog', { veil: _cdEl('cd-backdrop'), done: () => { root.style.display = 'none'; } });
   _cdOpen = false;
   const fn = confirmed ? _cdOnConfirm : _cdOnCancel;
   _cdOnConfirm = _cdOnCancel = null;
@@ -138,14 +146,25 @@ function toastEl(id, icon, solo) {
 
 // The stack sits just above whatever is on screen at the foot of the map, centred on the toolbar:
 // the row over it when that shows, the toolbar alone, or the window's foot in a column.
-function showToast(el) {
-  el.style.display = '';
+// `show` and `hide` make it visible and hidden, an inline display unless the toast is shown by a class.
+function showToast(el, show = () => { el.style.display = ''; }) {
+  motionShow(el, 'toast', { reveal: () => { show(); _toastPlace(); } });
+}
+
+// The toolbar is centred on the window, so a resize moves it and the stack is placed again.
+function _toastPlace() {
   const st = document.getElementById('sm-toasts');
+  if (!st) return;
   const boxes = ['context-row', 'toolbar-bottom'].map(id => document.getElementById(id))
     .filter(b => b && b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden')
     .map(b => b.getBoundingClientRect());
   st.style.bottom = (boxes.length ? innerHeight - Math.min(...boxes.map(r => r.top)) + 12 : 24) + 'px';
   st.style.left = boxes.length ? (boxes[boxes.length - 1].left + boxes[boxes.length - 1].right) / 2 + 'px' : '';
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', _toastPlace);
+
+function hideToast(el, hide = () => { el.style.display = 'none'; }) {
+  if (el) motionHide(el, 'toast', { done: hide });
 }
 
 // ─── Notice ───────────────────────────────────────────────────────────────────
@@ -161,9 +180,9 @@ function noticeToast(text) {
   _noticeEl.querySelector('.m').textContent = text;
   showToast(_noticeEl);
   if (_noticeTimer) clearTimeout(_noticeTimer);
-  _noticeTimer = setTimeout(() => { _noticeEl.style.display = 'none'; _noticeTimer = 0; }, NOTICE_MS);
+  _noticeTimer = setTimeout(() => { hideToast(_noticeEl); _noticeTimer = 0; }, NOTICE_MS);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { confirmDialog, messageDialog, noticeToast, toastEl, showToast };
+  module.exports = { confirmDialog, messageDialog, noticeToast, toastEl, showToast, hideToast };
 }

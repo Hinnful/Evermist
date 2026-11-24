@@ -23,8 +23,21 @@ function _hintsMayShow(id) { return !_hintsOff() && !_hintsSeen().includes(id); 
 // True once the quiet gap since the last Got it has passed; hints that answer the DM's own action skip it.
 function _hintQuiet() { return hintQuietOver({ now: Date.now(), lastClosedAt: _hintClosedAt, gapMs: _hintQuietMs }); }
 
+// Where the toast's arrow touches what it points at, in client px: it grows from there and goes back into it.
+function _hintTip(el) {
+  const r = el.getBoundingClientRect(), a = parseFloat(el.style.getPropertyValue('--a')) * (el.currentCSSZoom || 1);
+  const along = (lo, size) => lo + (Number.isFinite(a) ? a : size / 2);
+  if (el.classList.contains('hc-below')) return { x: along(r.left, r.width), y: r.top };
+  if (el.classList.contains('hc-right')) return { x: r.left, y: along(r.top, r.height) };
+  if (el.classList.contains('hc-left') || /hintcall-(seat|next-map|music|sounds)\b/.test(el.className)) return { x: r.right, y: along(r.top, r.height) };
+  if (el.classList.contains('hc-above')) return { x: along(r.left, r.width), y: r.bottom };
+  return { x: r.left + r.width / 2, y: r.bottom };
+}
+
 function _hintDrop(cur) {
-  cur.el.remove();
+  const el = cur.el;
+  el.querySelector('.hintcall-ok').style.pointerEvents = 'none';
+  motionHide(el, 'popup', { from: _hintTip(el), done: () => el.remove() });
   if (cur.blink) cur.blink.classList.remove('hintcall-blink');
 }
 
@@ -60,7 +73,7 @@ function _hintShow(id, title, body, blink, place) {
     b.classList.add('hintcall-blink');
     b.addEventListener('animationend', () => b.classList.remove('hintcall-blink'), { once: true });
   }
-  requestAnimationFrame(() => el.classList.add('vis'));
+  motionShow(el, 'popup', { from: _hintTip(el) });
 }
 
 function _hintReplace() { if (_hintCur) _hintCur.place(_hintCur.el); }

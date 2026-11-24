@@ -63,9 +63,11 @@ function nwShow() {
   if (_nwOpen || _nwHeldForCal) return;
   const w = _nwEl();
   _nwOpen = true;
+  const back = !w.hidden;
   w.hidden = false;
   _nwApplyTree();
-  _nwPlace();
+  if (!back) _nwPlace();
+  motionShow(w, 'window', { from: document.getElementById('dock-tab-notes') });
   dockRefreshRail();
   refreshRoomPanel();
   _rpFitNotes();
@@ -77,7 +79,8 @@ function nwHide() {
   ntCloseMenu();
   _neHideTip();
   _nwOpen = false;
-  _nwEl().hidden = true;
+  const w = _nwEl(), btn = document.getElementById('dock-tab-notes');
+  motionHide(w, 'window', { from: btn, glow: true, done: () => { w.hidden = true; } });
   dockRefreshRail();
 }
 
@@ -223,7 +226,7 @@ function _nwEscape(e) {
   const a = document.activeElement, inside = _nwEl().contains(a);
   if (nePickerOpen()) return;
   if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && inside) return;
-  if (document.querySelector('.sm-menu') || ['cd-anchor', 'cl-anchor', 'mt-modal'].some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none' && el.style.display !== ''; })) return;
+  if ([...document.querySelectorAll('.sm-menu')].some(motionOpen) || ['cd-modal', 'cl-modal', 'mt-modal'].some(id => motionOpen(document.getElementById(id)))) return;
   if (searchIsOpen() || bsHasFocus() || (worldMapOpen && !inside)) return;
   if (!inside && (activePolygon || shape !== 'select' || shapeOp !== 'new' || selectedPolygonId != null)) return;
   e.stopPropagation();

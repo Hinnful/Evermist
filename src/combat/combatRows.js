@@ -50,9 +50,13 @@ function _cbRowHtml(r, shown, ex) {
 }
 
 // Live rows in their order, then the Defeated line with the cleaned rows, folded until the DM opens it.
+// A redraw while rows glide (a sort, a drop) turns them from where they stand instead of snapping them.
 function cbRender() {
   const list = document.getElementById('cb-list');
-  if (!list) return;
+  if (list) motionRedraw(list, '.cb-row', el => el.dataset.id, () => _cbDraw(list));
+}
+
+function _cbDraw(list) {
   if (combatReviveRows(cbState.rows)) cbSaveSoon();
   const shown = bcRowId(), ex = cbState.rows.filter(r => r.side !== 'ally' && !String(r.hp || '').trim() && combatFirstNum(cbRowBlock(r).hp)).slice(0, 2);   // the HP line's sample
   const { live, gone } = combatRenderOrder(cbState.rows);

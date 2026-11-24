@@ -153,5 +153,5 @@ function upToast(message, ctaLabel, onCta, hideMs) {
 
 function hideUpdateToast() {
   clearTimeout(_upHideTimer);
-  if (_upToast) _upToast.style.display = 'none';
+  hideToast(_upToast);
 }

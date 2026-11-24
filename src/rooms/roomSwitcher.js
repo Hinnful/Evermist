@@ -43,11 +43,17 @@ function _rfSetMode(mode) {
 // Placed over the room's top edge, centred on it and kept in the map area the dock leaves; under the room when there
 // is no space above. A drag of the room, or of one of its corners, puts it away until the drop.
 let _rfKey = '';   // what the switcher was last laid out for; doRender runs it every dirty frame
+let _rfAt = null;  // the room's box it was last placed over: it grows from there and goes back into it
 function refreshRoomSwitcher() {
   const el = document.getElementById('room-fog');
   if (!el) return;
   const room = _rfRoom();
-  if (!room || selectDragging()) { el.style.display = 'none'; _rfKey = ''; return; }
+  if (!room || selectDragging()) {
+    _rfKey = '';
+    // A drag puts it away at once; a deselect sends it back into the room.
+    if (room) { motionSettle(el); el.style.display = 'none'; } else motionHide(el, 'popup', { from: _rfAt, done: () => { el.style.display = 'none'; } });
+    return;
+  }
   let l = Infinity, r = -Infinity, top = Infinity, bottom = -Infinity;
   for (const v of room.vertices) {
     const s = toScreen(v.x, v.y), c = viewToClient(s.sx, s.sy);
@@ -58,8 +64,10 @@ function refreshRoomSwitcher() {
   const mode = picked.every(p => p.mode === room.mode) ? room.mode : '';
   const many = picked.length > 1;
   const key = [picked.map(p => p.id).join(','), mode, shape, l, r, top, bottom, innerWidth, innerHeight, dockMapInset()].join('|');
-  if (key === _rfKey && el.style.display === 'flex') return;
+  if (key === _rfKey && motionOpen(el)) return;
   _rfKey = key;
+  const was = motionOpen(el);
+  _rfAt = { left: l, top, width: r - l, height: bottom - top };
   el.querySelectorAll('.fx-dir').forEach(b => b.classList.toggle('active', b.dataset.dir === mode));
   const door = el.querySelector('.rf-door');
   door.style.display = el.querySelector('.tb-mdiv').style.display = many ? 'none' : '';
@@ -75,5 +83,6 @@ function refreshRoomSwitcher() {
   const st = _rpScreenToStyle(el, left, y);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';
+  if (!was) motionShow(el, 'popup', { from: _rfAt });
   hintsFirstPlace();
 }

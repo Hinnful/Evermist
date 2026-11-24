@@ -134,7 +134,9 @@ function openChangelog() {
 function _clOpen() {
   _clBuild();
   _clFill();
-  _clRoot.style.display = '';
+  const root = _clRoot;
+  motionShow(document.getElementById('cl-modal'), 'window', { from: document.getElementById('dock-tab-settings'),
+    veil: document.getElementById('cl-backdrop'), reveal: () => { root.style.display = ''; } });
   document.getElementById('cl-body').scrollTop = 0;
   document.getElementById('cl-modal').focus();
   document.addEventListener('keydown', _clKeys, true);
@@ -142,5 +144,9 @@ function _clOpen() {
 
 function closeChangelog() {
   document.removeEventListener('keydown', _clKeys, true);
-  if (_clRoot) _clRoot.style.display = 'none';
+  const root = _clRoot;
+  if (root) {
+    motionHide(document.getElementById('cl-modal'), 'window', { from: document.getElementById('dock-tab-settings'), glow: true,
+      veil: document.getElementById('cl-backdrop'), done: () => { root.style.display = 'none'; } });
+  }
 }

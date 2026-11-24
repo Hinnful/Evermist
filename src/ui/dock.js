@@ -54,10 +54,22 @@ function dockMapInset() {
 function dockOpen(name, forced) {
   const dock = _dockEl();
   if (!dock) return;
+  const was = _dockPane, pane = document.getElementById('dock-pane'), rail = document.getElementById('dock-rail');
   _dockPane = name;
   dockClosePop();
-  dock.classList.toggle('open', !!name);
-  dock.querySelectorAll('.dk-sec').forEach(s => { s.hidden = s.dataset.pane !== name; });
+  const show = () => dock.querySelectorAll('.dk-sec').forEach(s => { s.hidden = s.dataset.pane !== name; });
+  if (name) {
+    const leaving = !motionOpen(pane) && dock.classList.contains('open');
+    dock.classList.add('open');
+    show();
+    if (!was || leaving) motionShow(pane, 'pane', { from: rail });
+    if (was && was !== name) motionFade(document.getElementById('dock-pane-' + name));
+  } else if (was) {
+    motionHide(pane, 'pane', { from: rail, done: () => { dock.classList.remove('open'); show(); dockLayout(); } });
+  } else {
+    dock.classList.remove('open');
+    show();
+  }
   if (!forced) { try { localStorage.setItem(DOCK_PANE_KEY, name || ''); } catch (_) {} }
   dockRefreshRail();
   dockLayout();
@@ -65,10 +77,9 @@ function dockOpen(name, forced) {
 }
 
 function _dockWindowOpen(name) {
-  const shown = id => { const el = document.getElementById(id); return !!el && el.style.display !== 'none' && el.style.display !== ''; };
   if (name === 'world') return worldMapOpen;
   if (name === 'bestiary') return bsIsOpen();
-  if (name === 'combat') return shown('cb-fight');
+  if (name === 'combat') return cbIsOpen();
   if (name === 'notes') return nwIsOpen();
   return false;
 }
@@ -110,9 +121,9 @@ function _dockInitPops(dock) {
     dockClosePop();
     _dockPopEl = document.getElementById(id);
     _dockPopFrom = from;
-    _dockPopEl.hidden = false;
+    const pop = _dockPopEl;
+    motionShow(pop, 'pane', { from, reveal: () => { pop.hidden = false; dockPlacePop(pop, from.closest('.dk-r, .dk-blk') || from); } });
     from.classList.add('open');
-    dockPlacePop(_dockPopEl, from.closest('.dk-r, .dk-blk') || from);
     document.dispatchEvent(new CustomEvent('dockpop', { detail: id }));
   });
   document.querySelectorAll('.dk-pop').forEach(p => {
@@ -129,7 +140,8 @@ function _dockInitPops(dock) {
 
 function dockClosePop() {
   if (!_dockPopEl) return;
-  _dockPopEl.hidden = true;
+  const el = _dockPopEl;
+  motionHide(el, 'pane', { from: _dockPopFrom, done: () => { el.hidden = true; } });
   _dockPopFrom.classList.remove('open');
   _dockPopEl = _dockPopFrom = null;
 }

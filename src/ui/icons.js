@@ -33,6 +33,7 @@ const UI_ICON_PATHS = {
   intersect: '<rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="9" y="9" width="6" height="6" fill="currentColor" stroke="none"/>',
   exclude: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V9H9v6H5.5A1.5 1.5 0 0 1 4 13.5zM20 18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 9 18.5V15h6V9h3.5A1.5 1.5 0 0 1 20 10.5z" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="6" height="6" stroke-dasharray="2 2"/>',
   chev: '<path d="M7 10l5 5 5-5"/>',
+  next: '<path d="M10 7l5 5-5 5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   dash: '<path d="M6 12h12"/>',
   scrub: '<path d="M7 8l-4 4 4 4M17 8l4 4-4 4M3 12h18"/>',

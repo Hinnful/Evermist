@@ -42,6 +42,40 @@ function prewarmPlayer() {
   _playerPrewarm = openPlayerWindow();
 }
 
+// The start-up work runs under the splash: main reveals the DM window only once told it is idle.
+// ⚠ THE CLOUD SET BEFORE THE WARM PLAYER. That window shares this thread, and with no whole set to
+// copy it builds its own in one task, freezing the DM for seconds.
+const BOOT_STEP_MS = 8000;
+function bootUnderSplash() {
+  if (isPane) return;
+  let told = false;
+  const tellMain = () => {
+    if (told) return;
+    told = true;
+    if (window.electronAPI && window.electronAPI.bootIdle) window.electronAPI.bootIdle();
+  };
+  if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
+  const started = Date.now();
+  const afterClouds = () => {
+    if (cloudFrames.length !== CLOUD_FRAME_COUNT && Date.now() - started < BOOT_STEP_MS) {
+      setTimeout(afterClouds, 50);
+      return;
+    }
+    if (!appInBackground) { effectsBarFireWarm(); prewarmPlayer(); }
+    const warm = _playerPrewarm;
+    if (!warm) { tellMain(); return; }
+    // toolbar.js's handler drops this window's messages until the button adopts it.
+    const onReady = (e) => {
+      if (e.source !== warm || !e.data || e.data.type !== 'PLAYER_READY') return;
+      window.removeEventListener('message', onReady);
+      tellMain();
+    };
+    window.addEventListener('message', onReady);
+    setTimeout(() => { window.removeEventListener('message', onReady); tellMain(); }, BOOT_STEP_MS);
+  };
+  afterClouds();
+}
+
 // Same name reuse, the other way round: a window still closing can answer to the name, so the
 // warm handle lands on a corpse. Bounded, or a window that never closes stops the warming.
 function prewarmPlayerAfter(dying) {

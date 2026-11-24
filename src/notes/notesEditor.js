@@ -135,7 +135,7 @@ function _neStep(el, d) {
 function nePickerOpen() { return !!_nePick; }
 
 function _neClosePicker() {
-  if (_nePick) { _nePick.pop.remove(); _nePick = null; }
+  if (_nePick) { const pop = _nePick.pop; motionHide(pop, 'menu', { done: () => pop.remove() }); _nePick = null; }
 }
 
 // The "@words" before the caret, in the text node it sits in; null when there is none.
@@ -180,7 +180,8 @@ function _nePickerUpdate(el) {
   }
   if (!items.length) { const h = document.createElement('div'); h.className = 'hd'; h.textContent = t('Keep typing a name'); pop.append(h); }
   _nePick = { el, ...at, items, at: 0, pop };
-  if (!pop.isConnected) {
+  const fresh = !pop.isConnected;
+  if (fresh) {
     document.body.appendChild(pop);
     pop.dataset.keepsFocus = '';
     pop.addEventListener('mousedown', e => {
@@ -196,6 +197,7 @@ function _nePickerUpdate(el) {
   const box = r.getClientRects()[0] || el.getBoundingClientRect(), z = _neZoom();
   pop.style.left = Math.max(4, Math.min(box.left, innerWidth - 240)) / z + 'px';
   pop.style.top = (box.bottom + 4) / z + 'px';
+  if (fresh) motionShow(pop, 'menu', { from: { x: box.left, y: box.bottom } });
 }
 
 function _nePickPaint() {
@@ -274,7 +276,8 @@ function _neMissMenu(el, label) {
 
 function _neHideTip() {
   clearTimeout(_neTipTimer);
-  if (_neTip) _neTip.style.display = 'none';
+  const tip = _neTip;
+  if (tip) motionHide(tip, 'popup', { done: () => { tip.style.display = 'none'; } });
 }
 
 function _neShowTip(label) {
@@ -294,10 +297,12 @@ function _neShowTip(label) {
   p.textContent = r ? (mpPlain(r.note).trim().split('\n').slice(0, 4).join('\n').slice(0, 200) || t('No note yet.')) : t('Nothing by this name exists any more.');
   head.append(b, ' ', kind);
   _neTip.append(head, p);
-  const box = label.getBoundingClientRect(), z = _neZoom();
-  _neTip.style.display = 'block';
-  _neTip.style.left = Math.max(4, Math.min(box.left, innerWidth - 260)) / z + 'px';
-  _neTip.style.top = (box.bottom + 6) / z + 'px';
+  const box = label.getBoundingClientRect(), z = _neZoom(), tip = _neTip;
+  motionShow(tip, 'popup', { from: label, reveal: () => {
+    tip.style.display = 'block';
+    tip.style.left = Math.max(4, Math.min(box.left, innerWidth - 260)) / z + 'px';
+    tip.style.top = (box.bottom + 6) / z + 'px';
+  } });
 }
 
 // ─── Wiring ──────────────────────────────────────────────────────────────────

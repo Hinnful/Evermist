@@ -155,6 +155,5 @@ async function showTrackUndo(id, kind, label, onBack) {
 
 function hideUndoToast() {
   smToastUndo = null;
-  const t = document.getElementById('scene-undo-toast');
-  if (t) t.style.display = 'none';
+  hideToast(document.getElementById('scene-undo-toast'));
 }

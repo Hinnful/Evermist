@@ -5,10 +5,12 @@
     position: fixed; inset: 0; z-index: 50; overflow: hidden; user-select: none;
     background-color: #0e1012;
     background-image: radial-gradient(var(--g-bg) 1px, transparent 1.3px);
-    opacity: 0; transition: opacity .25s;
+    opacity: 0; transition: opacity var(--m-layer-out) linear;
   }
   #wm[hidden] { display: none; }
-  #wm.shown { opacity: 1; }
+  #wm.shown { opacity: 1; transition-duration: var(--m-layer-in); }
+  /* Leaving, it takes no clicks: what is under it does. */
+  #wm:not(.shown) { pointer-events: none; }
   #wm.panning { cursor: var(--cur-grabbing); }
   body.player-mode #wm, body.pane-mode #wm { display: none !important; }
   #wm-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; --wz: calc(var(--iz) * var(--uz, 1)); }
@@ -161,6 +163,7 @@
   #wm-bar button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--g-dim); cursor: var(--cur-pointer); display: grid; place-items: center; }
   #wm-bar button:hover { background: var(--g-field); color: var(--g-text); }
   #wm-bar .wm-bar-open { width: auto; padding: 0 10px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 1; }
+  #wm-bar .wm-bar-open > span { text-box: trim-both cap alphabetic; }
   #wm-bar .wm-bar-open, #wm-bar .wm-bar-open:hover { background: var(--b-solid); color: #fff; box-shadow: none; }
   #wm-bar::after {
     content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: var(--panel-bg);

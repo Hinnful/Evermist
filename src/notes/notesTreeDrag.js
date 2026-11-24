@@ -187,6 +187,6 @@ function ntMenuRows(n) {
   const rows = ntRowsFor(n);
   const move = _ndListed(n) ? () => _ndMoveRows(n) : n.kind === 'map' && !worldRoadOfScene(n.id) ? () => nmMoveRows(n) : null;
   if (rows[0] && rows[0].label === 'Rename') rows[0].key = 'Ctrl+R';
-  if (move) rows.splice(1, 0, { label: 'Move to group', key: '›', sub: move });
+  if (move) rows.splice(1, 0, { label: 'Move to group', sub: move });
   return rows;
 }

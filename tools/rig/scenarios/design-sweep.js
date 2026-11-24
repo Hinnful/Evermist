@@ -11,10 +11,169 @@
 // - No control is the browser's own, and text in a filled control keeps 6px from its sides.
 // - Nothing but the toggled box moves when an entry's state changes.
 // - Every right-click menu has the same row height on screen, and none is narrower than the skin.
+// - Every entry opens by a real click on its trigger where it has one, and moves by its kind's values
+//   (design-system.md, "Motion"): its duration, curve, scale and shift; its origin on its trigger's side (a pane's
+//   shift from the rail, a toast's from below, a dialog's about its centre); it ends at rest, at opacity 1 with
+//   nothing running; it leaves faster than it came, on its kind's exit, taking no clicks. A `still` entry does not move.
+// - Every entry that moves is seen whole within its fade plus 50ms of the press (or the call), and at rest within its
+//   entry plus 50ms; the times are listed, and written to times.txt.
+// - A surface with a pop or window shadow that shows during the sweep without an inventory entry fails.
+// Every check waits for each surface's motion to end (every running animation that is not a Loop), so nothing is
+// measured mid-flight.
 const lib = require('../lib');
 const path = require('path');
 const fs = require('fs');
 const { SETUP, INVENTORY, CLOSE_ALL } = require('../inventory');
+
+// Every animation motion.js starts, logged as it starts (its element, keyframes, timing, transform origin, whether it
+// takes clicks, the box it stood in), and every opacity transition a stylesheet is running when a run is read.
+const RECORDER = `globalThis.__mv = (() => {
+  let log = [], held = null;
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function (kf, opt) {
+    const o = typeof opt === 'number' ? { duration: opt } : (opt || {});
+    log.push({ el: this, kf: Array.isArray(kf) ? kf : [], dur: o.duration, easing: o.easing || 'linear', origin: this.style.transformOrigin,
+      pe: getComputedStyle(this).pointerEvents, rect: this.getBoundingClientRect(), z: this.currentCSSZoom || 1 });
+    return animate.call(this, kf, opt);
+  };
+  // An opacity transition a stylesheet runs, read while it runs.
+  const fromCss = a => {
+    const el = a.effect.target, k = a.effect.getKeyframes(), t = a.effect.getTiming();
+    return { el, anim: a, css: true, kf: [{ opacity: +k[0].opacity }, { opacity: +k[k.length - 1].opacity }], dur: t.duration, easing: t.easing,
+      pe: getComputedStyle(el).pointerEvents, rect: el.getBoundingClientRect(), z: el.currentCSSZoom || 1 };
+  };
+  const near = (el, root) => el === root ? 0 : el.contains(root) ? 1 : root.contains(el) ? 2 : -1;
+  const tr = s => { const m = /translate\\(([-\\d.e]+)px, ([-\\d.e]+)px\\) scale\\(([\\d.e]+)\\)/.exec(s || ''); return m ? { tx: +m[1], ty: +m[2], s: +m[3] } : null; };
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  // From the press (or the call, for a surface code opens) to the first frame the surface is fully seen, and to the
+  // first frame it is at rest. Opacity is the product up its ancestors, so a surface inside a moving row counts too.
+  let timing = null;
+  const seen = el => { if (!el || !el.getClientRects().length) return false; let o = 1;
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (cs.visibility === 'hidden' || cs.display === 'none') return false; o *= +cs.opacity; }
+    return o >= 0.99; };
+  const busy = el => document.getAnimations().some(a => a.playState === 'running' && a.effect && a.effect.target &&
+    near(a.effect.target, el) >= 0 && near(a.effect.target, el) <= 1 && a.effect.getComputedTiming().iterations !== Infinity);
+  return {
+    watch(sel, onPress) {
+      const t = timing = { sel, t0: onPress ? 0 : performance.now(), seen: null, rest: null };
+      if (onPress) document.addEventListener('mousedown', ev => { t.t0 = ev.timeStamp; }, { capture: true, once: true });
+      const f = now => { if (timing !== t) return; const el = document.querySelector(sel);
+        if (t.t0 && seen(el)) { if (t.seen === null) t.seen = Math.round(now - t.t0); if (!busy(el)) { t.rest = Math.round(now - t.t0); return; } }
+        if (!t.t0 || now - t.t0 < 3000) requestAnimationFrame(f); };
+      requestAnimationFrame(f);
+      return 1;
+    },
+    timing() { return timing && { seen: timing.seen, rest: timing.rest }; },
+    reset() { log = []; },
+    hold(sel) { held = document.querySelector(sel); return !!held; },
+    tokens() {
+      const ms = n => parseFloat(css('--m-' + n)) || 0, k = {};
+      for (const n of ['menu', 'popup', 'window', 'pane', 'dialog', 'toast', 'bar', 'layer']) k[n] = { in: ms(n + '-in'), out: ms(n + '-out') };
+      return { ms: k, enter: css('--m-enter'), exit: css('--m-exit'), scale: parseFloat(css('--m-scale')),
+        shift: { window: ms('window-shift'), pane: ms('pane-shift'), popup: ms('popup-shift'), toast: ms('toast-shift'), bar: ms('bar-shift') } };
+    },
+    // The run of the held surface: its transform (or, with none, its opacity) nearest it, opening or closing.
+    take(opening) {
+      const root = held, enter = css('--m-enter'), exit = css('--m-exit');
+      if (!root) return null;
+      const running = document.getAnimations().filter(a => a instanceof CSSTransition && a.transitionProperty === 'opacity' && a.effect.target).map(fromCss);
+      const mine = log.concat(running).filter(r => near(r.el, root) >= 0 && !r.kf.some(f => 'boxShadow' in f));
+      const moves = mine.filter(r => r.kf.some(f => 'transform' in f) && r.easing === (opening ? enter : exit));
+      const fades = mine.filter(r => r.kf.some(f => 'opacity' in f) && (r.kf[r.kf.length - 1].opacity > r.kf[0].opacity) === opening);
+      const rank = (a, b) => near(a.el, root) - near(b.el, root) || (near(a.el, root) === 1 ? (a.el.contains(b.el) ? 1 : -1) : 0);
+      const r = (moves.length ? moves : fades).sort(rank)[0];
+      if (!r) return null;
+      const f = tr((opening ? r.kf[0] : r.kf[r.kf.length - 1]).transform) || { tx: 0, ty: 0, s: 1 };
+      const op = fades.filter(x => x.el === r.el)[0];
+      const o = (r.origin || '').split(' ').map(parseFloat);
+      const b = r.rect;
+      return { near: near(r.el, root), css: !!r.css, moves: moves.length > 0, dur: r.dur, easing: r.easing, tx: f.tx * r.z, ty: f.ty * r.z, s: f.s,
+        ox: Number.isFinite(o[0]) ? b.left + o[0] * r.z : null, oy: Number.isFinite(o[1]) ? b.top + o[1] * r.z : null,
+        cx: b.left + b.width / 2, cy: b.top + b.height / 2, pe: r.pe, opDur: op ? op.dur : null,
+        what: r.el.tagName.toLowerCase() + (r.el.id ? '#' + r.el.id : '') };
+    },
+    // Whether the held surface's run has ended: nothing but a Loop running on it or round it, and fully opaque. What
+    // runs inside it (the undo toast's timer bar) is its content, not its motion.
+    rested() {
+      const root = held;
+      if (!root || !root.isConnected) return 'gone';
+      const run = document.getAnimations().filter(a => a.playState === 'running' && a.effect && a.effect.target &&
+        near(a.effect.target, root) >= 0 && near(a.effect.target, root) <= 1 &&
+        a.effect.getComputedTiming().iterations !== Infinity);
+      return run.length ? run.length + ' animation(s) still running' : +getComputedStyle(root).opacity < 0.999 ? 'opacity ' + getComputedStyle(root).opacity : '';
+    },
+    // Everything on screen with the pop or the window shadow.
+    shadowed() {
+      const probe = document.createElement('div');
+      document.body.appendChild(probe);
+      const vals = ['--pop-shadow', '--win-shadow'].map(v => { probe.style.boxShadow = 'var(' + v + ')'; return getComputedStyle(probe).boxShadow; });
+      probe.remove();
+      return [...document.querySelectorAll('body *')].filter(el => {
+        if (!el.getClientRects().length) return false;
+        const cs = getComputedStyle(el);
+        return vals.includes(cs.boxShadow) && cs.visibility !== 'hidden' && +cs.opacity > 0;
+      });
+    },
+  };
+})(); 1`;
+
+const KINDS = ['menu', 'popup', 'window', 'pane', 'dialog', 'toast', 'bar', 'layer'];
+const SCALES = { menu: true, popup: true, window: true, pane: false, dialog: true, toast: false, bar: false, layer: false };
+const SHIFTS = { menu: null, popup: 'popup', window: 'window', pane: 'pane', dialog: null, toast: 'toast', bar: 'bar', layer: null };
+// Which kinds fade in; a menu, popup or bar is there at once.
+const FADES = { menu: false, popup: false, window: true, pane: true, dialog: true, toast: true, bar: false, layer: true };
+const EXIT_PART = { menu: 0.5, popup: 0.5, window: 1, pane: 1, dialog: 0.5, toast: 0.5, bar: 1, layer: 0 };
+const r1 = n => Math.round(n * 10) / 10;
+
+// The kind a run's numbers look like, to name what moved where nothing should.
+function kindOf(T, run, phase) {
+  const k = KINDS.filter(n => Math.abs(T.ms[n][phase] - run.dur) < 1.5);
+  return k.length > 1 ? k.find(n => SCALES[n] === (run.s < 0.999)) || k[0] : k[0] || null;
+}
+
+// What is wrong with an entry's run against its kind and its trigger (a point, or null for none).
+function judgeIn(T, kind, run, trig) {
+  const f = [];
+  if (kind === 'still') return run && run.near <= 1 ? ['moves as ' + (kindOf(T, run, 'in') || run.dur + 'ms') + ' on ' + run.what + ', though it is still'] : [];
+  if (!run) return ['opened with no motion'];
+  // Two kinds may share a duration, so the run is held to its own kind's values; scale, shift and origin below tell kinds apart.
+  if (Math.abs(T.ms[kind].in - run.dur) >= 1.5) f.push('opens in ' + run.dur + 'ms, not the ' + T.ms[kind].in + 'ms of a ' + kind);
+  if (run.css) return f;
+  if (run.easing !== T.enter) f.push('opens on ' + run.easing + ', not --m-enter');
+  const s = SCALES[kind] ? T.scale : 1;
+  if (Math.abs(run.s - s) > 0.005) f.push('starts at scale ' + run.s + ', not ' + s);
+  // Opened from code with no trigger, a menu, popup or window grows from its centre and does not shift.
+  const d = SHIFTS[kind] && (trig || kind === 'pane' || kind === 'toast' || kind === 'bar') ? T.shift[SHIFTS[kind]] : 0, shift = Math.hypot(run.tx, run.ty);
+  if (Math.abs(shift - d) > 0.75) f.push('starts ' + r1(shift) + 'px off, not ' + d + 'px');
+  if (run.opDur != null && Math.abs(run.opDur - run.dur / 3) > 1.5) f.push('fades in over ' + run.opDur + 'ms, not a third of its ' + run.dur + 'ms');
+  const o = run.ox != null ? { x: run.ox, y: run.oy } : { x: run.cx, y: run.cy }, c = { x: run.cx, y: run.cy };
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  if (kind === 'pane') {
+    if (trig && Math.sign(run.tx) !== Math.sign(trig.x - c.x)) f.push('slides from ' + (run.tx > 0 ? 'the right' : 'the left') + ', away from the rail');
+  } else if (kind === 'toast' || kind === 'bar') {
+    if (!(run.ty > 0) || Math.abs(run.tx) > 0.5) f.push('starts ' + r1(run.tx) + ',' + r1(run.ty) + 'px off, not from below');
+  } else if (kind === 'dialog' || !trig) {
+    if (dist(o, c) > 1) f.push('grows from ' + r1(o.x) + ',' + r1(o.y) + ', not its centre ' + r1(c.x) + ',' + r1(c.y));
+  } else {
+    if (!(dist(o, trig) < dist(c, trig) - 1)) f.push('grows from ' + r1(o.x) + ',' + r1(o.y) + ', not its side nearest the trigger at ' + r1(trig.x) + ',' + r1(trig.y));
+    if (d && !((run.tx * (trig.x - c.x) + run.ty * (trig.y - c.y)) > 0)) f.push('starts ' + r1(run.tx) + ',' + r1(run.ty) + 'px off, away from its trigger');
+  }
+  return f;
+}
+
+function judgeOut(T, kind, inn, run, trig) {
+  if (kind === 'still') return [];
+  if (!run) return ['closed with no motion'];
+  const f = [];
+  if (Math.abs(T.ms[kind].out - run.dur) >= 1.5) f.push('closes in ' + run.dur + 'ms, not the ' + T.ms[kind].out + 'ms of a ' + kind);
+  if (inn && !(run.dur < inn.dur)) f.push('leaves in ' + run.dur + 'ms, not faster than its ' + inn.dur + 'ms entry');
+  if (run.css) return f;
+  if (run.easing !== T.exit) f.push('closes on ' + run.easing + ', not --m-exit');
+  if (run.pe !== 'none') f.push('takes clicks while it leaves');
+  const d = SHIFTS[kind] && (trig || kind === 'pane' || kind === 'toast' || kind === 'bar') ? T.shift[SHIFTS[kind]] * EXIT_PART[kind] : 0, shift = Math.hypot(run.tx, run.ty);
+  if (Math.abs(shift - d) > 0.75) f.push('leaves ' + r1(shift) + 'px off, not ' + d + 'px');
+  return f;
+}
 
 module.exports = async function (rig) {
   await lib.inRussian(rig);
@@ -27,21 +186,80 @@ module.exports = async function (rig) {
     await dm.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: false });
   }
   await dm.evaluate('(async () => { ' + SETUP + ' })()');
-  const all = new Map(), unchecked = [], menus = {};
+  const all = new Map(), unchecked = [], menus = {}, times = [];
   const fault = (where, f) => { if (!all.has(f)) all.set(f, where); };
   const run = js => dm.evaluate('(async () => { ' + js + ' })()');
+  const still = () => lib.settle(dm, "document.getAnimations().every(a => a.playState !== 'running' || a.effect.getComputedTiming().iterations === Infinity)", 3000);
   const visible = sel => dm.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return false;
     const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; })()`);
 
+  await dm.evaluate(RECORDER);
+  const T = await dm.evaluate('__mv.tokens()');
+  const q = JSON.stringify;
+  const listed = INVENTORY.flatMap(e => [e.root].concat(e.kin ? [e.kin] : []));
+  const unlisted = async where => (await dm.evaluate(`__mv.shadowed().filter(el => !${q(listed)}.some(r => el.matches(r) || el.closest(r) || el.querySelector(r)))
+    .map(el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.classList.length ? '.' + el.classList[0] : ''))`))
+    .forEach(x => fault(where, 'shows ' + x + ', a surface with a pop or window shadow and no inventory entry'));
+  // Where a trigger stands on screen: a selector's first line box (and what lies on top of it there), a room of the
+  // open map, or a point.
+  const aim = t => dm.evaluate(`(() => { const t = ${q(t)};
+    if (t.map != null) { const v = polygons.filter(p => !p.material && !p.light)[t.map].vertices;
+      const p = toScreen(v.reduce((a, b) => a + b.x, 0) / v.length, v.reduce((a, b) => a + b.y, 0) / v.length), c = viewToClient(p.sx, p.sy);
+      return { x: c.x, y: c.y }; }
+    if (t.x != null) return { x: t.x, y: t.y };
+    const e = document.querySelector(t.sel || t); if (!e) return null;
+    const r = e.getClientRects()[0]; if (!r || !r.width) return null;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2, h = document.elementFromPoint(x, y);
+    return { x, y, covered: e.contains(h) ? '' : h ? h.tagName.toLowerCase() + '#' + h.id + '.' + h.classList[0] : 'nothing' }; })()`);
+  const click = async (p, button) => {
+    await dm.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
+    await dm.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button, buttons: button === 'right' ? 2 : 1, clickCount: 1 });
+    await dm.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button, buttons: 0, clickCount: 1 });
+  };
+  const frames = () => dm.evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+
   for (const e of INVENTORY) {
     try {
-      await run(e.open);
-      await lib.settle(dm, `!!document.querySelector(${JSON.stringify(e.root)})`, 3000);
+      if (!KINDS.concat('still').includes(e.motion)) fault(e.id, 'has no motion kind in tools/rig/inventory.js');
+      if (e.prep) { await run(e.prep); await still(); }
+      const clicked = !!e.trigger && (typeof e.trigger === 'string' || !!e.trigger.sel || e.trigger.map != null);
+      let trig = null;
+      await dm.evaluate('__mv.reset(); 1');
+      await dm.evaluate(`__mv.watch(${q(e.root)}, ${clicked})`);
+      if (clicked) {
+        trig = await aim(e.trigger);
+        if (!trig || trig.covered) throw new Error('its trigger ' + q(e.trigger) + (trig ? ' is covered by ' + trig.covered : ' is not on screen'));
+        await click(trig, e.trigger.button || 'left');
+      } else {
+        await run(e.open || '');
+        trig = e.trigger ? await aim(e.trigger) : e.from ? await aim(e.from) : null;
+      }
+      await lib.settle(dm, `(e => !!e && e.getClientRects().length > 0)(document.querySelector(${q(e.root)}))`, 3000);
+      await frames();
+      await dm.evaluate(`__mv.hold(${q(e.root)})`);
+      const inn = await dm.evaluate('__mv.take(true)');
+      await still();
       if (!(await visible(e.root))) { unchecked.push(e.id + ': did not open'); await run(e.close || '').catch(() => {}); continue; }
+      judgeIn(T, e.motion, inn, trig).forEach(f => fault(e.id, f));
+      if (e.motion !== 'still') {
+        const tm = await dm.evaluate('__mv.timing()'), k = T.ms[e.motion];
+        const seenBy = (FADES[e.motion] ? k.in / 3 : 0) + 50, restBy = k.in + 50;
+        times.push({ id: e.id, kind: e.motion, by: clicked ? 'click' : 'call', seen: tm && tm.seen, rest: tm && tm.rest, seenBy, restBy });
+        if (!tm || tm.seen === null) fault(e.id, 'was never seen whole within 3s of the ' + (clicked ? 'press' : 'call'));
+        else {
+          if (tm.seen > seenBy) fault(e.id, 'is seen whole ' + tm.seen + 'ms after the ' + (clicked ? 'press' : 'call') + ', over its ' + Math.round(seenBy) + 'ms');
+          if (tm.rest !== null && tm.rest > restBy) fault(e.id, 'comes to rest ' + tm.rest + 'ms after the ' + (clicked ? 'press' : 'call') + ', over its ' + Math.round(restBy) + 'ms');
+        }
+      }
+      if (e.motion !== 'still') { const r = await dm.evaluate('__mv.rested()'); if (r) fault(e.id, 'is not at rest once its motion ends: ' + r); }
+      rig.note(e.id + ': ' + e.motion + (inn ? ' ' + inn.dur + 'ms on ' + inn.what + ', from ' + r1(inn.tx) + ',' + r1(inn.ty) + 'px at scale ' + inn.s : ', no motion') +
+        (trig ? ', trigger at ' + Math.round(trig.x) + ',' + Math.round(trig.y) : ''));
       for (const st of e.states || [{ name: 'rest', set: '' }]) {
         const where = e.id + (st.name === 'rest' ? '' : ' (' + st.name + ')');
         await run(st.set);
         await lib.settle(dm, 'false', 250);
+        await still();
+        await unlisted(where);
         const { rows, faults } = await lib.alignSweep(dm, e.root);
         const hover = await lib.hoverSweep(dm, e.root);
         const surface = await lib.surfaceSweep(dm, e.root);
@@ -54,12 +272,17 @@ module.exports = async function (rig) {
           await dm.screenshot(path.join(shots, where.replace(/[^\w-]+/g, '_') + '.png'), r);
         }
       }
+      await still();
       for (const sh of e.shifts || []) (await lib.shiftSweep(dm, sh.root || e.root, sh.run, sh.except)).forEach(f => fault(e.id + ' (' + sh.name + ')', f));
       if (e.menu) menus[e.id] = await dm.evaluate(`(() => { const m = document.querySelector(${JSON.stringify(e.root)}), r = m.getBoundingClientRect(),
         i = m.querySelector('.sm-mi, [data-i]').getBoundingClientRect(); return { w: Math.round(r.width), row: +i.height.toFixed(1) }; })()`);
+      await dm.evaluate(`__mv.hold(${q(e.root)}); __mv.reset(); 1`);
       await run(e.close || '');
+      await frames();
+      judgeOut(T, e.motion, inn, await dm.evaluate('__mv.take(false)'), trig).forEach(f => fault(e.id + ' (closing)', f));
       await run(CLOSE_ALL);
       await lib.settle(dm, 'false', 150);
+      await still();
     } catch (err) {
       unchecked.push(e.id + ': ' + err.message.split('\n')[0]);
       await run((e.close || '') + CLOSE_ALL).catch(() => {});
@@ -67,7 +290,11 @@ module.exports = async function (rig) {
   }
 
   const list = [...all].map(([f, where]) => where + ' — ' + f);
+  const timeRows = times.map(t => t.id.padEnd(24) + t.kind.padEnd(8) + t.by.padEnd(7) + 'seen ' + String(t.seen).padStart(4) + 'ms (by ' + Math.round(t.seenBy) +
+    ')  rest ' + String(t.rest).padStart(4) + 'ms (by ' + Math.round(t.restBy) + ')');
+  rig.note('times from the press:\n    ' + timeRows.join('\n    '));
   if (shots) {
+    fs.writeFileSync(path.join(shots, 'times.txt'), timeRows.join('\n') + '\n');
     fs.writeFileSync(path.join(shots, 'faults.txt'), list.join('\n') + '\n');
     fs.writeFileSync(path.join(shots, 'unchecked.txt'), unchecked.join('\n') + '\n');
   }

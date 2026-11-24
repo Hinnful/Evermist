@@ -155,10 +155,9 @@ function undoHint(msg) {
   const el = document.getElementById('key-hint');
   if (!el) return;
   el.querySelector('.m').textContent = t(msg);
-  el.classList.add('on');
-  showToast(el);
+  showToast(el, () => el.classList.add('on'));
   clearTimeout(_undoHintTimer);
-  _undoHintTimer = setTimeout(() => el.classList.remove('on'), 1400);
+  _undoHintTimer = setTimeout(() => hideToast(el, () => el.classList.remove('on')), 1400);
 }
 
 // The opposite stack takes the present in the same kind as the entry being left, and the hint

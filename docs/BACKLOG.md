@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 9 open items; IDs run to 312."
+description: "Open work only. 10 open items; IDs run to 314."
 metadata: 
   node_type: memory
   type: project
@@ -155,13 +155,19 @@ every crystal of a creature in one press, after a long rest or for a new fight, 
 look yet. **Needs a design round.**
 **Play · Polish · DM only**
 
-### 310. Interface motion
-Filed 2026-11-22 from the 307 design-system round. 307 makes the controls consistent and adds no new motion; this item is the
-part that changes how the app feels. One set of durations and easings for what opens, closes, appears and moves: menus,
-popovers, windows, toasts, the dock pane, hover, the pressed state, a dragged row, a reorder. Today 18 keyframe animations
-in 9 stylesheets each carry their own timing. Includes the reduced-motion preference. Start after 307 lands, so the motion
-is designed on the final controls. **Needs research and a board.**
+### 313. A press that answers under the finger
+Filed 2026-11-24, left out of 310. 310 gave every surface its motion from where it was called; a button's own press still
+only changes colour. A slight press-in on the pressed control (Emil Kowalski's research note: about 0.97) is a new look the
+DM has not seen, so it starts from a board, and it must stay inside the 310 timing budget (`design-sweep` times every
+surface from the press). **Needs a design round.**
 **Polish · DM only**
+
+### 314. The dragged row may not show under the pointer
+Filed 2026-11-24, found in 310. In Music, Sounds and Pictures the row the DM drags (the ghost) draws below the window in the
+rig: its box reads about 2.5 times too far down (`.lib-ghost`, a zoomed fixed element), the same on 5.20.1. 310 no longer
+uses that box for the drop's glide. Whether the DM sees the ghost under the pointer on their own screen is unconfirmed:
+check there first, then fix or close.
+**Bug · DM only**
 
 ---
 

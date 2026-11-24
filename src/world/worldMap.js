@@ -499,7 +499,7 @@ function worldMapHide() {
   refreshShapeButton();
   if (!panesActive) syncSize();   // the overlay was sized to the window; the scene's turned layout comes back
   _wm.classList.remove('shown');
-  setTimeout(() => { if (!worldMapOpen) _wm.hidden = true; }, 260);
+  setTimeout(() => { if (!worldMapOpen) _wm.hidden = true; }, parseFloat(getComputedStyle(_wm).transitionDuration) * 1000);
   dockRefreshRail();
   dockHoldForWorld(false);
   refreshRoomPanel();
@@ -554,8 +554,7 @@ function _wmOwnKeys(target) {
 }
 
 function _wmOverlayUp() {
-  const shown = id => { const el = document.getElementById(id); return !!el && el.style.display !== 'none' && el.style.display !== ''; };
-  return shown('cd-anchor') || shown('cl-anchor') || shown('mt-modal');
+  return ['cd-modal', 'cl-modal', 'mt-modal'].some(id => motionOpen(document.getElementById(id)));
 }
 
 function worldMapKeys(e) {
