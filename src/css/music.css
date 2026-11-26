@@ -120,7 +120,8 @@
   .lib-dragging .lib-sec.lib-empty { display: block; }
 
   /* Drag: the row follows the pointer, the drop place is a thin blue line, a held target lights blue. */
-  .lib-ghost { position: fixed; z-index: 600; pointer-events: none; opacity: .85; border-radius: 6px;
+  /* body >: .sb-row and .ga-tile set position: relative later in the cascade, which drops the ghost below the page. */
+  body > .lib-ghost { position: fixed; z-index: 600; pointer-events: none; opacity: .85; border-radius: 6px;
                background: var(--g-hover); box-shadow: 0 8px 20px rgba(0, 0, 0, .6); }
   .lib-faded { opacity: .3; }
   .lib-line { position: absolute; left: 14px; right: 10px; height: 2px; border-radius: 999px; background: var(--b-icon); z-index: 2; pointer-events: none; }

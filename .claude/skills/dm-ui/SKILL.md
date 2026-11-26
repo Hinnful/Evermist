@@ -366,7 +366,9 @@ slider** (`.cp-slider`'s markup, never a styled native range).
 The Bestiary and the fight table are free windows. The Bestiary has its own shell
 (`bestiaryWindow.js`): a header with a list toggle, back/forward, crumbs and close, moved by the
 header, resized by its corner, kept 8px inside the app, place and size in `evermist.bestiaryWin`.
-It sits below the fight table and above Notes, and switches by its own width (`bestiaryWidths.js`:
+Every free window (the fight table, the Bestiary, Notes) stops left of the rail (`dockFreeRight`), never over it.
+It sits above Notes and below the fight table, unless it opened over the table for want of room or the DM pressed it
+last: of the two, the one pressed last is in front. It switches by its own width (`bestiaryWidths.js`:
 wide, medium, narrow). A fight row's stat block opens as a copy page in it (`bestiaryCopy.js`). Backup Export and Import are in Settings' Campaign section.
 
 - **Every window is built from the parts in `sceneManager.css`**: `.sm-win` with `.w-s`

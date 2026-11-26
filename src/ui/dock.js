@@ -90,6 +90,12 @@ function _dockToggleWindow(name) {
   else if (name === 'notes') nwToggle();
 }
 
+// Where a free window's right edge stops, in window px: the rail's left edge, so no window hides a rail button.
+function dockFreeRight() {
+  const rail = document.getElementById('dock-rail'), b = rail && rail.getBoundingClientRect();
+  return b && b.width ? b.left : innerWidth;
+}
+
 function dockRefreshRail() {
   const dock = _dockEl();
   if (!dock) return;

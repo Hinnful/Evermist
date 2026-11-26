@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 317."
+description: "Open work only. 10 open items; IDs run to 317."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.20.1**: editing a monster happens on its page as you read it, a challenge rating shows its XP on hover, and every row of the interface stands on one centre line. **5.20.0**: every window, menu and button follows one design. **5.19.0**: a caster's spells show as rows with slot crystals. **5.18.1**: closing the app no longer loses the last change. **5.18.0**: the Bestiary is a free window beside the fight table, and a fight row's stat block opens as its copy's page there. **5.17.1**: a revealed room no longer slips back into the fog after a restart on a slow computer, and a backup restored right after a map delete keeps that map. **5.17.0**: the fight table is smaller and easier to run. **5.16.0**: a room can be made of separate parts, and a two-map column has the edit row. **5.15.0**: rooms and effects get their own edit row. **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.21.2**: the fight table comes to the front when clicked, free windows stay off the dock's rail, the search marks a two-map TV's maps Live, and a dragged sound or picture stays under the pointer. **5.21.1**: fixes from a full review of maps, sync and the TV. **5.21.0**: windows and menus open from where you clicked. **5.20.1**: editing a monster happens on its page as you read it, a challenge rating shows its XP on hover, and every row of the interface stands on one centre line. **5.20.0**: every window, menu and button follows one design. **5.19.0**: a caster's spells show as rows with slot crystals. **5.18.1**: closing the app no longer loses the last change. **5.18.0**: the Bestiary is a free window beside the fight table, and a fight row's stat block opens as its copy's page there. **5.17.1**: a revealed room no longer slips back into the fog after a restart on a slow computer, and a backup restored right after a map delete keeps that map. **5.17.0**: the fight table is smaller and easier to run. **5.16.0**: a room can be made of separate parts, and a two-map column has the edit row. **5.15.0**: rooms and effects get their own edit row. **5.14.8**: Bring to front and Send to back are gone from the room's popup. **5.14.7**: the AI assistant can copy and shrink maps. **5.14.6**: Google Drive sync no longer stops on some computers. **5.14.5**: the AI assistant can start a closed Evermist on Linux. **5.14.4**: Poison cloud joins the Cloud group, and every cloud, Darkness included, takes Fog cloud's rolling edge. **5.14.3**: Fog cloud joins the Cloud group with faint patches, and Darkness gains faint patches. **5.14.0**: Darkness, Ice, Web and Grease join the effects, the palette splits into Ground, Cloud and Marks, every effect relights the grid along its edge in its own colour, and a picked effect outlines in that colour. **5.13.2**: the fight table has a Sort button, an editable AC, an HP sample and hover row actions, the TV shows only enemies with an initiative and above 0 HP, and only the DM ends a fight. **5.13.1**: the turn order on the TV shows in Alegreya, which now ships with the app. **5.13.0**: Music, Sounds and Pictures share one list pattern for adding, renaming, sorting and grouping. **5.12.0**: Start fight shows the turn order on the TV. **5.11.0**: every pointer is Evermist's own white dart, and a crystal companion follows it on the DM screen and the TV, with a Settings switch. **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -82,7 +82,6 @@ brand; that review needs the privacy policy on a domain the project owner proves
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
-
 ### 287. Mist, ash and dust-storm weather
 Filed 2026-11-09. Three presets beside Rain, Storm, Snowfall, Blizzard and Fair weather: low Mist, falling Ash or
 Embers, and a Dust storm. Dungeon Alchemist's "Weather effects" request has 1,000 votes and is Planned; Table Slayer
@@ -90,7 +89,6 @@ added Blizzard, Dust Storm, Embers and Fireflies in June 2026; TableLair has mis
 weather shapes already refused. They must be shader work like the current presets, since a second video layer stays
 refused. **Needs a design round.**
 **Play · Player**
-
 
 ### 288. A sample adventure in the box
 Filed 2026-11-09. A fresh install offers one free sample: a small dungeon map with its `.dd2vtt` and a page of keyed
@@ -107,7 +105,6 @@ exports; one question to their support settles it before shipping. Care point: t
 before building.
 **First use · DM only**
 
-
 ### 289. A home page on Evermist's own domain
 Filed 2026-11-09. One page: what Evermist is, a laptop-to-TV setup picture, the download and the privacy policy, on a
 domain the project owns. It is the only route to closing 276, since Google reviews the app's brand only with a privacy
@@ -120,7 +117,6 @@ if it refuses, the page still serves as the home page, and 276 needs a paid doma
 Sync asks only for `drive.appdata`, which Google lists as non-sensitive, so why the warning shows at all is worth
 confirming before the review.
 **First use · Upkeep**
-
 
 ### 294. More effects
 Filed 2026-11-14, with 5.14.0; Fog cloud shipped in 5.14.3, Poison cloud in 5.14.4. Effects the palette's Ground, Cloud and
@@ -162,30 +158,11 @@ DM has not seen, so it starts from a board, and it must stay inside the 310 timi
 surface from the press). **Needs a design round.**
 **Polish · DM only**
 
-### 314. The dragged row may not show under the pointer
-Filed 2026-11-24, found in 310. In Music, Sounds and Pictures the row the DM drags (the ghost) draws below the window in the
-rig: its box reads about 2.5 times too far down (`.lib-ghost`, a zoomed fixed element), the same on 5.20.1. 310 no longer
-uses that box for the drop's glide. Whether the DM sees the ghost under the pointer on their own screen is unconfirmed:
-check there first, then fix or close.
-**Bug · DM only**
-
-### 315. The search's TV dot never shows in two-map mode
-Filed 2026-11-26, found in the 5.21.1 fix pass. The search marks a map the TV shows with a dot and "Live". In two-map
-mode the DM window holds no Player of its own, so the search never finds a map on the TV and the dot never shows.
-Small; the columns already report which map each half of the TV shows (`paneTvColumn`, `tvShownSceneId`).
-**Bug · DM only**
-
 ### 316. The calibration hint in the left column sits under the minimap card
 Filed 2026-11-26, found in the 5.21.1 fix pass. In two-map mode, arming calibration in the left column puts the HUD's
 hint text partly under the minimap card; Done is clear and clickable. Moving the HUD sideways is a placement call for
 the DM. Small.
 **Look · DM only**
-
-### 317. The Bestiary window may cover the fight list
-Filed 2026-11-26, seen once in the rig at 1008x681 and not confirmed: with the Bestiary window open, a click on the
-fight table's fight list did not land, as if the window covered it. Check at a small app window first, then fix or
-close.
-**Bug · DM only**
 
 ---
 

@@ -323,7 +323,7 @@ function _llUp(e) {
   // The rows glide from where they stood, the dropped one from where the ghost let go; a redraw held meanwhile
   // glides in turn when they land. The empty groups a drag shows go inside the change, or every row below them
   // jumps up before the glide is measured.
-  // The dropped row starts where the pointer held it, not from the ghost's box, which a zoomed fixed element can misreport.
+  // The dropped row starts where the pointer held it.
   const from = { left: e.clientX - d.dx, top: e.clientY - d.dy };
   _llGlide(root, () => { root.classList.remove('lib-dragging'); if (at) _llDrop(d, at); _llFresh(root); }, { [d.key]: from });
 }

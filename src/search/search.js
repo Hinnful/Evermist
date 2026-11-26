@@ -127,7 +127,7 @@ function _srRow(row, q, i) {
   const tx = _srEl('span', 'sr-tx'), l1 = _srEl('span', 'sr-l1'), nm = _srEl('span', 'sr-nm');
   _srBold(nm, e.label || e.name, q && wfRank(e.name, q) >= 0 ? q : '');
   l1.append(nm);
-  if (e.kind === 'map' && searchSceneOnTv(e.id)) { const lv = _srEl('span', 'sr-live'); lv.append(_srEl('i'), _srEl('span', '', t('Live'))); l1.append(lv); }
+  if (e.kind === 'map' && sceneOnTv(e.id)) { const lv = _srEl('span', 'sr-live'); lv.append(_srEl('i'), _srEl('span', '', t('Live'))); l1.append(lv); }
   if (e.where) { const wh = _srEl('span', 'sr-wh'); wh.append(_srEl('span', '', e.where)); l1.append(wh); }
   tx.append(l1);
   const snip = q && row.rank === SP_NOTE ? spSnippet(e.text, q) : null;

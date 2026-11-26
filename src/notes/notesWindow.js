@@ -47,7 +47,7 @@ function _nwPlace() {
   const w = _nwEl(), z = _nwZoom();
   const r = w.getBoundingClientRect(), ww = r.width / z, hh = r.height / z;
   const left = parseFloat(w.style.left), top = parseFloat(w.style.top);
-  w.style.left = Math.max(8, Math.min(innerWidth / z - ww - 8, Number.isFinite(left) ? left : 90)) + 'px';
+  w.style.left = Math.max(8, Math.min(dockFreeRight() / z - ww - 8, Number.isFinite(left) ? left : 90)) + 'px';
   w.style.top = Math.max(8, Math.min(innerHeight / z - Math.min(hh, 120), Number.isFinite(top) ? top : 40)) + 'px';
 }
 

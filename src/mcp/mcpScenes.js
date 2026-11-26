@@ -45,7 +45,7 @@ async function _mcpRemoveScenes(ids) {
 function mcpRefuseRemovingOpen(ids, what) {
   const open = allScenes.find(x => ids.includes(x.id) && _mcpHolder(x.id));
   if (open) throw Object.assign(new Error('Not undone: the DM has "' + open.name + '" open, and ' + what + ' would take it away. Ask the DM to open another map first.'), { mcpKeep: true });
-  const tv = allScenes.find(x => ids.includes(x.id) && _mcpOnTv(x.id));
+  const tv = allScenes.find(x => ids.includes(x.id) && sceneOnTv(x.id));
   if (tv) throw Object.assign(new Error('Not undone: the TV shows "' + tv.name + '", and ' + what + ' would take it off the players\' screen. Ask the DM to send another map to the TV first.'), { mcpKeep: true });
 }
 

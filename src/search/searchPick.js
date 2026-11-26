@@ -2,17 +2,11 @@
 // searchPick.js — what a pick does, per kind. A map, and a room (its map goes to the players), open by the
 // Manual/Auto rule on every view: Manual opens it on the DM's screen and the TV waits for Send, Auto asks first.
 
-// The map the TV shows now. In Manual a held change leaves the TV on the old map.
-function searchSceneOnTv(id) {
-  return mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,
-    isOpen: !!(currentScene && currentScene.id === id) && !tvShowsOtherMap(), inColumn: panesActive && !!paneColumnOf(id) });
-}
-
 // The right-hand word of the selected row.
 function searchActionWord(row) {
   const e = row.entry;
   if (e.kind === 'campaign' || row.rank === SP_NOTE || e.kind === 'faction' || e.kind === 'lore') return t('Show notes');
-  if (e.kind === 'map') return autoSync && !searchSceneOnTv(e.id) && !(currentScene && currentScene.id === e.id) ? t('Open and send') : t('Open');
+  if (e.kind === 'map') return autoSync && !sceneOnTv(e.id) && !(currentScene && currentScene.id === e.id) ? t('Open and send') : t('Open');
   return t({ room: 'Open map', place: 'Show on Campaign', road: 'Show on Campaign', monster: 'Stat block', fight: 'Fight table', music: 'Pick track', picture: 'Open picture' }[e.kind]);
 }
 
@@ -45,7 +39,7 @@ async function _srGoScene(id, after) {
 
 function _srOpenScene(id, name, after) {
   const open = !!(currentScene && currentScene.id === id) && !panesActive;
-  if (!autoSync || open || searchSceneOnTv(id)) { _srGoScene(id, after); return; }
+  if (!autoSync || open || sceneOnTv(id)) { _srGoScene(id, after); return; }
   confirmDialog({
     title: t('Open “{name}”?', { name }),
     message: t('Updates are Auto, so the players see it at once.'),

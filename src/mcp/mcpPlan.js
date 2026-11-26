@@ -33,12 +33,6 @@ function mcpHistoryPush(list, step, max) {
   return list;
 }
 
-// Whether the TV shows a scene now: a Player window is open, nothing holds it clear, and the scene is the
-// open one (one map) or in a column (two maps).
-function mcpOnTv(s) {
-  return !!(s.playerOpen && !s.held && (s.panes ? s.inColumn : s.isOpen));
-}
-
 // A colour as '#rrggbb' in lower case from '#abc', 'abc' or '#aabbcc', else null.
 function mcpCleanHex(raw) {
   const s = String(raw || '').trim().replace(/^#/, '').toLowerCase();
@@ -197,6 +191,6 @@ function mcpFindScenes(scenes, name, place) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { MCP_PLACE_W, MCP_PLACE_H, MCP_GAP, MCP_HISTORY_MAX, MCP_PLACE_MIN_W, MCP_PLACE_MIN_H, mcpRectArg, mcpCleanHex, mcpGridSize, mcpAppend, mcpReplace, mcpHistoryPush, mcpOnTv, mcpFreeRect, mcpMatchMonster, mcpSuggest,
+  module.exports = { MCP_PLACE_W, MCP_PLACE_H, MCP_GAP, MCP_HISTORY_MAX, MCP_PLACE_MIN_W, MCP_PLACE_MIN_H, mcpRectArg, mcpCleanHex, mcpGridSize, mcpAppend, mcpReplace, mcpHistoryPush, mcpFreeRect, mcpMatchMonster, mcpSuggest,
     mcpFightRows, mcpEditRows, mcpFindScenes, mcpOpenFightRefusal, mcpWouldDelete };
 }

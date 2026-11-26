@@ -39,7 +39,7 @@ function _bswLoad() {
 
 // 8px inside the app window, moved and resized alike; the max size keeps the native corner drag inside too.
 function bswClamp() {
-  const w = _bswEl(), z = cbZoom(), m = _bswM(), iw = innerWidth / z, ih = innerHeight / z;
+  const w = _bswEl(), z = cbZoom(), m = _bswM(), iw = dockFreeRight() / z, ih = innerHeight / z;
   const width = Math.min(w.offsetWidth, iw - 2 * m), height = Math.min(w.offsetHeight, ih - 2 * m);
   const left = Math.max(m, Math.min(iw - width - m, parseFloat(w.style.left) || 0));
   const top = Math.max(m, Math.min(ih - height - m, parseFloat(w.style.top) || 0));
@@ -57,14 +57,14 @@ function _bswBesideFight() {
   const z = cbZoom(), cols = cbCols(), f = document.getElementById('cb-fight').getBoundingClientRect();
   const w = (cols.statW || 440) * z, h = cols.statH ? (cols.statH + BSW_FIGHT_HEAD) * z : Math.min(680 * z, innerHeight - 16);
   let left = f.left - w - 10;
-  if (left < 8) left = f.right + 10 + w < innerWidth ? f.right + 10 : 8;
+  if (left < 8) left = f.right + 10 + w < dockFreeRight() ? f.right + 10 : 8;
   // With no room on either side it opens over the table, on top of it, so the page the DM asked for is whole.
   _bswEl().classList.toggle('over-fight', left === 8 && 8 + w > f.left);
   _bswSize(left / z, f.top / z, w / z, h / z);
 }
 
 function _bswAtLastPlace() {
-  const g = _bswLoad(), z = cbZoom(), iw = innerWidth / z, ih = innerHeight / z, n = v => Number.isFinite(v);
+  const g = _bswLoad(), z = cbZoom(), iw = dockFreeRight() / z, ih = innerHeight / z, n = v => Number.isFinite(v);
   if (g.listW && typeof g.listW === 'object') for (const k of ['wide', 'medium']) if (n(g.listW[k])) _bsw.listW[k] = Math.max(BSW_LIST_MIN, g.listW[k]);
   _bsw.listHidden = g.listHidden === true;
   const width = n(g.width) ? g.width : Math.min(1100, iw - 16), height = n(g.height) ? g.height : Math.min(720, ih - 16);
@@ -72,6 +72,9 @@ function _bswAtLastPlace() {
 }
 
 function bsIsOpen() { return motionOpen(_bswEl()); }
+
+// Of the Bestiary and the fight table, the one the DM pressed last is in front, as windows are anywhere else.
+function bswFront(on) { _bswEl().classList.toggle('over-fight', on); }
 
 // `fromFight` places it beside the table with the list hidden, unless it is open already: then it stays as it is.
 function bswShow(fromFight) {
@@ -200,6 +203,7 @@ function bswHtml(tools, top, list, page) {
 function bswInit(go, mode, redraw) {
   const w = _bswEl();
   _bsw.go = go;
+  w.addEventListener('mousedown', () => bswFront(true), true);
   w.addEventListener('mousedown', e => {
     if (e.target.closest('#bs-head') && !e.target.closest('button, input, label, .sm-field')) { e.preventDefault(); _bswDrag(e); }
   });

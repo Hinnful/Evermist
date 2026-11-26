@@ -199,7 +199,7 @@
 
   /* ===== The bestiary: a free window (bestiaryWindow.js), a table, and a page beside it ===== */
   /* Below the fight table (.cb-panel, 160), above the Notes window, except over the table when it opens on it for want of room
-     (bestiaryWindow.js); the corner resizes it as the Notes window's does. */
+     or the DM pressed it last (bestiaryWindow.js); the corner resizes it as the Notes window's does. */
   #bs-panel {
     position: fixed; left: 90px; top: 40px; width: 900px; height: 600px; min-width: 320px; min-height: 260px; box-sizing: border-box;
     zoom: var(--ui-zoom, 1.2); z-index: 150; resize: both; overflow: hidden; display: flex; flex-direction: column; outline: none;

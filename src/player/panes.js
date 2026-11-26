@@ -436,6 +436,11 @@ function paneTvColumn(sceneId) {
   return null;
 }
 
+// Whether the TV shows this map now. ⚠ With two maps this window holds no Player: each column answers for its half.
+function sceneOnTv(id) {
+  return panesActive ? !!paneTvColumn(id) : tvShownSceneId() === id;
+}
+
 // ⚠ Two columns on one scene record autosave over each other, so the world map refuses.
 function paneHoldingScene(sceneId, exceptId) {
   for (const id of PANE_IDS) {

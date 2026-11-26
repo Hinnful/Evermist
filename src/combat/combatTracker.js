@@ -351,13 +351,13 @@ function _cbResizePanel(handle, e) {
   window.addEventListener('mouseup', up, { once: true });
 }
 
-// A wider column never takes the table past the window: a right edge that would pass it pins there and the table
+// A wider column never takes the table past the rail: a right edge that would pass it pins there and the table
 // moves left, and at the window's width less both margins the column stops. Returns the width written.
 function _cbSetCol(fight, col, want) {
   const z = cbZoom();
   let width = Math.round(Math.max(CB_COL_MIN[col], want));
   fight.style.setProperty('--cb-' + col, width + 'px');
-  const over = fight.getBoundingClientRect().width - (innerWidth - 2 * CB_EDGE);
+  const over = fight.getBoundingClientRect().width - (dockFreeRight() - 2 * CB_EDGE);
   if (over > 0) fight.style.setProperty('--cb-' + col, (width = Math.max(CB_COL_MIN[col], Math.floor(width - over / z))) + 'px');
   _cbClampFight(fight, parseFloat(fight.style.left), parseFloat(fight.style.top));
   return width;
@@ -367,7 +367,7 @@ function _cbSetCol(fight, col, want) {
 function _cbFitWidth(el) {
   const z = cbZoom(), spans = el.querySelectorAll('.cb-colhdr > span');
   for (const k of ['atk', 'name', 'hp', 'ac', 'init']) {
-    const over = el.getBoundingClientRect().width - (innerWidth - 2 * CB_EDGE);
+    const over = el.getBoundingClientRect().width - (dockFreeRight() - 2 * CB_EDGE);
     if (over <= 0) return;
     const w = spans[Object.keys(CB_COL_MIN).indexOf(k)].getBoundingClientRect().width / z;
     el.style.setProperty('--cb-' + k, Math.max(CB_COL_MIN[k], Math.floor(w - over / z)) + 'px');
@@ -431,11 +431,11 @@ function _cbFitList(el) {
   return room;
 }
 
-// A panel stays CB_EDGE inside the window. `keepH` is the height, in window px, that must stay in view
+// A panel stays CB_EDGE inside the window, left of the rail. `keepH` is the height, in window px, that must stay in view
 // downwards; the whole panel's when omitted.
 function cbClampPanel(el, left, top, keepH) {
   const z = cbZoom(), r = el.getBoundingClientRect(), m = CB_EDGE / z;
-  el.style.left = Math.max(m, Math.min(innerWidth / z - r.width / z - m, left)) + 'px';
+  el.style.left = Math.max(m, Math.min(dockFreeRight() / z - r.width / z - m, left)) + 'px';
   el.style.top = Math.max(m, Math.min(innerHeight / z - m - (keepH === undefined ? r.height : keepH) / z, top)) + 'px';
 }
 
@@ -455,7 +455,7 @@ function _cbPlaceFight(el) {
   _cbApplyCols(el);
   _cbFitWidth(el);
   const w = el.getBoundingClientRect().width / z;
-  _cbClampFight(el, pos ? pos.left : innerWidth / z - w - CB_EDGE / z, pos ? pos.top : 64 / z);
+  _cbClampFight(el, pos ? pos.left : dockFreeRight() / z - w - CB_EDGE / z, pos ? pos.top : 64 / z);
 }
 
 function cbIsOpen() { return motionOpen(document.getElementById('cb-fight')); }
@@ -497,6 +497,7 @@ function initCombatTracker() {
     const text = e.target.matches('input, textarea, [contenteditable]:not([contenteditable="false"])');
     if (!text && (e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey && _cbUndoDelete()) e.preventDefault();
   });
+  fight.addEventListener('mousedown', () => bswFront(false), true);
   fight.addEventListener('mousedown', e => {
     e.stopPropagation();
     const size = e.target.closest('.cb-colsize');

@@ -1601,6 +1601,9 @@ merges with what it lies on and its text stays readable. WCAG asks no contrast o
 ### The Bestiary opens over a fight table with no room beside it · `SETTLED` (2026-11-23)
 Product call. With room beside the fight table the Bestiary opens there and stays below the table in z-order; with none it opens over
 the table and on top of it.
+Amended (2026-11-26, BACKLOG 317): the two then stack like ordinary OS windows, the one pressed last in front. Chosen on product
+grounds from three frames; rejected: opening the page under the table, falling back over it when the table is tall; the page
+over the rows but under the table's header.
 
 ### One row, one centre line · `SETTLED` (2026-11-24)
 Replaces the rule that put mixed-size texts in a row on one baseline and centred an icon anywhere between the row's

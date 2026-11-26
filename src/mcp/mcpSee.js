@@ -21,7 +21,7 @@ async function _mcpReadScene(args) {
   if (found.error) return _mcpNo(found.error);
   const s = found.scene, rec = await _mcpSeeRecord(s);
   const read = mcpSeeRead({ name: s.name, group: s.group, mapW: rec.mapWidth, mapH: rec.mapHeight, mapType: rec.mapType,
-    onTv: _mcpOnTv(s.id), gridConfig: rec.gridConfig, polygons: rec.polygons, effects: rec.effects,
+    onTv: sceneOnTv(s.id), gridConfig: rec.gridConfig, polygons: rec.polygons, effects: rec.effects,
     lightShapes: rec.lightShapes, lightsHidden: rec.lightsHidden, floorPlan: rec.floorPlan });
   for (const room of read.rooms || []) room.notes = await mcpeShow(room.notes);
   return _mcpOk(mcpSeeJson(read));

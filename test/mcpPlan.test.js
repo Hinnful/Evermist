@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
-const { MCP_GAP, MCP_HISTORY_MAX, mcpRectArg, mcpCleanHex, mcpGridSize, mcpReplace, mcpHistoryPush, mcpOnTv, mcpAppend, mcpFreeRect, mcpMatchMonster, mcpSuggest, mcpFightRows, mcpEditRows, mcpFindScenes, mcpOpenFightRefusal, mcpWouldDelete } = require('../src/mcp/mcpPlan.js');
+const { MCP_GAP, MCP_HISTORY_MAX, mcpRectArg, mcpCleanHex, mcpGridSize, mcpReplace, mcpHistoryPush, mcpAppend, mcpFreeRect, mcpMatchMonster, mcpSuggest, mcpFightRows, mcpEditRows, mcpFindScenes, mcpOpenFightRefusal, mcpWouldDelete } = require('../src/mcp/mcpPlan.js');
 
 const block = (id, name, extra) => Object.assign(combatBlankBlock(id, name), { ac: '15 (leather armor)' }, extra);
 const blocks = { b1: block('b1', 'Goblin'), b2: block('b2', 'Goblin Boss'), b3: block('b3', 'Owlbear'), b4: block('b4', 'Wolf') };
@@ -111,24 +111,6 @@ describe('mcpHistoryPush', () => {
     assert.equal(list.length, MCP_HISTORY_MAX);
     assert.equal(list[0].label, 'n5');
     assert.equal(list[list.length - 1].label, 'n34');
-  });
-});
-
-describe('mcpOnTv', () => {
-  const base = { playerOpen: true, held: false, panes: false, isOpen: true, inColumn: false };
-  it('is true for the open scene while a Player window shows it', () => {
-    assert.equal(mcpOnTv(base), true);
-  });
-  it('is false with no Player window, or while the TV is held clear', () => {
-    assert.equal(mcpOnTv({ ...base, playerOpen: false }), false);
-    assert.equal(mcpOnTv({ ...base, held: true }), false);
-  });
-  it('is false for a scene the DM has not opened', () => {
-    assert.equal(mcpOnTv({ ...base, isOpen: false }), false);
-  });
-  it('follows the columns in two-map mode', () => {
-    assert.equal(mcpOnTv({ ...base, panes: true, isOpen: false, inColumn: true }), true);
-    assert.equal(mcpOnTv({ ...base, panes: true, isOpen: true, inColumn: false }), false);
   });
 });
 
