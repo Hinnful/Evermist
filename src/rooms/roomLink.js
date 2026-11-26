@@ -21,11 +21,15 @@ function paneReportRoom(room) {
   parent.postMessage({ type: 'pane-room', pane: paneId, room: snap, scene }, '*');
 }
 
-// What the DM window asks of this column's selected room. ⚠ Refused when the selection moved on
-// since the report, so an edit typed for one room never lands on the next.
+// What the DM window asks of this column's selected room. ⚠ When the selection moved on since the
+// report, a name or notes commit is written to its own room by id and every other op is refused,
+// so an edit typed for one room never lands on the next.
 function paneApplyRoomEdit(m) {
   const room = roomHeadById(polygons, selectedPolygonId);
-  if (!room || room.id !== m.id) return;
+  if (!room || room.id !== m.id) {
+    if (m.op === 'name' || m.op === 'desc') roomCardPatch(m.id, { [m.op]: m.value });
+    return;
+  }
   _rpFieldPid = room.id;
   if (m.op === 'name' || m.op === 'desc') {
     _rpEl(m.op === 'name' ? 'rp-name' : 'rp-desc').value = m.value;
@@ -51,7 +55,10 @@ function paneApplyRoomUid(m) {
 function paneApplyRoomSelect(m) {
   const p = polygons.find(x => x.id === m.id);
   if (!p) return;
+  // ⚠ As the one-map tree delete: stale Shift picks would go with a delete, and Effects mode reads the id as an effect.
+  if (placeMode !== 'rooms') setPlaceMode('rooms');
   selectedPolygonId = p.id;
+  extraPickedIds = [];
   leaveShapeEditMode();
   refreshRoomPanel();
   drawCursor(lastScreenX, lastScreenY);

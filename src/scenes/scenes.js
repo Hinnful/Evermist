@@ -180,7 +180,7 @@ function doAutoSave() {
 async function flushBeforeClose() {
   notesPanelFlush();   // first, so the open note is in the snapshot
   doAutoSave();
-  await Promise.all([autoSavesSettled(), commitPendingDelete(), ...livePanes().map(flushPaneScene)]);
+  await Promise.all([autoSavesSettled(), commitPendingDelete(), notesPanelWritesSettled(), ...livePanes().map(flushPaneScene)]);
 }
 // Only the DM window is asked; a column frame has no electronAPI.
 if (window.electronAPI) window.electronAPI.onCloseFlush(() => flushBeforeClose().catch(console.error).finally(window.electronAPI.closeFlushed));

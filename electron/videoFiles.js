@@ -12,6 +12,9 @@ let mapsDir, trashDir, sendTo, isSafeId;
 function register(ctx) {
   ({ mapsDir, sendTo, isSafeId } = ctx);
   trashDir = path.join(ctx.userData, 'trash');
+  // A copy the last run quit in the middle of: no scene names it.
+  fs.promises.readdir(mapsDir).then(names => Promise.all(names.filter(n => /\.(mp4|webm)\.part$/.test(n))
+    .map(n => fs.promises.unlink(path.join(mapsDir, n)).catch(() => {})))).catch(() => {});
 }
 
 // --- Video file storage IPC ---
@@ -20,16 +23,18 @@ ipcMain.handle('save-video-file', async (event, sourcePath, sceneId, mimeType) =
   if (!isSafeId(sceneId)) throw new Error(`Invalid sceneId: ${sceneId}`);
   const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
   const destPath = path.join(mapsDir, sceneId + ext);
+  // ⚠ COPIED UNDER .part AND RENAMED AT THE END: a quit mid-copy left a half file under the map's own name.
+  const partPath = destPath + '.part';
   const stat = await fs.promises.stat(sourcePath);
   const total = stat.size;
   return new Promise((resolve, reject) => {
     let written = 0;
     const rs = fs.createReadStream(sourcePath);
-    const ws = fs.createWriteStream(destPath);
+    const ws = fs.createWriteStream(partPath);
     // A half-copied map plays as a broken clip rather than reporting, so a failure unlinks it.
     const fail = (err) => {
       rs.destroy(); ws.destroy();
-      fs.promises.unlink(destPath).catch(() => {}).then(() => reject(err));
+      fs.promises.unlink(partPath).catch(() => {}).then(() => reject(err));
     };
     rs.on('data', (chunk) => {
       written += chunk.length;
@@ -37,7 +42,7 @@ ipcMain.handle('save-video-file', async (event, sourcePath, sceneId, mimeType) =
     });
     rs.on('error', fail);
     ws.on('error', fail);
-    ws.on('finish', () => resolve(destPath));
+    ws.on('finish', () => fs.promises.rename(partPath, destPath).then(() => resolve(destPath), fail));
     rs.pipe(ws);
   });
 });

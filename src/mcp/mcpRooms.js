@@ -45,7 +45,7 @@ const _mcpRoomsMinArea = async s => roomOpMinArea((await _mcpRoomsGrid(s)).cellS
 async function _mcpRoomNotes(args) {
   if (args.notes === undefined) return { args, say: '' };
   const link = await mcpeLink(args.notes);
-  if (link.text !== String(args.notes) && link.text.length > _mcpCap()) return { no: _mcpNo('Nothing was changed: the notes would pass ' + _mcpCap() + ' characters. Send a shorter text.') };
+  if (mcpRoomNotesOver(link.text)) return { no: _mcpNo('Nothing was changed: the notes would pass ' + _mcpCap() + ' characters. Send a shorter text.') };
   return { args: { ...args, notes: link.text }, say: link.say };
 }
 

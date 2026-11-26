@@ -66,6 +66,7 @@ async function initScenes() {
     });
     return;
   }
+  if (!isPane) await importJournal.recover();
   allScenes = await sceneStore.listScenes();
   allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   sceneListChanged();

@@ -32,6 +32,7 @@ async function _mcpPutSceneNotes(sceneId, text) {
   const at = _mcpHolder(sceneId);
   if (at === 'here') { currentScene.notes = text; await doAutoSave(); return true; }
   if (at) await flushPaneScene(at);
+  if (!at && sceneOpening && sceneOpening.id === sceneId) sceneOpening.notes = text;
   let found = false;
   await sceneStore.updateScene(sceneId, rec => { found = true; rec.notes = text; });
   if (at && found) {
@@ -95,7 +96,12 @@ async function _mcpWriteNotesNow(target, args, make, verb) {
   if (m.tooLong) return _mcpNo('Nothing was changed: the notes for ' + target.where + ' would pass ' + _mcpCap() + ' characters. Send a shorter text.');
   await target.put(m.text);
   mxBump();
-  return mcpDone(verb + ' the notes of ' + target.where, async () => { await target.put(old); mxBump(); }, verb + ' the notes of ' + target.where + '.' + linked.say);
+  const left = await target.get();
+  return mcpDone(verb + ' the notes of ' + target.where, async () => {
+    if (await target.get() !== left) throw Object.assign(new Error('Not undone: the notes of ' + target.where + ' have changed since Claude\'s change, and undoing it would erase that too.'), { mcpKeep: true });
+    await target.put(old);
+    mxBump();
+  }, verb + ' the notes of ' + target.where + '.' + linked.say);
 }
 
 const _mcpAdd = args => _mcpWriteNotes(args, (old, text, cap) => mcpAppend(old, text, cap), 'Added to');
@@ -167,7 +173,7 @@ async function _mcpSetOrder(args) {
   const next = notesOrderRebuild(notesOrderFill(was, [...keyOf.values()].filter(Boolean)), many.items.map(x => keyOf.get(x.key)).filter(Boolean), groups, Date.now(), notesOrderNewGid);
   notesOrderPut(lk, next);
   ntRefresh();
-  return mcpDone('set the order of ' + tg.where, async () => { notesOrderPut(lk, was); ntRefresh(); },
+  return mcpDone('set the order of ' + tg.where, async () => { notesOrderPut(lk, notesOrderUndone(was, Date.now())); ntRefresh(); },
     'Set the order of ' + tg.where + ' in the Notes window. Only the Notes tree changed: no map, fog or Campaign group moved.');
 }
 

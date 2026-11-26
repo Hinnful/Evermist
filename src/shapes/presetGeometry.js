@@ -58,7 +58,7 @@ function presetLabel(kind, s, w, word) {
 // A size as the list names it: "20 ft · 4 squares". `plural(n, one, other)` is t.plural in the window.
 function presetSizeText(s, word, plural) {
   const n = s / GRID_FT;
-  return word('{s} ft', { s: s }) + ' · ' + plural(n, '{n} square', '{n} squares', { n: n });
+  return word('{s} ft', { s: s }) + ', ' + plural(n, '{n} square', '{n} squares', { n: n });
 }
 
 // The next index along a list, stopping at both ends. A shape with a hand tool has one step below the

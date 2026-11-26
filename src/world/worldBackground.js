@@ -28,7 +28,8 @@ async function _wbStore(mode, fn) {
     const tx = db.transaction('bg', mode);
     const req = fn(tx.objectStore('bg'));
     tx.oncomplete = () => { db.close(); if (mode === 'readwrite' && typeof syncIndex !== 'undefined') syncIndex.backdropChanged(true); resolve(req ? req.result : undefined); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
+    // ⚠ ONABORT TOO: a full disk aborts at commit with no error event, and the caller would wait for ever.
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
   });
 }
 

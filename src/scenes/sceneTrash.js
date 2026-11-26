@@ -142,6 +142,9 @@ const sceneTrash = (() => {
   // ⚠ THE ENTRY FIRST, then the scene, then the file: a crash in between leaves a duplicate, never a loss. The
   // start-up reconcile drops an entry whose map is still in the library.
   async function put(ids, at, roads) {
+    // ⚠ A save still writing would put the record back in the library after it left, and the start-up reconcile
+    // would then purge the Trash copy and its file.
+    await autoSavesSettled();
     for (const id of ids) {
       const rec = await sceneStore.loadScene(id);
       if (!rec) continue;

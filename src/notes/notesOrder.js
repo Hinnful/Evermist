@@ -21,7 +21,7 @@ function notesOrderWrite(value) {
 
 function notesOrderGet(listKey) { return notesOrderList(notesOrderAll(), listKey); }
 
-// One list replaced, or taken out with null (an undo back to no stored order).
+// One list replaced, or taken out with null (an undo of Claude's back to no stored order).
 function notesOrderPut(listKey, list) {
   const all = notesOrderAll(), next = notesOrderEmpty();
   for (const k of Object.keys(all.lists)) if (k !== listKey) next.lists[k] = all.lists[k];

@@ -161,7 +161,7 @@ function _nePickerUpdate(el) {
   const all = mxCandidates(el.dataset.neKey || '');
   const hits = mpRank(all, at.q, NE_PICK_MAX);
   const named = at.q.trim() && !all.some(c => c.name.toLowerCase() === at.q.trim().toLowerCase());
-  const items = hits.map(c => ({ label: c.name, small: t(c.word) + (c.where ? ' · ' + c.where : ''), run: () => _neInsertMention(el, at, c.name, c.kind, c.id()) }));
+  const items = hits.map(c => ({ label: c.name, small: t(c.word) + (c.where ? ', ' + c.where : ''), run: () => _neInsertMention(el, at, c.name, c.kind, c.id()) }));
   const pop = _nePick ? _nePick.pop : document.createElement('div');
   pop.className = 'ne-pop';
   pop.dataset.noI18n = '';

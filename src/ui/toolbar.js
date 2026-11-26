@@ -362,6 +362,8 @@ function initToolbar() {
     // ⚠ MANUAL CANCELS A PUSH ALREADY QUEUED. scheduleAutoSync debounces by 300ms, so a reveal
     // made just after the switch used to ride out on the timer the previous edit armed.
     if (!enabled) clearTimeout(autoSyncTimer);
+    // A new map's push still waiting for the TV's fog to close now waits for Send, marked.
+    if (!enabled && scenePushTimer) { clearTimeout(scenePushTimer); scenePushTimer = 0; tvWait.scene = true; playerUnsent = true; }
     paneBroadcast('auto-sync', { on: enabled });
     const btn = document.getElementById('btn-auto-sync');
     btn.classList.toggle('active', autoSync);
@@ -409,6 +411,8 @@ function initToolbar() {
       if (msg.scr) playerScreenInfo = msg.scr;
       if (typeof tvPlayerLoaded === 'function') tvPlayerLoaded();
       onPlayerResyncRequest();
+      // A need-map retry asks for the map alone: a picture re-sent with it cross-fades on the TV every 5 s.
+      if (msg.type === 'need-map') return;
       syncFogThemeToPlayer(true);
       galleryResend();
       initiativeTvResend();

@@ -14,7 +14,7 @@ const syncEngine = (() => {
   // A map file is removed only after it has gone unreferenced this long: the computer that sent it may be between
   // its file and its record.
   const BLOB_GRACE_MS = 15000;
-  const FIRST_KEY = '$first';
+  const FIRST_KEY = syncIndex.FIRST_KEY;
   // Set while the first-sync question is open. An app closed on it answered Cancel.
   const ASK_KEY = '$ask';
   const MET = '$met:';
@@ -67,22 +67,27 @@ const syncEngine = (() => {
     return out;
   }
 
+  // False when the file changed since the index hashed it: the name would not match its bytes, and the next tick
+  // sends it under its new one.
   async function _putBlob(w) {
     const name = syBlobName(w.owner, w.hash);
+    const send = async blob => {
+      if (!blob) return undefined;
+      return await syncIndex.sha(blob) === w.hash ? _drive('putBlob', { name, data: await blob.arrayBuffer() }) : false;
+    };
     if (w.kind === 'pic') {
       const p = (await galleryStore.all()).find(x => x.id === w.id);
-      if (!p || !p.blob) return;
-      return _drive('putBlob', { name, data: await p.blob.arrayBuffer() });
+      return send(p && p.blob);
     }
     if (w.kind === 'backdrop') {
       const bg = await worldBackgroundTake();
-      return bg ? _drive('putBlob', { name, data: await bg.blob.arrayBuffer() }) : undefined;
+      return send(bg && bg.blob);
     }
     const rec = await sceneStore.loadScene(w.id);
-    if (!rec) return;
-    if (w.kind === 'fog') return rec.baseFogBlob ? _drive('putBlob', { name, data: await rec.baseFogBlob.arrayBuffer() }) : undefined;
+    if (!rec) return undefined;
+    if (w.kind === 'fog') return send(rec.baseFogBlob);
     if (rec.mapType === 'video') return _drive('putVideo', { name, sceneId: w.id });
-    if (rec.mapBlob) return _drive('putBlob', { name, data: await rec.mapBlob.arrayBuffer() });
+    return send(rec.mapBlob);
   }
 
   // A record as it goes up, or null when what the index knows no longer matches what is stored (it changed meanwhile;
@@ -205,7 +210,7 @@ const syncEngine = (() => {
   }
 
   // Every other computer's deletion records merged into this one's, and the trash past 30 days purged.
-  async function _goneTake(snap, pulled, now) {
+  async function _goneTake(snap, pulled, now, first) {
     const mine = await _goneMap(), marks = [];
     let gone = mine;
     for (const r of snap.records) {
@@ -216,7 +221,20 @@ const syncEngine = (() => {
       gone = syGoneMerge(gone, syGoneParse(text));
       marks.push({ key: mark, hash: r.hash });
     }
-    gone = syPurge(gone, syTrashDue(gone, now));
+    if (first) gone = syGoneFirstKept(gone, allScenes.map(s => s.id), now);
+    // Before the purge: a deletion a later edit beat must not purge the map 30 days on.
+    const edited = {};
+    for (const r of snap.records) {
+      const id = r.key.startsWith('scene:') ? r.key.slice(6) : null;
+      if (id && gone[id]) edited[id] = Math.max(edited[id] || 0, r.edited);
+    }
+    for (const id of syTrashIds(gone)) {
+      if (!allScenes.some(s => s.id === id)) continue;
+      const rec = await sceneStore.loadScene(id);
+      if (rec) edited[id] = Math.max(edited[id] || 0, sySceneEditedAt(rec, now));
+    }
+    gone = syGoneRevived(gone, edited, now);
+    gone = syPurge(gone, syTrashDue(gone, now), now);
     await _goneSave(mine, gone);
     for (const m of marks) { await syncIndex.raw.put('pulled', m); pulled[m.key] = m.hash; }
     return gone;
@@ -226,7 +244,7 @@ const syncEngine = (() => {
   // waits while it is on screen; a restored map comes back from this computer's trash, else from the newest copy on the
   // Drive; a purged map leaves this computer's trash. Answers how many wait.
   async function _goneApply(gone, snap, now) {
-    const purged = Object.keys(gone).filter(id => gone[id].purged);
+    const purged = Object.keys(gone).filter(id => syGonePurged(gone[id]));
     for (const fileId of syPurgeFiles(snap.records, snap.blobs, purged)) await _drive('remove', { fileId });
     let held = 0;
     for (const id of Object.keys(gone)) {
@@ -235,6 +253,7 @@ const syncEngine = (() => {
       if (!rec || !syGoneWins(gone[id], sySceneEditedAt(rec, now), now)) continue;
       if (syncMerge.deferred() || syncMerge.held('scene:' + id)) { held++; continue; }
       await syncMerge.idle();
+      if (syncMerge.deferred() || syncMerge.held('scene:' + id)) { held++; continue; }
       await syncMerge.drop(id, gone[id].at);
     }
     const back = syRestoreFrom(gone, allScenes.map(s => s.id), await sceneTrash.ids());
@@ -297,7 +316,7 @@ const syncEngine = (() => {
 
   async function emptyNow() {
     const g = await _goneMap(), ids = syTrashIds(g).filter(id => !allScenes.some(s => s.id === id));
-    await _goneSave(g, syPurge(g, ids));
+    await _goneSave(g, syPurge(g, ids, Date.now()));
     const tracks = await syncMusic.emptyNow() + await syncSounds.emptyNow();
     await now();
     return ids.length + tracks;
@@ -373,6 +392,7 @@ const syncEngine = (() => {
     await chain;
     let r;
     try { r = await _drive('connect', { lang: I18N_LANG }); } catch (err) { asking = false; throw err; }
+    if (r.ok) try { await _forgetOtherDrive(); } catch (err) { await cancelFirst(); return { ok: false, code: err.code, message: String(err.message) }; }
     if (r.ok && !(await syncIndex.raw.get('synced', FIRST_KEY))) {
       await syncIndex.raw.put('synced', { key: ASK_KEY, hash: 'waiting' });
       try { return { ...r, first: await _firstCounts() }; } catch (err) {
@@ -400,6 +420,20 @@ const syncEngine = (() => {
     await now();
   }
 
+  // A Drive that holds none of this computer's records is another account's, or was emptied: every mark of what went up
+  // or came down goes, so the next sync is a first sync with its question. The music folders' own state (`$music`,
+  // `$sounds`) and the deletion records stay. A Disconnect alone keeps the marks, so a map deleted while disconnected
+  // still leaves its deletion record.
+  async function _forgetOtherDrive() {
+    if (!(await syncIndex.raw.get('synced', FIRST_KEY))) return;
+    const snap = await _drive('snapshot');
+    if (snap.records.some(r => r.machine === machine)) return;
+    for (const s of await syncIndex.raw.all('synced')) if (s.key !== '$music' && s.key !== '$sounds') await syncIndex.raw.del('synced', s.key);
+    for (const p of await syncIndex.raw.all('pulled')) await syncIndex.raw.del('pulled', p.key);
+    pending.clear();
+    unrefSince.clear();
+  }
+
   // ─── One tick ───────────────────────────────────────────────────────────────
 
   async function _tick() {
@@ -416,7 +450,7 @@ const syncEngine = (() => {
       for (const p of await syncIndex.raw.all('pulled')) pulled[p.key] = p.hash;
       const met = new Map(Object.keys(synced).filter(k => k.startsWith(MET)).map(k => [k.slice(MET.length), Number(synced[k]) || 0]));
       // Deletions first, so a map deleted on any computer is neither pulled nor sent. The first sync deletes nothing.
-      const gone = await _goneTake(snap, pulled, now);
+      const gone = await _goneTake(snap, pulled, now, first);
       const heldGone = first ? 0 : await _goneApply(gone, snap, now);
 
       // Inbox. A map deleted here stays gone, whatever another computer still holds of it.
@@ -443,13 +477,13 @@ const syncEngine = (() => {
       const entries = (await syncIndex.raw.all('index')).filter(e => syncMerge.supported(e.key));
       const have = snap.blobs.map(b => b.name);
       const upBlobs = syBlobsToUpload(_wanted(entries), have);
-      const up = syToUpload(_map(entries), synced).filter(k => !(k.startsWith('scene:') && gone[k.slice(6)] && gone[k.slice(6)].purged));
+      const up = syToUpload(_map(entries), synced).filter(k => !(k.startsWith('scene:') && syGonePurged(gone[k.slice(6)])));
       let total = prog.total + upBlobs.length + up.length, done = prog.done, failed = 0;
       const tick = () => { done++; if (first) status.progress = { done, total }; };
       const sent = new Set();
       for (const w of upBlobs) {
         await syncMerge.idle();
-        try { await _putBlob(w); sent.add(syBlobName(w.owner, w.hash)); } catch (err) { if (err.code === 'offline' || err.code === 'quota' || err.code === 'auth') throw err; failed++; console.error('[sync] a file was not sent', err); }
+        try { if (await _putBlob(w) !== false) sent.add(syBlobName(w.owner, w.hash)); } catch (err) { if (err.code === 'offline' || err.code === 'quota' || err.code === 'auth') throw err; failed++; console.error('[sync] a file was not sent', err); }
         tick();
       }
       for (const key of up) {

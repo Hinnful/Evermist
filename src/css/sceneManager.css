@@ -108,6 +108,8 @@
     display: flex; align-items: center; gap: 8px;
     padding: 0 10px 0 16px; border-bottom: 1px solid var(--g-line);
   }
+  /* Title and count are trimmed to their capitals, so the close centres on them. */
+  .sm-wtitle, .sm-wcount { text-box: trim-both cap alphabetic; }
   .sm-wtitle { font: 600 16px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   /* ⚠ The same size and line-height as the title: centring aligns line boxes, not baselines. */
   .sm-wcount {
@@ -165,10 +167,11 @@
     background: none; color: var(--g-text); text-align: left; cursor: var(--cur-pointer);
     font: 400 12px/16px system-ui, -apple-system, sans-serif;
   }
-  .sm-mi::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }
-  .sm-mi.on::before { content: '\2713'; }
+  .sm-mi > .sm-mk { width: 14px; flex: none; display: flex; justify-content: center; visibility: hidden; }
+  .sm-mi > .sm-mk svg { display: block; }
+  .sm-mi.on > .sm-mk { visibility: visible; }
   .sm-menu:not(:has(> .sm-mi.on)) > .sm-mi { padding-left: 10px; }
-  .sm-menu:not(:has(> .sm-mi.on)) > .sm-mi::before { display: none; }
+  .sm-menu:not(:has(> .sm-mi.on)) > .sm-mi > .sm-mk { display: none; }
   .sm-mi:hover, .sm-mi.hot { background: var(--b-tint); color: var(--b-icon); }
   .sm-mi:hover .sm-dim, .sm-mi.hot .sm-dim { color: var(--b-icon); opacity: .75; }
   .sm-mi .nm { flex: 1; white-space: nowrap; }
@@ -196,8 +199,8 @@
   .sm-toast.solo { padding-right: 12px; }
   .sm-toast > svg { flex: none; width: 16px; height: 16px; color: var(--g-dim); }
   .sm-toast > svg.i-trash { transform: none; }
-  /* A long message wraps instead of cutting off. */
-  .sm-toast .m { flex: 1; min-width: 0; }
+  /* A long message wraps instead of cutting off; trimmed to its capitals, it centres on the icon. */
+  .sm-toast .m { flex: 1; min-width: 0; text-box: trim-both cap alphabetic; }
   /* A toast's action is blue text, with no fill until the pointer is on it. */
   .sm-toast .sm-hbtn.primary { background: none; color: var(--b-icon); font-weight: 600; padding: 0 10px; }
   .sm-toast .sm-hbtn.primary:hover:not(:disabled) { background: var(--b-tint); color: var(--b-icon); }

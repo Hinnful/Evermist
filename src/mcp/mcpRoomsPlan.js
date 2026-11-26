@@ -5,7 +5,7 @@
 
 const MR = (typeof module !== 'undefined' && module.exports)
   ? Object.assign({}, require('../shapes/shapeDetail.js'), require('../rooms/roomPanel.js'), require('./mcpFogPlan.js'), require('../shapes/roomOps.js'), require('../rooms/vttPlan.js'), require('../shapes/roomPieces.js'))
-  : { roomHeads, restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, mcpFogRoomMode, layerInsertIndex, pointInRing, vttDerivePlan, vttProjectToSegment, vttSignedArea };
+  : { roomHeads, restoreShapeDetail, sanitizeRoomName, sanitizeRoomDesc, ROOM_DESC_MAX, mcpFogRoomMode, layerInsertIndex, pointInRing, vttDerivePlan, vttProjectToSegment, vttSignedArea };
 
 // read_scene rounds a point to 0.1%, so a wall read back and sent again sits within half of that.
 const MCP_ROOM_MATCH_PCT = 0.06;
@@ -94,6 +94,9 @@ function _mrFind(list, name, index, mapName) {
   if (!hits.length) return { error: 'No room is called "' + name + '"' + where + '. read_scene lists its rooms.' };
   return { error: 'More than one room is called "' + name + '"' + where + ': index ' + hits.map(h => h + 1).join(', ') + '. Give index too (the room\'s place in read_scene\'s rooms list, from 1).' };
 }
+
+// ⚠ A ROOM'S NOTES ARE CUT SILENTLY AT ROOM_DESC_MAX (sanitizeRoomDesc), so Claude's text past it is refused first.
+const mcpRoomNotesOver = text => String(text == null ? '' : text).trimEnd().length > MR.ROOM_DESC_MAX;
 
 // A new room's record, the fields a drawn room has, with its notes when there are any. `fallback` names a room
 // given no name, as a drawn room is named.
@@ -205,5 +208,5 @@ function mcpRoomFromPoint(planText, at, close, mapW, mapH) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { MCP_ROOM_MATCH_PCT, mcpRoomPoint, mcpRoomOutline, mcpRoomLine, mcpRoomFog, mcpRoomFind,
-    mcpRoomNew, mcpRoomInsert, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss, mcpRoomFromPoint, MCP_CLOSE_SNAP };
+    mcpRoomNotesOver, mcpRoomNew, mcpRoomInsert, mcpRoomReshape, mcpRoomWouldDelete, mcpRoomDoorMiss, mcpRoomFromPoint, MCP_CLOSE_SNAP };
 }

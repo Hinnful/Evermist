@@ -40,8 +40,10 @@ function prewarmStageAfter(dying) {
 }
 
 function closePrewarmedStage() {
+  const dying = _stagePrewarm;
   if (_stagePrewarm && !_stagePrewarm.closed) _stagePrewarm.close();
   _stagePrewarm = null;
+  return dying;
 }
 
 // ⚠ THE SHELL OPENS INTO THE PLAYER'S OWN WINDOW, under the same name: window.open on an

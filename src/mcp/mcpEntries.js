@@ -144,8 +144,13 @@ async function _mcpeEdit(args) {
   if (moves) { notesEntryMove(e.id, parentId, beforeId); done.push('moved ' + (parentId === kind ? 'to the top of the ' + kind + ' section' : 'inside "' + notesEntryGet(parentId).name + '"') + (beforeId ? ' before "' + notesEntryGet(beforeId).name + '"' : '')); }
   if (note !== null) { notesEntrySetNote(e.id, note); done.push(args.notes !== undefined ? 'note replaced' : 'added to the note'); }
   mxBump();
+  const left = { note: (notesEntryGet(e.id) || {}).note, name: (notesEntryGet(e.id) || {}).name };
   const undo = async () => {
-    if (!notesEntryGet(e.id)) return;
+    const now = notesEntryGet(e.id);
+    if (!now) return;
+    if ((note !== null && now.note !== left.note) || (newName !== null && now.name !== left.name)) {
+      throw Object.assign(new Error('Not undone: the ' + kind + ' entry "' + now.name + '" has changed there since Claude\'s change, and undoing it would erase that too.'), { mcpKeep: true });
+    }
     if (note !== null) notesEntrySetNote(e.id, was.note);
     if (moves) notesEntryMove(e.id, was.parent, was.next);
     if (newName !== null) notesEntryRename(e.id, was.name);

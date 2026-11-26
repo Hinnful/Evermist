@@ -130,7 +130,9 @@
   .lib-filedrop { box-shadow: inset 0 0 0 2px var(--b-icon); }
   .lib-menu { position: fixed; z-index: 610; }
   .lib-menu .sm-mi svg { flex: none; }
-  .lib-menu .sm-mi .nm { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  /* Trimmed to their capitals, so the name and the key centre on the icons' line. */
+  .lib-menu .sm-mi .nm { overflow-x: clip; text-overflow: ellipsis; max-width: 220px; }
+  .lib-menu .sm-mi .nm, .lib-menu .sm-mi .ky { text-box: trim-both cap alphabetic; }
 
   /* ===== SOUNDS: rows, as Music's ===== */
   .sb-row .sb-count { flex: none; font: 600 11px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;

@@ -25,7 +25,7 @@ function _bsFilterButton(F) {
   let val = '';
   if (F.range) { if (bs.f.cr[0] !== null || bs.f.cr[1] !== null) val = `${bs.f.cr[0] || '0'}–${bs.f.cr[1] || '30'}`; }
   else val = bs.f[F.k].length === 1 ? bs.f[F.k][0] : bs.f[F.k].length ? String(bs.f[F.k].length) : '';
-  return `<button class="bs-f ${val ? 'on' : ''}" data-filter="${F.k}">${F.label}${val ? ` <span class="v" data-no-i18n>${_cbEsc(t(val))}</span>` : ''}<span class="car">▼</span></button>`;
+  return `<button class="bs-f ${val ? 'on' : ''}" data-filter="${F.k}"><span class="lb">${F.label}${val ? ` <span class="v" data-no-i18n>${_cbEsc(t(val))}</span>` : ''}</span><span class="car">▼</span></button>`;
 }
 
 function _bsQueueHtml() {
@@ -57,8 +57,8 @@ function _bsTableHtml(list) {
       _bsAll().length ? 'Loosen a filter, or <button class="bs-link" data-a="clear">clear them all</button>.' : 'Import from a link or a PDF book, or add a new one.'}</div>`;
   }
   const cols = bswdCols();
-  // The arrow in its own node: joined to the title it made "Name ↑" a text the translation has no key for.
-  const arrow = k => bs.sort.k === k ? `<span class="ar">${bs.sort.d > 0 ? ' ↑' : ' ↓'}</span>` : '';
+  // The arrow is an icon after the title, pointing up while the sort ascends.
+  const arrow = k => bs.sort.k === k ? `<span class="ar${bs.sort.d > 0 ? '' : ' dn'}">${uiIcon('open', 12)}</span>` : '';
   return `<table class="bs-t"><thead data-no-i18n><tr><th class="cbc"></th>${cols.map(([k, l, c]) => `<th class="${c || ''}" data-sort="${k}">${_cbEsc(t(l))}${arrow(k)}</th>`).join('')}</tr></thead>
     <tbody data-no-i18n>${list.map(b => `<tr class="${bs.picked.has(b.id) ? 'sel' : ''} ${bs.open === b.id ? 'open' : ''}" data-id="${b.id}">
       <td class="cbc"><span class="bs-cb ${bs.picked.has(b.id) ? 'on' : ''}" data-tick></span></td>${cols.map(([k]) => _bsCell(b, k)).join('')}</tr>`).join('')}</tbody></table>`;
@@ -66,7 +66,7 @@ function _bsTableHtml(list) {
 
 const BS_ICONS = {
   edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>',
-  done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.25l4.5 4.5L19 7.25"/></svg>',
 };
 
 // Reading, the head carries the page's three actions as one group; editing, it becomes a strip
@@ -75,7 +75,7 @@ function _bsPageHtml(b) {
   const head = bs.editing
     ? `<div class="bs-page-head editing"><div class="t">${bpEditHead(b)}</div>
         <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done}<span>Done</span></button></div>`
-    : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || t('no source'))}</span></h2></div>
+    : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}</h2><div class="bs-src" data-no-i18n>${_cbEsc(b.source || t('no source'))}</div></div>
         <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
           <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${uiIcon('dup')}</button>
           <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${uiIcon('trash')}</button></div>
@@ -98,8 +98,8 @@ function bestiaryRender() {
   tick.title = bs.picked.size ? t('Clear the selection') : t('Select all');
   panel.querySelector('.bs-importbar').style.display = bs.importing ? '' : 'none';
   panel.querySelector('.bs-fbtns').innerHTML = BS_FILTERS.filter(F => !F.more || bs.more).map(_bsFilterButton).join('')
-    + `<button class="bs-link" data-a="more">${bs.more ? 'Fewer filters' : 'More filters'}</button>`
-    + (bsFiltered(bs.f) ? '<button class="bs-link" data-a="clear">Clear all</button>' : '');
+    + `<button class="bs-link" data-a="more"><span>${bs.more ? 'Fewer filters' : 'More filters'}</span></button>`
+    + (bsFiltered(bs.f) ? '<button class="bs-link" data-a="clear"><span>Clear all</span></button>' : '');
   panel.querySelector('.bs-shown').textContent = t('{shown} of {all} monsters', { shown: list.length, all: _bsAll().length });
   const queue = _bsEl('bs-queue');
   queue.innerHTML = (cbBookReading ? `<div class="bs-q"><span class="bs-spin"></span><span class="u">${t('Reading {host}…', { host: _cbEsc(cbBookReading) })}</span></div>` : '') + _bsQueueHtml();
@@ -132,7 +132,7 @@ function _bsShow(id, editing) {
   bs.open = id;
   bs.copy = null;
   bs.editing = !!editing;
-  bswRecord('e:' + id);
+  bswRecord(_bsHistKey(cbState.blocks[id]));
   _bsRenderPage();
   cbRender();
 }
@@ -163,7 +163,7 @@ function _bsFilterPop(anchor, k) {
     el.addEventListener('change', e => { bs.f.cr[+e.target.dataset.r] = e.target.value || null; bestiaryRender(); });
   } else {
     const draw = () => {
-      el.innerHTML = `<div class="top"><button data-p="all">Select all</button><button data-p="none">${uiIcon('reset', 13)}<span>Clear</span></button></div>
+      el.innerHTML = `<div class="top"><button data-p="all"><span>Select all</span></button><button data-p="none">${uiIcon('reset', 13)}<span>Clear</span></button></div>
         <div class="opts" data-no-i18n>${bsOptions(_bsAll(), bs.f, k).map(o => `<div class="o" data-v="${_cbEsc(o.value)}">
           <span class="bs-cb ${bs.f[k].includes(o.value) ? 'on' : ''}"></span><span>${_cbEsc(t(o.value))}</span><span class="c">${o.count}</span></div>`).join('')}</div>`;
     };
@@ -314,7 +314,7 @@ function bestiarySetOpen(open, fromFight) {
   _bsClosePop();
   if (!open) { bs.picked.clear(); bs.editing = false; bs.copy = null; cbRender(); return false; }
   // Opened with no page, it shows the list's first monster rather than an empty half.
-  if (!fromFight && !bs.open && bs.copy === null) { const first = _bsShown()[0]; if (first) { bs.open = first.id; bswRecord('e:' + first.id); } }
+  if (!fromFight && !bs.open && bs.copy === null) { const first = _bsShown()[0]; if (first) { bs.open = first.id; bswRecord(_bsHistKey(first)); } }
   _bsRenderPage();
   const search = _bsEl('bs-search');
   (search.offsetParent ? search : _bsEl('bs-panel')).focus();
@@ -383,11 +383,14 @@ function _bsClick(e) {
 }
 
 // A history step: an entry's page, or a fight row's copy while that row is still in the open fight.
+// An entry's step names its uid, since a deleted entry's `b<n>` id goes to the next new one.
+function _bsHistKey(b) { return 'e:' + (b.uid || b.id); }
 function _bsGo(key) {
   const id = key.slice(2);
   if (key[0] === 'c') return bcShow(+id);
-  if (!cbState.blocks[id]) return false;
-  _bsShow(id);
+  const b = Object.values(cbState.blocks).find(x => _bsHistKey(x) === key);
+  if (!b) return false;
+  _bsShow(b.id);
   return true;
 }
 

@@ -18,8 +18,8 @@
 // effect covers the bounding box, and the fragment shader grows fire in the band just inside the
 // edge — which is why it survives any drawn shape, rounded or not.
 //
-// Effects draw UNDER the fog on both screens, so an effect in an unexplored room is hidden for
-// free — no stripping guard.
+// Effects draw UNDER the fog on both screens, and on the TV only round the cleared part of their own
+// zone (_applyFxFog), so an effect in an unexplored room gives nothing away — no stripping guard.
 
 // Flame reach INTO the zone, in map units, tied to the grid so the fire stays proportional to the
 // map whatever its resolution. Tongues pack about one grid cell apart, for the same reason.
@@ -157,6 +157,7 @@ function _ringLength(ring) {
 }
 
 function _destroyFxInstance(inst) {
+  _dropFxMask(inst);
   for (const m of _fxMeshes(inst)) {
     if (m.parent) m.parent.removeChild(m);
     m.destroy();          // leaves the shared geometry and the cached shader alone
@@ -258,6 +259,84 @@ function _syncFxInstances() {
   }
 }
 
+// ─── Fog on the TV ────────────────────────────────────────────────────────────
+
+// ⚠ THE SHADERS PAINT PAST THE ZONE: smoke and steam climb above it, a glow and a cloud's edge spill round it, and
+// that spill landed on cleared ground beside a hidden room. So on the TV an effect draws only round the part of
+// its own zone the fog has cleared (tvRevealCanvas, lights.js): none of it hides the effect, all of it shows it
+// whole, and part masks it to that part grown by the mesh's padding (_fxQuad).
+function _dropFxMask(inst) {
+  if (!inst.mask) return;
+  for (const m of _fxMeshes(inst)) m.mask = null;
+  if (inst.mask.parent) inst.mask.parent.removeChild(inst.mask);
+  inst.mask.destroy({ texture: true, baseTexture: true });
+  inst.mask = null;
+}
+
+function _applyFxFog(inst, e, reveal) {
+  _dropFxMask(inst);
+  const meshes = _fxMeshes(inst);
+  for (const m of meshes) m.visible = true;
+  if (!reveal) return;
+  const s = reveal.width / mapWidth, cell = _gridCell() * s;
+  const side = Math.ceil(cell * 0.9), top = Math.ceil(cell * 2.7);
+  const rings = _roundedPolyRings(e, e.cornerRadius || 0, e.cornerRadii || null);
+  let loX = Infinity, loY = Infinity, hiX = -Infinity, hiY = -Infinity;
+  for (const ring of rings) for (const v of ring) {
+    if (v.x < loX) loX = v.x; if (v.x > hiX) hiX = v.x;
+    if (v.y < loY) loY = v.y; if (v.y > hiY) hiY = v.y;
+  }
+  const ox = Math.floor(loX * s) - 1 - side, oy = Math.floor(loY * s) - 1 - top;
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(hiX * s) + 1 + side - ox);
+  c.height = Math.max(1, Math.ceil(hiY * s) + 1 + side - oy);
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.setTransform(s, 0, 0, s, -ox, -oy);
+  g.fillStyle = '#fff';
+  g.beginPath();
+  for (const ring of rings) {
+    ring.forEach((v, i) => { if (i) g.lineTo(v.x, v.y); else g.moveTo(v.x, v.y); });
+    g.closePath();
+  }
+  g.fill('evenodd');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const inZone = () => {
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] >= 128) n++;
+    return n;
+  };
+  const zone = inZone();
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(reveal, -ox, -oy);
+  const open = inZone();
+  if (!open) { for (const m of meshes) m.visible = false; return; }
+  if (open >= zone) return;
+  // Grown by doubling shifts of itself: each draw unions the canvas with a copy moved by what is covered so far.
+  g.globalCompositeOperation = 'source-over';
+  const grow = (dx, dy, n) => {
+    for (let done = 0; done < n;) { const k = Math.min(Math.max(1, done), n - done); g.drawImage(c, dx * k, dy * k); done += k; }
+  };
+  grow(1, 0, side); grow(-1, 0, side); grow(0, -1, top); grow(0, 1, side);
+  const mask = new PIXI.Sprite(PIXI.Texture.from(c));
+  mask.position.set(ox / s, oy / s);
+  mask.scale.set(1 / s);
+  pixiEffectsLayer.addChild(mask);
+  for (const m of meshes) m.mask = mask;
+  inst.mask = mask;
+}
+
+// Rebuilt only when the cleared ground, the shape or the grid cell changed.
+function _pumpFxFog() {
+  const reveal = tvRevealCanvas(), cell = _gridCell();
+  for (const e of effects) {
+    const inst = _fxInstances.get(e.id);
+    if (!inst || (inst.fogReveal === reveal && inst.fogKey === inst.geomKey && inst.fogCell === cell)) continue;
+    inst.fogReveal = reveal; inst.fogKey = inst.geomKey; inst.fogCell = cell;
+    _applyFxFog(inst, e, reveal);
+  }
+}
+
 // Runs on the PixiJS ticker via render.js's pumpDirtyRender, so it shares the app's one clock and
 // its frame cap. Returns immediately when nothing is placed.
 function pumpEffects() {
@@ -271,6 +350,7 @@ function pumpEffects() {
   }
   if (_effectSpritesDirty) _syncFxInstances();
   if (!_fxInstances.size) return;
+  if (isPlayer) _pumpFxFog();
 
   const t = performance.now() / 1000;
   const along = _flameAlong(), cell = _gridCell();

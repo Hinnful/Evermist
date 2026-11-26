@@ -94,8 +94,8 @@
   .cl-row:hover { background: var(--g-hover); }
   .cl-row .v { flex: none; width: 44px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .cl-row .n { flex: 1; min-width: 0; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; color: var(--g-body); }
-  .cl-row .d { flex: none; color: var(--g-dim); font-size: 11px; }
-  /* Trimmed to their capitals, so the 12px version and name and the 11px date and chip centre as one line. */
+  .cl-row .d { flex: none; color: var(--g-dim); }
+  /* Trimmed to their capitals, so the texts and the chip centre as one line. */
   .cl-row > span:not(.sm-chev, .sm-chip), .cl-row .sm-chip > span { text-box: trim-both cap alphabetic; }
   .cl-row .sm-chev { transform: rotate(-90deg); transition: transform .12s; }
   .cl-open { background: var(--g-field); border-radius: 6px; margin-bottom: 2px; }

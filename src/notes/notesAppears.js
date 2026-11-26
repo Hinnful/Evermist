@@ -17,7 +17,7 @@ function _naRow(r) {
   const name = document.createElement('span');
   name.textContent = r.name;
   row.append(name);
-  small.textContent = t(r.word) + (r.where ? ' · ' + r.where : '');
+  small.textContent = t(r.word) + (r.where ? ', ' + r.where : '');
   row.append(small);
   return row;
 }

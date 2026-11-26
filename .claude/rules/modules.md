@@ -123,6 +123,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
 | `scenes/backup.js` | Zip export, and the module text and fights an import adopts |
+| `scenes/importJournal.js` | `evermist-import`: what a running Import overwrote and created, and the undo at start of one a close, quit or reload cut short |
 | `scenes/transferImport.js` | Import: a picked or dropped `.zip` merged into the library, the report, and undoing a stopped one |
 | `scenes/syncPlan.js` | Pure sync kernel: what goes up, what is new from another computer, which map files the Drive holds or no longer needs, which pulled changes wait for a map or table on screen, the 30-day trash, the first-sync question's counts, the kept map files due. Tested |
 | `scenes/syncIndex.js` | `evermist-sync`: each record's content hash as saved here, hashed at save and reconciled at start, the deletion records. Does nothing without a Google client |
@@ -301,7 +302,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/pdfText.js` | PDF text extraction, in a process of its own |
 | `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
 | `electron/statBlockFetch.js` | A monster page, in a hidden window |
-| `electron/mapScan.js` | Pure: map files found in a folder or the DM's usual folders, and the bytes of a map or a folder's maps. Tested |
+| `electron/mapScan.js` | Pure: map files found in a folder or the DM's usual folders, a folder's maps listed, and their bytes. Tested |
 | `electron/mapFiles.js` | The IPC behind Claude's map tools: the folder search and the map bytes |
 | `electron/fileHash.js` | Pure: a file's SHA-256, streamed. Tested |
 | `electron/musicHashes.js` | Pure: each track's content hash kept in `userData/sync/music-hashes.json`, a deleted track moved to `userData/trash/music` and back under a free name, a downloaded track placed under a free name, one deleted elsewhere moved only while it is that content. Tested |
@@ -330,7 +331,7 @@ shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → un
 scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
 scenes/trashPlan.js → scenes/sceneTrash.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
-scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js → render/effectShaderKinds.js → render/effectKinds/darkness.js → render/effectKinds/fogCloud.js → render/effectKinds/poisonCloud.js → render/effectKinds/ice.js → render/effectKinds/web.js → render/effectKinds/grease.js →
+scenes/transferPlan.js → scenes/backup.js → scenes/importJournal.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js → render/effectShaderKinds.js → render/effectKinds/darkness.js → render/effectKinds/fogCloud.js → render/effectKinds/poisonCloud.js → render/effectKinds/ice.js → render/effectKinds/web.js → render/effectKinds/grease.js →
 render/effects.js → render/weatherShader.js → render/timeOfDay.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → ui/editRow.js → ui/editRowPane.js → ui/effectPopup.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →

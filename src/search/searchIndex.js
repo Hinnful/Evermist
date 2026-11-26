@@ -112,7 +112,7 @@ function searchEntries() {
   }
   for (const r of worldRoadRecords()) out.push({ key: 'road:' + r.uid, kind: 'road', id: r.uid, name: r.name, where: t('Road'), text: notesRoadGet(r.uid) });
   for (const b of Object.values(cbState.blocks)) {
-    out.push({ key: 'monster:' + b.id, kind: 'monster', id: b.id, name: b.name, where: t('CR {cr}', { cr: bsCr(b) }) + ' · ' + t(bsType(b)), text: b.notes || '' });
+    out.push({ key: 'monster:' + b.id, kind: 'monster', id: b.id, name: b.name, where: t('CR {cr}', { cr: bsCr(b) }) + ', ' + t(bsType(b)), text: b.notes || '' });
   }
   out.push(...spNoteRows(notesEntriesAll(), k => t(k === 'faction' ? 'Factions' : 'Lore')));
   for (const f of cbState.fights) out.push({ key: 'fight:' + f.id, kind: 'fight', id: f.id, name: _cfName(f), where: _cfCount(f), text: '' });

@@ -36,6 +36,8 @@ function deleteScenesWithUndo(ids) {
   const tvLost = tvShowsOtherMap() && idset.has(tvSceneId);
   if (currentScene && idset.has(currentScene.id)) handleCurrentDeleted();
   if (tvLost) holdTvClear();
+  // Two maps: a half of the TV still showing a map that goes clears the same way.
+  if (panesActive) for (const id of idset) { const col = paneTvColumn(id); if (col) col.holdTvClear(); }
 
   smPending = { items, ids: items.map(x => x.id) };
   showUndoToast(items.length === 1 ? t('"{name}" moved to Trash', { name: items[0].meta.name }) : t.plural(items.length, '{n} map moved to Trash', '{n} maps moved to Trash'));
@@ -45,6 +47,11 @@ function deleteScenesWithUndo(ids) {
 }
 
 function handleCurrentDeleted() {
+  // ⚠ SAVED BEFORE IT GOES: the edit's own save is due 5 s later, when the open map is another one, and Undo and
+  // Restore would bring back the record from before it. The switch follows the write, which lands only while
+  // currentScene is null (doAutoSave).
+  if (typeof notesPanelFlush === 'function') notesPanelFlush();
+  const saved = doAutoSave();
   currentScene = null;
   cleanupVideo();
   if (mapBitmap) { try { mapBitmap.close(); } catch (e) {} }
@@ -60,7 +67,8 @@ function handleCurrentDeleted() {
   // The fallback is for the DM's eyes: the TV must not show a scene the DM did not open. A TV on
   // another map (Manual) keeps it.
   if (!tvShowsOtherMap()) holdTvClear();
-  if (allScenes.length) switchScene(allScenes[0].id, false, true).catch(err => console.error('switchScene failed:', err));
+  // A map the DM opened during the write stays open.
+  if (allScenes.length) saved.then(() => { if (!currentScene && allScenes.length) return switchScene(allScenes[0].id, false, true); }).catch(err => console.error('switchScene failed:', err));
   else worldMapShow();
 }
 
@@ -70,6 +78,7 @@ function persistSceneOrder() {
   for (const s of allScenes) {
     const g = sanitizeGroupName(s.group);
     if (currentScene && currentScene.id === s.id) { currentScene.sortOrder = s.sortOrder; currentScene.group = g; }
+    if (sceneOpening && sceneOpening.id === s.id) { sceneOpening.sortOrder = s.sortOrder; sceneOpening.group = g; }
     sceneStore.updateScene(s.id, sc => {
       if (sc.sortOrder === s.sortOrder && sanitizeGroupName(sc.group) === g) return false;
       sc.sortOrder = s.sortOrder;

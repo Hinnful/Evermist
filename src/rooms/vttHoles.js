@@ -36,6 +36,12 @@ function vttRoomHoles(rooms, boundaries) {
   return out;
 }
 
+// Each room as a record with its holes, the shape Draw Rooms gives it. ⚠ Doors are placed against these,
+// never the bare rings: a doorway into a building inside a room otherwise touches only the building.
+function vttRoomRecords(rooms, boundaries) {
+  return vttRoomHoles(rooms, boundaries).map((holes, i) => ({ vertices: rooms[i], holes }));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { vttRoomHoles };
+  module.exports = { vttRoomHoles, vttRoomRecords };
 }

@@ -55,7 +55,7 @@ async function _tpRestore(item) {
 // A map another computer emptied from the Drive leaves this computer's trash too. The index opens after sign-in.
 async function _tpDrivePurged() {
   if (!syncIndex.isOn()) return;
-  for (const g of await syncIndex.goneRecords()) if (g.purged) await sceneTrash.purge(g.id);
+  for (const g of await syncIndex.goneRecords()) if (syGonePurged(g)) await sceneTrash.purge(g.id);
 }
 
 async function trashPanelRefresh() {

@@ -15,15 +15,17 @@ function combatFightId() {
 }
 
 // A save from before the list, or none at all, is one fight named "Fight" holding what was open.
-function combatFightsFrom(saved, newId) {
+// `combatOpenId` is the fight the saved `rows` belong to. When it is another fight, a switch wrote the list and then
+// failed to write `rows`, and the list's own copy of the open fight's rows is the one to take.
+function combatFightsFrom(saved, newId, combatOpenId) {
   if (!saved || !Array.isArray(saved.fights) || !saved.fights.length) {
     const id = newId();
     return { openId: id, fights: [{ id, name: 'Fight' }] };
   }
   const fights = saved.fights.map(f => Object.assign({}, f));
-  const open = fights.find(f => f.id === saved.openId) || fights[0];
+  const open = fights.find(f => f.id === saved.openId) || fights[0], rows = open.rows;
   delete open.rows;
-  return { openId: open.id, fights };
+  return Object.assign({ openId: open.id, fights }, combatOpenId && combatOpenId !== open.id && Array.isArray(rows) ? { rows } : {});
 }
 
 function combatFightRows(st, f) {
@@ -62,9 +64,10 @@ function combatFightLabel(name, tr) {
   return copy ? tr('{name} copy', { name: combatFightLabel(copy[1], tr) }) : name;
 }
 
-function combatRenameFight(st, id, name) {
+// A name left as the screen showed it keeps the stored one, so an app-given name stays the app's and follows the language.
+function combatRenameFight(st, id, name, tr) {
   const f = st.fights.find(x => x.id === id), n = String(name || '').trim();
-  if (f && n) f.name = n;
+  if (f && n && n !== combatFightLabel(f.name, tr)) f.name = n;
   return st;
 }
 
@@ -214,10 +217,13 @@ function combatMerge(cur, incoming, newId, now) {
 
 // What is written to disk: `combat` in the shape saved before the list (the open fight and the
 // bestiary), and `fights` under a key an older build never reads, so its saves erase no fight.
+// `combat.openId` names whose rows it holds. `moving` is the list with the open fight's rows in it too, written first
+// when the open fight changed, so a failed write of `combat` after it loses no fight's rows.
 function combatSavedParts(st) {
   return {
-    combat: Object.assign({ rows: st.rows, blocks: st.blocks, nextId: st.nextId }, st.edits ? { edits: st.edits } : {}),
+    combat: Object.assign({ rows: st.rows, blocks: st.blocks, nextId: st.nextId, openId: st.openId }, st.edits ? { edits: st.edits } : {}),
     fights: { openId: st.openId, fights: st.fights.map(f => (f.id === st.openId ? { id: f.id, name: f.name } : f)) },
+    moving: { openId: st.openId, fights: st.fights.map(f => (f.id === st.openId ? { id: f.id, name: f.name, rows: st.rows } : f)) },
   };
 }
 

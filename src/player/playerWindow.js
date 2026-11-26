@@ -89,9 +89,12 @@ function prewarmPlayerAfter(dying) {
 }
 
 // A whole hidden renderer, so a parent handing its map to the columns drops it.
+// Answers the window still closing, for whatever is warmed next under its name.
 function closePrewarmedPlayer() {
+  const dying = _playerPrewarm;
   if (_playerPrewarm && !_playerPrewarm.closed) _playerPrewarm.close();
   _playerPrewarm = null;
+  return dying;
 }
 
 // The button's "open": main.js keeps every Player window hidden until this.
@@ -183,6 +186,12 @@ function deliverHeld(sceneChange) {
 // The TV shows a map other than the one open here: a ping would point at the wrong place.
 function tvShowsOtherMap() { return tvWait.scene || !!tvSceneSendTimer; }
 
+// The map this window's TV shows now, else null. A column answers for its half of the TV (panes.js).
+function tvShownSceneId() {
+  if (!playerWindow || playerWindow.closed || tvHeld) return null;
+  return tvShowsOtherMap() ? tvSceneId : (currentScene ? currentScene.id : null);
+}
+
 // A map change the DM left on the laptop is cancelled by opening another map.
 function dropHeldSceneSend() {
   if (!tvSceneSendTimer) return;
@@ -213,8 +222,9 @@ function onPlayerResyncRequest() {
   _playerResyncPending = true;
   playerMapSent = false;
   tvSceneId = null;   // a Player asking holds no map
-  // Manual with a map change held: the asking TV keeps its fog until Send, like the change itself.
-  if (!autoSync && tvWait.scene) return;
+  // Manual with anything held: the asking TV keeps its fog until Send, which then brings the whole
+  // map. ⚠ sendToPlayer reads the LIVE fog, so answering here hands the TV every unsent reveal.
+  if (!autoSync && (tvWait.scene || playerUnsent)) { tvWait.scene = true; playerUnsent = true; return; }
   sendToPlayer();
 }
 

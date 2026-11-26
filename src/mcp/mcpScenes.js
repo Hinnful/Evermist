@@ -25,9 +25,9 @@ function _mcpPlaceArg(raw) {
   return name ? { name } : { error: 'No group is called "' + raw + '". Use create_place to make one.' };
 }
 
-// Scenes taken out of the list, their road ends opened, and either moved into the Trash (a delete) or erased
-// with an animated map's file (the undo of Claude's own create).
-async function _mcpRemoveScenes(ids, toTrash) {
+// Scenes taken out of the list, their road ends opened, and moved into the Trash with an animated map's file, where
+// the DM can restore them for 30 days: a delete, and the undo of Claude's own create, copy or import.
+async function _mcpRemoveScenes(ids) {
   if (panesActive && ids.some(id => paneColumnOf(id))) throw new Error('A map is open in a column. Ask the DM to close the column first.');
   // Only a delete of one of these ends the DM's undo window; another stays theirs to take back.
   if (smPending && smPending.ids.some(id => ids.includes(id))) commitPendingDelete();
@@ -36,21 +36,21 @@ async function _mcpRemoveScenes(ids, toTrash) {
   if (currentScene && gone.has(currentScene.id)) handleCurrentDeleted();
   const roads = sceneTrash.roadsOf(ids);
   worldRoadsSceneGone(ids);
-  if (toTrash) await sceneTrash.put(ids, Date.now(), roads);
-  else for (const id of ids) {
-    await sceneStore.deleteScene(id);
-    if (window.electronAPI) await window.electronAPI.deleteVideoFile(id).catch(() => {});
-  }
+  await sceneTrash.put(ids, Date.now(), roads);
   sceneListChanged();
 }
 
-// ⚠ A MAP CLAUDE MADE BECOMES THE DM'S ONCE THEY OPEN IT. Undoing its creation while it is open, in a
-// column or on the TV deletes a map in play with every reveal on it, so it is refused and the step kept.
+// ⚠ A MAP CLAUDE MADE BECOMES THE DM'S ONCE THEY OPEN IT. Undoing its creation goes to the Trash with their work,
+// and while it is open, in a column or on the TV (Manual keeps the last map sent) it is refused and the step kept.
 function mcpRefuseRemovingOpen(ids, what) {
-  const s = allScenes.find(x => ids.includes(x.id) && _mcpHolder(x.id));
-  if (!s) return;
-  throw Object.assign(new Error('Not undone: the DM has "' + s.name + '" open, and ' + what + ' would delete it. Ask the DM to open another map first.'), { mcpKeep: true });
+  const open = allScenes.find(x => ids.includes(x.id) && _mcpHolder(x.id));
+  if (open) throw Object.assign(new Error('Not undone: the DM has "' + open.name + '" open, and ' + what + ' would take it away. Ask the DM to open another map first.'), { mcpKeep: true });
+  const tv = allScenes.find(x => ids.includes(x.id) && _mcpOnTv(x.id));
+  if (tv) throw Object.assign(new Error('Not undone: the TV shows "' + tv.name + '", and ' + what + ' would take it off the players\' screen. Ask the DM to send another map to the TV first.'), { mcpKeep: true });
 }
+
+// What an undone create or copy says: where the maps went.
+const _mcpTrashed = names => (names.length > 1 ? names.join(', ') + ' are in the Trash, where the DM can restore them' : names[0] + ' is in the Trash, where the DM can restore it') + ' for 30 days.';
 
 async function _mcpFind(args) {
   const files = await window.electronAPI.findMapFiles(String(args.query || ''));
@@ -61,12 +61,22 @@ async function _mcpFind(args) {
 async function _mcpCreateScene(args) {
   const place = _mcpPlaceArg(args.place);
   if (place.error) return _mcpNo(place.error);
-  const read = await window.electronAPI.readMapFiles(String(args.path || ''));
+  const read = await window.electronAPI.listMapFolder(String(args.path || ''));
   if (read.error) return _mcpNo(read.error);
   if (!read.files.length) return _mcpNo('No map was made: ' + read.skipped.map(s => '"' + s.name + '" ' + s.reason).join(' '));
   const snap = worldSnapshotTake();
-  const files = read.files.map(f => new File([f.bytes], f.name, { type: f.type }));
-  const done = await addMapsToLibrary(files, { x: 0, y: 0 }, true);
+  // ⚠ ONE MAP CROSSES IPC AND SITS IN THIS WINDOW AT A TIME. A folder's maps in one message froze the page and
+  // killed it past about 500 MB (docs/decisions/storage-and-packaging.md).
+  const dropAt = wmSideBySide(0, 0, read.files.length);
+  const done = { ids: [], failures: [] };
+  for (let i = 0; i < read.files.length; i++) {
+    const one = await window.electronAPI.readMapFiles(read.files[i].path);
+    const f = one.files && one.files[0];
+    if (!f) { read.skipped.push({ name: read.files[i].name, reason: (one.skipped && one.skipped[0] && one.skipped[0].reason) || 'could not be read.' }); continue; }
+    const r = await addMapsToLibrary([new File([f.bytes], f.name, { type: f.type })], dropAt[i], true);
+    done.ids.push(...r.ids);
+    done.failures.push(...r.failures);
+  }
   const ids = done.ids;
   if (!ids.length) return _mcpNo('No map was made: ' + done.failures.join(' '));
   const skip = new Set(ids);
@@ -87,8 +97,8 @@ async function _mcpCreateScene(args) {
   const names = made.map(s => '"' + s.name + '"');
   const left = [...read.skipped.map(s => '"' + s.name + '" ' + s.reason), ...done.failures];
   const crowded = spots.length < ids.length ? ' The group had no free spot for ' + (ids.length - spots.length) + ' of them; the DM can drag them into position.' : '';
-  return mcpDone('created ' + names.join(', '), async () => { mcpRefuseRemovingOpen(ids, 'undoing its creation'); await _mcpRemoveScenes(ids, false); worldSnapshotPut(snap); },
-    'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : '') + (await _mcpSizes(ids)));
+  return mcpDone('created ' + names.join(', '), async () => { mcpRefuseRemovingOpen(ids, 'undoing its creation'); await _mcpRemoveScenes(ids); worldSnapshotPut(snap); },
+    'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : '') + (await _mcpSizes(ids)), _mcpTrashed(names));
 }
 
 // What each new map's size is, with the warning for an animated map past 4K.
@@ -138,8 +148,8 @@ async function _mcpCopyScene(args) {
   worldAssignAll();
   sceneListChanged();
   const rooms = roomHeads(rec.polygons || []).length;
-  return mcpDone('copied the map "' + s.name + '"', async () => { mcpRefuseRemovingOpen([id], 'undoing the copy'); await _mcpRemoveScenes([id], false); worldSnapshotPut(snap); },
-    'Copied the map "' + s.name + '" as "' + name + '"' + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + ', with its own ' + (mapPath ? 'video file' : 'picture') + ', ' + rooms + ' rooms, its grid, fog, effects, lights and notes. ' + mcpSizeNote(rec, false).text);
+  return mcpDone('copied the map "' + s.name + '"', async () => { mcpRefuseRemovingOpen([id], 'undoing the copy'); await _mcpRemoveScenes([id]); worldSnapshotPut(snap); },
+    'Copied the map "' + s.name + '" as "' + name + '"' + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + ', with its own ' + (mapPath ? 'video file' : 'picture') + ', ' + rooms + ' rooms, its grid, fog, effects, lights and notes. ' + mcpSizeNote(rec, false).text, _mcpTrashed(['"' + name + '"']));
 }
 
 async function _mcpRename(args) {
@@ -216,7 +226,7 @@ async function _mcpDeleteScene(args) {
   if (!rec) return _mcpNo('The map "' + s.name + '" is no longer in the library.');
   if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('scene', { name: s.name, rooms: roomHeads(rec.polygons || []).length }));
   const snap = worldSnapshotTake();
-  await _mcpRemoveScenes([s.id], true);
+  await _mcpRemoveScenes([s.id]);
   return mcpDone('deleted the map "' + s.name + '"', async () => {
     if (!(await sceneTrash.restore(s.id))) throw new Error('"' + s.name + '" is no longer in the Trash.');
     worldSnapshotPut(snap);

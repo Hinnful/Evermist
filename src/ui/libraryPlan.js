@@ -106,6 +106,53 @@ function picturesSeed(pics) {
   return { v: LIB_V, at: 0, order: _libKeys(ids, _libPicOk), groups: Object.create(null), groupOrder: [] };
 }
 
+// ─── Pictures in a backup ────────────────────────────────────────────────────
+
+// The layout trimmed to `ids`, the pictures a backup holds; a group left with none of them goes.
+function picturesLayoutFor(L, ids) {
+  const keep = new Set(ids || []), out = { v: LIB_V, at: 0, order: [], groups: Object.create(null), groupOrder: [] };
+  if (!L) return out;
+  out.order = L.order.filter(k => keep.has(k));
+  for (const gk of L.groupOrder) {
+    const members = L.groups[gk].members.filter(k => keep.has(k));
+    if (members.length) { out.groups[gk] = { name: L.groups[gk].name, members }; out.groupOrder.push(gk); }
+  }
+  return out;
+}
+
+// The pictures `added` (new to this library) placed as the file's layout `theirs` places them; every other picture
+// stays where `mine` has it. A file's group is found here by key, then by name ignoring case, or made after the
+// groups that came before it in the file. A picture goes before the next one the file lists that is already there.
+function picturesLayoutMerge(mine, theirs, added) {
+  const out = { order: mine.order.slice(), groups: Object.create(null), groupOrder: mine.groupOrder.slice() };
+  for (const gk of mine.groupOrder) out.groups[gk] = Object.assign({}, mine.groups[gk], { members: mine.groups[gk].members.slice() });
+  if (!theirs) return out;
+  const fresh = new Set(added || []);
+  const low = s => String(s || '').toLocaleLowerCase();
+  const here = gk => (out.groups[gk] ? gk : out.groupOrder.find(g => out.groups[g].name && low(out.groups[g].name) === low(theirs.groups[gk].name)) || null);
+  const place = (list, src) => {
+    src.forEach((id, i) => {
+      if (!fresh.has(id) || list.includes(id)) return;
+      const next = src.slice(i + 1).find(k => list.includes(k));
+      list.splice(next ? list.indexOf(next) : list.length, 0, id);
+    });
+  };
+  place(out.order, theirs.order);
+  theirs.groupOrder.forEach((gk, i) => {
+    if (!theirs.groups[gk].members.some(id => fresh.has(id))) return;
+    let g = here(gk);
+    if (!g) {
+      g = gk;
+      while (out.groups[g]) g += 'i';
+      out.groups[g] = { name: theirs.groups[gk].name, members: [] };
+      const before = theirs.groupOrder.slice(0, i).map(here).filter(Boolean);
+      out.groupOrder.splice(before.length ? out.groupOrder.indexOf(before[before.length - 1]) + 1 : 0, 0, g);
+    }
+    place(out.groups[g].members, theirs.groups[gk].members);
+  });
+  return out;
+}
+
 // ─── Music: the order beside the groups the music record carries ─────────────
 
 // The groups are names a track carries (`of`), kept in evermist.musicGroups; the order is one list of files.
@@ -137,5 +184,5 @@ function musicFromLib(L) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { LIB_V, LIB_LABEL_MAX, LIB_MUSIC_KEY, LIB_SOUNDS_KEY, LIB_PICTURES_KEY, libLabelClean, libKeyOk,
     cleanMusicOrder, cleanSoundsLayout, cleanPicturesLayout, libParse, musicOrderSeed, musicGroupsUpgrade, soundsSeedLayout,
-    picturesSeed, musicToLib, musicFromLib };
+    picturesSeed, picturesLayoutFor, picturesLayoutMerge, musicToLib, musicFromLib };
 }

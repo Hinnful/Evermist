@@ -53,7 +53,8 @@ const INVENTORY = [
   { id: 'dock-settings', root: '#dock-pane-settings', motion: 'pane', prep: 'dockOpen(null);', trigger: '#dock-tab-settings', close: 'dockOpen(null);' },
   { id: 'pop-grid-colour', root: '#cp-pop-grid', motion: 'pane', prep: "dockOpen('scene');", trigger: '#cp-grid-custom', close: 'dockClosePop();' },
   { id: 'pop-trash', root: '#sy-trash-pop', motion: 'pane', prep: "dockOpen('settings'); await new Promise(r => setTimeout(r, 600));", trigger: '#sy-trash-open', close: 'dockClosePop();' },
-  { id: 'menu-music-add', root: '.lib-menu', motion: 'menu', prep: "dockOpen('music');", trigger: '#btn-mu-add', close: 'libCloseMenu();', menu: true },
+  { id: 'menu-music-add', root: '.lib-menu', motion: 'menu', prep: "dockOpen('music');", trigger: '#btn-mu-add', close: 'libCloseMenu();', menu: true,
+    states: [{ name: 'rest', set: '' }, { name: 'a row ticked', set: "document.querySelector('.lib-menu .sm-mi').classList.add('on');" }] },
   { id: 'music-download', root: '#mu-modal', motion: 'window', from: '#dock-tab-music', open: 'openMusicDownload();', close: '_muCloseDownload();',
     states: [{ name: 'rest', set: '' },
       { name: 'list', set: "_muLookup = { title: 'Плейлист', entries: [{ id: 'a', title: 'Таверна', duration: 200 }, { id: 'b', title: 'Битва', have: true }, { id: 'c', title: 'Ошибка', failed: true }] }; _muPicked.add('a'); _muRenderLookup();" },
@@ -128,7 +129,11 @@ const INVENTORY = [
     open: '_cbCondMenu(cbState.rows[1], ' + ROW_AT + ');',
     shifts: [{ name: 'a tick', except: '.box', run: "document.querySelectorAll('#cb-menu [data-i]')[2].click();" }],
     close: 'cbCloseMenu(); cbSetOpen(false);' },
-  { id: 'fight-picker', root: '#cf-menu', motion: 'menu', prep: 'cbSetOpen(true);', trigger: '#cb-fightpick', close: 'cbCloseFights(); cbSetOpen(false);' },
+  { id: 'fight-picker', root: '#cf-menu', motion: 'menu', prep: 'cbSetOpen(true);', trigger: '#cb-fightpick',
+    states: [{ name: 'rest', set: '' },
+      { name: 'one on TV', set: 'initiativeTvSet(true); combatAddFight(cbState, combatFightId); cbSave(); cbRender(); cbFightsTitle();' }],
+    close: "initiativeTvSet(false); const f = cbState.fights[cbState.fights.length - 1]; if (cbState.fights.length > 1 && f.name === 'New fight') " +
+      '{ combatOpenFight(cbState, cbState.fights[0].id); cbState.fights.pop(); cbSave(); cbRender(); cbFightsTitle(); } cbCloseFights(); cbSetOpen(false);' },
   { id: 'fight-suggestions', root: '#cb-suggest', motion: 'still', prep: 'cbSetOpen(true);', open: "const i = document.getElementById('cb-search'); i.focus(); i.value = 'а'; _cbSearch(i);",
     close: "_cbSuggestClose(); document.getElementById('cb-search').value = ''; cbSetOpen(false);" },
 

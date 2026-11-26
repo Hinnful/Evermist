@@ -5,7 +5,7 @@
 
 const MI = (typeof module !== 'undefined' && module.exports)
   ? Object.assign({}, require('../content/moduleText.js'), require('../rooms/roomPanel.js'))
-  : { mtFold, mtFilterEntries, sanitizeRoomName, sanitizeRoomDesc };
+  : { mtFold, mtFilterEntries, sanitizeRoomName, sanitizeRoomDesc, ROOM_DESC_MAX };
 
 const MCP_ENTRY_EXCERPT = 160;
 const MCP_ENTRY_LIST_MAX = 60;
@@ -45,11 +45,16 @@ function mcpEntryFind(entries, heading) {
 
 // The room's name and notes once linked, as the dropdown's pick fills them: the name always, the notes when the
 // room has none, or `replaceNotes`. `kept` says the room's own notes stayed.
+// ⚠ IT THROWS an mcpRefusal for an entry past ROOM_DESC_MAX that would land, which sanitizeRoomDesc would cut
+// silently: thrown inside mcpEditMap's change, the map is never written.
 function mcpLinkFill(poly, entry, fallbackName, replaceNotes) {
   const name = MI.sanitizeRoomName(entry.title, fallbackName);
   const desc = MI.sanitizeRoomDesc(entry.body);
   const cur = poly.desc == null ? '' : poly.desc;
   const kept = desc !== cur && !!cur && !replaceNotes;
+  if (!kept && String(entry.body == null ? '' : entry.body).trimEnd().length > MI.ROOM_DESC_MAX) {
+    throw Object.assign(new Error('Nothing was linked: the notes of "' + entry.title + '" would pass ' + MI.ROOM_DESC_MAX + ' characters. Write a shorter text into the room with edit_room.'), { mcpRefusal: true });
+  }
   return { name, desc: kept ? cur : desc, kept };
 }
 

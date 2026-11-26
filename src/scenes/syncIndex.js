@@ -9,6 +9,8 @@
 const syncIndex = (() => {
   const DB_NAME = 'evermist-sync';
   const STORES = { index: 'key', synced: 'key', pulled: 'key', gone: 'id', copies: 'key' };
+  // The `synced` mark of a finished first sync.
+  const FIRST_KEY = '$first';
   const LOCAL_KEYS = ['evermist.combat', 'evermist.combatFights', 'evermist.notesEntries', 'evermist.campaignNotes',
     'evermist.campaignNotesAt', 'evermist.moduleText', 'evermist.musicOrder', 'evermist.soundsLayout', 'evermist.picturesLayout', 'evermist.notesOrder'];
   // What the one `campaign` record carries: the Campaign's places, roads and party marker, and the deletion records.
@@ -106,7 +108,7 @@ const syncIndex = (() => {
     return _later(async () => {
       await del('index', 'scene:' + id);
       const g = await get('gone', id);
-      if (g && !g.purged && (g.restoredAt || 0) < g.at) return;
+      if (g && !syGonePurged(g) && (g.restoredAt || 0) < g.at) return;
       if (g || await get('synced', 'scene:' + id)) await put('gone', { ...g, id, at: Date.now() });
     });
   }
@@ -118,7 +120,9 @@ const syncIndex = (() => {
       const prev = await get('index', 'pic:' + pic.id);
       const same = prev && prev.size === size && prev.blobHash;
       const blobHash = same ? prev.blobHash : (blob ? await _sha(blob) : '');
-      await put('index', { key: 'pic:' + pic.id, hash: await _sha(meta + '|' + blobHash), size, blobHash, blobs: blobHash ? [{ owner: pic.id, hash: blobHash }] : [], at: Date.now() });
+      const hash = await _sha(meta + '|' + blobHash);
+      // `at` is when the picture last changed here: a start's reconcile that finds it the same must not beat a newer upload.
+      await put('index', { key: 'pic:' + pic.id, hash, size, blobHash, blobs: blobHash ? [{ owner: pic.id, hash: blobHash }] : [], at: prev && prev.hash === hash ? prev.at : Date.now() });
     });
   }
 
@@ -162,8 +166,8 @@ const syncIndex = (() => {
       const text = await syncLayoutText(lsKey);
       if (text === null) { await del('index', 'local:' + lsKey); return; }
       const hash = await _sha(text), prev = await get('index', 'local:' + lsKey);
-      // `at` is when the text last changed here, so a start that finds it the same leaves it alone.
-      if (!prev || prev.hash !== hash) await put('index', { key: 'local:' + lsKey, hash, at: Date.now() });
+      if (prev && prev.hash === hash) return;
+      await put('index', { key: 'local:' + lsKey, hash, at: syIndexAt(prev, hash, Date.now(), !!(await get('synced', FIRST_KEY))) });
     });
   }
 
@@ -209,7 +213,7 @@ const syncIndex = (() => {
   }
 
   return { init, reconcile, sceneSaved, sceneFileReplaced, sceneDeleted, picSaved, picDeleted, backdropChanged, localChanged,
-    entries: () => all('index'), goneRecords: () => all('gone'), isOn: () => _on,
+    entries: () => all('index'), goneRecords: () => all('gone'), isOn: () => _on, FIRST_KEY,
     // For sync.js: the writes finished, a callback after each change, and the stores it keeps its own marks in.
     idle: () => _chain, onChange: fn => { _listener = fn; }, sha: _sha, raw: { get, all, put, del } };
 })();

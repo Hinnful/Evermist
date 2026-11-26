@@ -96,7 +96,7 @@ function _syncFolder(o) {
       const st = syMuObserve(await _load(), folder.tracks, folder.stashed, now);
       const rems = await _syFolderRemotes(_drive, o.key, remotes, snap, ctx.machine);
       for (const r of rems) st.gone = syMuGoneMerge(st.gone, r.rec.gone);
-      st.gone = syMuPurge(st.gone, syMuTrashDue(st.gone, now));
+      st.gone = syMuPurge(st.gone, syMuTrashDue(st.gone, now), now);
       const local = syMuLocal(folder.tracks);
       if (o.groups) o.groups(st, local, folder.tracks, rems, ctx.machine);
       const byHash = {};
@@ -107,7 +107,7 @@ function _syncFolder(o) {
       // This computer's Recently deleted: a purge from any computer empties it, and a track it holds comes back from it
       // rather than the Drive.
       const held = await o.trash.held();
-      const purged = new Set(syPurgedHeld(st.gone, held.map(x => x.hash)));
+      const purged = new Set(held.map(x => x.hash).filter(h => syMuPurged(st.gone[h])));
       for (const x of held) if (purged.has(x.hash)) await o.trash.purge(x.id);
       const back = syMuFromTrash(st.gone, local, held.filter(x => !purged.has(x.hash)).map(x => x.hash), plan.download.map(d => d.hash));
       for (const h of back) {
@@ -169,7 +169,7 @@ function _syncFolder(o) {
   const has = async hash => !!(await _load()).tracks[hash];
   const emptyNow = () => _locked(async () => {
     const st = await _load(), hashes = syMuTrash(st.gone, st.tracks).map(x => x.hash);
-    st.gone = syMuPurge(st.gone, hashes);
+    st.gone = syMuPurge(st.gone, hashes, Date.now());
     await _save(st);
     return hashes.length;
   });

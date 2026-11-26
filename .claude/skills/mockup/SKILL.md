@@ -31,6 +31,9 @@ for the DM's "build it" (CLAUDE.md).
   proposal as overrides. PROCESS.md, "Building", carries the rule.
 - **The TV view is shown as real Player frames**, never a drawing of one. The rig may capture
   real Player and DM frames for a board; a capture is a look, so it follows the rig skill's rules.
+- **A board is checked on publish**: `guard-board.js` runs the alignment sweep on any page linking `src/css/` and
+  refuses one with a misaligned row, naming it. Captions in `p` or headings are prose and left out; an option that
+  shows today's look on purpose carries `data-as-is` and is left out too. Nothing for the DM to do.
 - **Check every drawn shape for an accidental lewd or hateful silhouette** before showing it:
   phallic outlines, crossed bars that read as a swastika. Redraw any that could, at any size.
 - **Keep cursors and pointer marks light**, so they never dominate the frame.

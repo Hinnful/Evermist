@@ -134,7 +134,7 @@ function _dockInitPops(dock) {
     if (_dockPopEl && !_dockPopEl.contains(e.target) && !_dockPopFrom.contains(e.target)) dockClosePop();
   }, true);
   window.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && _dockPopEl) { dockClosePop(); e.stopImmediatePropagation(); }
+    if (e.key === 'Escape' && _dockPopEl && !motionOpen(document.getElementById('cd-modal'))) { dockClosePop(); e.stopImmediatePropagation(); }
   }, true);
 }
 

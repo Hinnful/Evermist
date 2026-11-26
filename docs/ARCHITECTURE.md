@@ -213,6 +213,8 @@ One unreadable map costs that map and nothing else.
 
 Close the app halfway through and the maps that finished are there. The rest simply never existed.
 
+A copy the AppImage updater starts (`APPIMAGE_SILENT_INSTALL=true`) retries the single-instance lock every 250 ms for 10 s and logs "[update] the relaunched copy took the lock" or "gave up"; the old copy ignores second-instance while quitting.
+
 Closing the DM window from outside (close button, quit, updater, idle quit) is held in `main.js` until the page has flushed the open note, autosave, a pending delete and the two-map panes, capped at 5 s; a page's own `window.close()` skips the hold and relies on `beforeunload`.
 
 A backup zip is the exception: on its own it still restores the library, but one sitting inside a
@@ -422,7 +424,7 @@ The DM window is the boss. The Player window follows.
   `state.tvWait` {scene, view, turn, anim} records what waits and Send delivers it in one go;
   Manual to Auto sends it too. The first map opened while the TV shows none (a fresh TV, or one cleared
   by a delete) waits for Send, though Show on TV with nothing waiting shows it at once. Turning Two maps
-  on or off is not a Send: each TV half waits for its own, and the single TV after leaving waits too. Both Send keys, Space and Shift+S, send in either mode. TV setup states the rule under
+  on or off is not a Send: each TV half waits for its own, and the single TV after leaving waits too. In Manual, Stop showing then Show on TV (or a TV reconnect) sends only what was last sent; unsent reveals wait for Send. A Player's retry for a missing map asks for the map alone. Both Send keys, Space and Shift+S, send in either mode. TV setup states the rule under
   Updates in one line. The ping stays live but does nothing while the TV shows a different
   map from the open one; a gallery picture on the TV stays live.
 - **Match the TV to my view** (Sync View in the code) snaps the Player's camera to match the DM's. The Player camera glides to
@@ -683,7 +685,7 @@ test suite: synthetic fixtures validated the wrong parser twice.
 
 ## The fight table
 
-**Turn order on the TV.** Start fight on the table shows the open fight's rows on the TV, End fight hides them, and only End fight ends it (no automatic end). Opening another fight does not end it; the started state is never saved. Allies always show; an enemy shows once it has an initiative typed and while above 0 HP, in the table's own order (`initiativeSlots` in `initiativePlan.js`; `initiativeTv.js`, Player side `initiativePanel.js`): two sheets, bottom-left upright and top-right turned 180°, each in a pool of haze in the map's fog theme (a darker extra pool behind the sheet). Names are 2.7% of the Player window's height, never map zoom, one column to 10 slots, then balanced columns, in Alegreya (bundled in `assets/fonts/`; the first draw waits for it to load, then redraws, as canvas text never waits for a web font), then Georgia, "Times New Roman", serif. Monsters read "Monster" (Russian "Монстр"), always red, back-to-back ones merged as "Monster ×N". In two-map mode the shell shows the panel once: the bottom-left sheet takes column A's fog theme, the top-right column B's. There is no current-turn marker.
+**Turn order on the TV.** Start fight on the table shows the open fight's rows on the TV, End fight hides them, and only End fight ends it (no automatic end). The TV keeps the started fight's turn order while other fights are opened and edited; it changes only on End fight (on that fight) or Start on another fight, which replaces it, and deleting the started fight takes it off the TV. The fight list marks it with a "На TV" status word. The started state is never saved. Saved rows carry the open fight's id, so a failed list write cannot swap rows after a restart; "+ New fight" closes an open copy page, and the default fight name follows the interface language. Allies always show; an enemy shows once it has an initiative typed and while above 0 HP, in the table's own order (`initiativeSlots` in `initiativePlan.js`; `initiativeTv.js`, Player side `initiativePanel.js`): two sheets, bottom-left upright and top-right turned 180°, each in a pool of haze in the map's fog theme (a darker extra pool behind the sheet). Names are 2.7% of the Player window's height, never map zoom, one column to 10 slots, then balanced columns, in Alegreya (bundled in `assets/fonts/`; the first draw waits for it to load, then redraws, as canvas text never waits for a web font), then Georgia, "Times New Roman", serif. Monsters read "Monster" (Russian "Монстр"), always red, back-to-back ones merged as "Monster ×N". In two-map mode the shell shows the panel once: the bottom-left sheet takes column A's fog theme, the top-right column B's. There is no current-turn marker.
 
 The Combat button opens a table for the fight in progress: a row per creature with initiative,
 name, HP, AC and attacks. The title is a picker over a list of fights (combatFights.js),
@@ -705,7 +707,7 @@ name without its copy number, its AC and its max HP are the copy's own fields, s
 either side shows on both. A hand-typed row starts from an empty copy. Save to Bestiary
 lights after any edit to a copy and adds it to the bestiary as a new entry.
 
-The bestiary is the DM's list of every monster, opened by the Bestiary button in a free window with its own shell (`bestiaryWindow.js`): a header with a list toggle, back/forward, crumbs and close; it moves by its header, resizes by its corner and stays 8px inside the app window. Place, size, list widths and list state persist in `evermist.bestiaryWin` (the previous release ignores it). It sits below the fight table and above the Notes window, and both can be open. It switches by its own width (`bestiaryWidths.js`): wide (860px and up) keeps the header search, the filter row and the columns; medium moves search into the list, folds filters into one button and shows CR and name; narrow (list hidden, or under 500px with a page open) shows the page alone. Opened from the dock with no page open, it selects the list's first monster. Its shortcuts (Ctrl+A/C/V/D, Delete, Esc) act only while focus is inside it. A fight row's stat block opens as a copy page (`bestiaryCopy.js`): crumbs "fight › row", a strip naming AC and HP where they differ from the entry and holding Save to Bestiary (add-only), the pencil editing the copy (name, AC and Table line reach the row), notes being the source entry's note, and a book icon opening the entry. The entry is found by uid (`combatBackfillUids` gives older entries one), falling back to base name and source, never when the copy has no source. Deleting the row, switching or deleting the fight, or closing the fight table closes the page. A redrawn page keeps its scroll, and a synced change is held while a page is edited (`syncMerge.js`). Grid calibration puts the window away and restores it. The list is a sortable
+The bestiary is the DM's list of every monster, opened by the Bestiary button in a free window with its own shell (`bestiaryWindow.js`): a header with a list toggle, back/forward, crumbs and close; it moves by its header, resizes by its corner and stays 8px inside the app window. Place, size, list widths and list state persist in `evermist.bestiaryWin` (the previous release ignores it). It sits below the fight table and above the Notes window, and both can be open. It switches by its own width (`bestiaryWidths.js`): wide (860px and up) keeps the header search, the filter row and the columns; medium moves search into the list, folds filters into one button and shows CR and name; narrow (list hidden, or under 500px with a page open) shows the page alone. Opened from the dock with no page open, it selects the list's first monster. Its shortcuts (Ctrl+A/C/V/D, Delete, Esc) act only while focus is inside it. A fight row's stat block opens as a copy page (`bestiaryCopy.js`): crumbs "fight › row", a strip naming AC and HP where they differ from the entry and holding Save to Bestiary (add-only), the pencil editing the copy (name, AC and Table line reach the row), notes being the source entry's note, and a book icon opening the entry. Back and Forward remember a monster by uid. The entry is found by uid (`combatBackfillUids` gives older entries one), falling back to base name and source, never when the copy has no source. Deleting the row, switching or deleting the fight, or closing the fight table closes the page. A redrawn page keeps its scroll, and a synced change is held while a page is edited (`syncMerge.js`). Grid calibration puts the window away and restores it. The list is a sortable
 table, a name search and filters that read size, type and alignment in English or Russian
 as one vocabulary (`bestiaryPlan.js`), and the picked monster's page beside it (`bestiaryPage.js`),
 read-only until Edit keeps the same page with each value typeable in place (`combatStatBlock.js`): no field at rest, empty lines hidden behind "Add line", spells as text until Done. The page draws a spellcasting trait or action as rows: `spellcasting.js` (pure) reads it into a lead sentence and groups by level or frequency, or returns null and the paragraph stays. Each row is a chip on a plate with crystal cells, then spell labels. A clicked crystal toggles a content key (innate|cast, slots:<level>/day:<n>/will, by spell name): on a fight copy it sits in the row's `spent` (synced, in backups); on an entry it sits in `evermist.entrySpent` by entry uid (this computer only, pruned at start-up to existing entries). Links pasted in go through a queue one at a
@@ -811,10 +813,10 @@ the Player window shows (`mcpOnTv` in `mcpPlan.js`), in a two-map column, and wh
 the DM has open but the TV does not show is changed live: `mcpEditMap` carries every map change, and the change
 also goes on the DM's own Ctrl+Z stack, so neither undo drops or resurrects the other. The fight open at the table is never deleted, and an edit to it may only add monsters or raise a count,
 written into the live table rows in place so existing rows keep their HP; rename, remove, side change
-and a lower count are refused (`mcpOpenFightRefusal`), and undo removes the added rows. A picture on the TV is not removed.
+and a lower count are refused (`mcpOpenFightRefusal`), and undo removes the added rows. Claude's edit, delete and undo refusals target the started fight by id, and it refuses to add to an open started fight. A picture on the TV is not removed.
 An animated map is not deleted by Claude, since its file on disk cannot come back. A note for a scene
 held in a column goes through that column, so its autosave keeps it. A call that reads a PDF book or imports
-a folder of maps gets five minutes to answer; the rest get twenty seconds.
+a folder of maps gets five minutes to answer; the rest get twenty seconds. `undo_last_change` is a slow call, and a second undo while one runs is refused. Undo of a map Claude made moves it to Recently deleted. Room notes over 20 000 characters are refused, never cut. A call over 1 MB gets "the call is too large" from the shim and a 413 from the bridge. `create_scene` on a folder reads files one at a time.
 
 ## Exporting and importing your maps
 
@@ -829,7 +831,7 @@ between PCs.
   removes none. A backup of picked scenes leaves the gallery out. The pictures a scene's rooms
   still hold travel beside the scene, so a backup restores in the previous release; they join the
   gallery on restore. File names come from a picture's own id, never from anything the zip claims.
-  The page and the shell exchange one map per call in both directions, so a library of any size
+  Picture groups and their order travel as `gallery-layout.json`. A video map not on disk is exported from the copy the app plays, and two-map columns are flushed before export. The export is written as `<name>.part` and renamed on success. An import cut short by a close is undone at the next start from the `evermist-import` IndexedDB journal, and the DM is told. The page and the shell exchange one map per call in both directions, so a library of any size
   exports and restores; the zip's root entries are written after the maps and read by name.
   The world map's background image goes in with every export, a picked one included. Every scene,
   room, effect, place and road also carries the time each of its parts last changed, and the uid
@@ -894,7 +896,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   The refresh token is kept encrypted by the operating system's store (`safeStorage`: DPAPI on
   Windows, the Keychain on a Mac, KWallet or the Secret Service on Linux). Where Linux has no such
   store, the token lives in memory only, the status line says the sign-in is not remembered on
-  this computer, and Connect is needed again after each start. **Disconnect** forgets the token.
+  this computer, and Connect is needed again after each start. **Disconnect** forgets the token and keeps the sync marks; Connect to a Drive holding none of this machine's records clears them and asks the first-sync question. A failed token refresh caused by a Google error is a failed sync with a retry; only a refused refresh signs out.
 - **What syncs:** every map with its rooms, fog, effects, notes and map file; the gallery; the
   monsters, fights and bestiary; factions and lore; the campaign note; the module text; and the
   Campaign's places, roads, party marker and backdrop. Each part merges by Import's rules (see
@@ -908,12 +910,12 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   does not show and cleaning the Drive does not touch. Each computer writes its records into a
   `rec-<computer>` folder of its own, and map files sit in one shared `blobs` folder named by
   their owner and content hash. A file exists only once its upload has finished, so a cut upload
-  resumes and is never read as complete. A map file no computer uses any more is removed.
+  resumes and is never read as complete. A map file no computer uses any more is removed. A blob is re-hashed before upload and skipped if its bytes no longer match its name; a resumable record upload is keyed on name and sha256, and a resumed upload that already finished is not removed as an older copy.
   Music: each computer's music record is `rec-<computer>/music.json`, and track files sit in a `music/<computer>.<sha256>` folder of their own, never in `blobs`, which the previous release's cleanup empties of anything it does not know. Local music sync state sits under `$music` in the `synced` store.
   A gallery picture deleted on any computer loses every computer's record and its file on the Drive.
 - **Holds:** a change never lands under the DM's hands. Changes for the open map, the map on the
   TV and both maps in Two maps wait until that map is closed or changed; fight and bestiary
-  changes wait while the fight table is shown; a note's change waits while that note is open; a
+  changes wait while the fight table is shown; a note's change waits while that note is open, and an open monster note holds both combat records; a held map is re-checked right before a pulled record is written; a
   delete in its undo window defers everything. Nothing on screen reloads, and each pulled record
   is applied in its own short slice between frames.
 - **Trash:** every delete goes to this computer's own Trash (`sceneTrash.js`), with or without sync: the map record in IndexedDB
@@ -921,16 +923,16 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   computer's copy into its Trash (`syncMerge.drop`). Settings' "Trash" (one line in Campaign opening a pop-out, `trashPanel.js`)
   shows each name with "N days left", **Restore** and **Empty now**. Restore uses this computer's copy first, offline too, and
   marks the deletion record restored before the copy returns; a computer with no copy restores from the Drive. Pictures and hidden built-in sounds are kept in a second database, `evermist-trash-more` (stores `pictures`, `builtins`), so `evermist-trash` is never version-bumped; a picture deleted on another computer lands here too, and a restore stamps its name time so it syncs back. After 30
-  days the Drive's copy is purged. Its deletion is remembered for good, so a computer that was
-  offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
+  days the Drive's copy is purged and the deletion record gains `purgedAt`. A purged deletion is remembered, so a computer that was
+  offline longer than that cannot bring it back, except through a first sync (below); a purge without `purgedAt`, as 5.21.0 writes, always stands. A deletion an edit beat does not purge the map. Tracks carry `purgedAt` too. Deleting a whole map travels by sync only; Export
   and Import keep their own rules.
-- **Music deletes:** a deleted track moves into this computer's Trash (`userData/trash/music/`, store `tracks`) beside maps, on this computer and on the other, with the same 30 days, Restore and Empty now. A track that is playing is held until it stops; an incoming track whose name is taken gets the music folder's " (2)" name. Within a tick, maps, records and notes move before music (a track already uploading finishes first). A Claude map or music delete goes to the Trash like the DM's.
+- **Music deletes:** a deleted track moves into this computer's Trash (`userData/trash/music/`, store `tracks`) beside maps, on this computer and on the other, with the same 30 days, Restore and Empty now. A track that is playing is held until it stops; an incoming track whose name is taken gets the music folder's " (2)" name. Deleting the last fight syncs with an empty bestiary. Within a tick, maps, records and notes move before music (a track already uploading finishes first). A Claude map or music delete goes to the Trash like the DM's.
 - **Before a computer's first sync**, a successful Connect asks first: how many maps this
   computer holds, how many the Drive holds and from how many other computers, and that they will
   be merged with nothing deleted. Nothing syncs while the question is open. **Start syncing**
   starts the first sync; **Cancel**, or closing the app on the question, signs out again and
   leaves everything as it was. A computer that has synced before is not asked again.
-- **The first sync** merges two filled libraries: it deletes nothing, replaces no map file, and
+- **The first sync** merges two filled libraries: it deletes nothing, keeps every map this computer holds even one another computer deleted and purged (the deletion record is revived with `restoredAt` after `purgedAt`, the map goes up and returns on the computer that deleted it; 5.21.0 treats a revived map as purged), replaces no map file, and
   keeps a copy of every record it changes for 30 days. The status line shows its progress.
 - **A map file a sync replaces is kept 30 days.** When a later sync takes another computer's
   picture or video for a map, the one it replaces moves to `sync/kept/<map id>.<time>.<ext>` in

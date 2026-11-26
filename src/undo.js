@@ -170,12 +170,15 @@ function _undoStep(from, to, done) {
   undoHint(done);
 }
 
+// ⚠ NO MAP OPEN, NO STEP: mid-switch the stacks still hold the outgoing map's fog, and it would land on the new one.
 function undo() {
+  if (!currentScene) return;
   if (!undoStack.length) { undoHint('Nothing to undo'); return; }
   _undoStep(undoStack, redoStack, 'Undone');
 }
 
 function redo() {
+  if (!currentScene) return;
   if (!redoStack.length) { undoHint('Nothing to redo'); return; }
   _undoStep(redoStack, undoStack, 'Redone');
 }

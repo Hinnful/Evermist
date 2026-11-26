@@ -21,6 +21,7 @@ function _mcpOpenRefuse(fight, what) {
 
 // An undo refused, its step kept, while the fight is the one at the table: its rows live there, not on the fight.
 function _mcpOpenKeep(fight) {
+  if (fight.id === initiativeTvFight()) throw Object.assign(new Error('Not undone: "' + fight.name + '" is the fight running on the TV, and undoing would change what the players see. Ask the DM to end the fight first.'), { mcpKeep: true });
   if (fight.id === cbState.openId) throw Object.assign(new Error('Not undone: "' + fight.name + '" is the fight open at the table, and undoing would change it under the DM. Ask the DM to open another fight first.'), { mcpKeep: true });
 }
 
@@ -54,6 +55,7 @@ function _mcpEditFight(args) {
   if (found.error) return _mcpNo(found.error);
   const f = found.fight;
   const open = f.id === cbState.openId;
+  if (f.id === initiativeTvFight()) return _mcpNo('Not done: "' + f.name + '" is the fight running on the TV, and anything added to it would show there. Ask the DM to add it themselves, or to end the fight first.');
   if (open) {
     const why = mcpOpenFightRefusal(args, cbState.rows) || mcpRowsRefusal(args);
     if (why) return _mcpNo('Not done: "' + f.name + '" is the fight open at the table, and ' + why + ' would change it under the DM. Only adding monsters and raising a count are allowed there. Ask the DM to open another fight first.');
@@ -72,9 +74,11 @@ function _mcpEditFight(args) {
   f.rows = edit.rows;
   cbState.nextId = edit.nextId;
   _mcpFightsShown();
+  const left = JSON.stringify({ name: f.name, rows: f.rows });
   const notes = [...edit.notes, ...(edit.missing.length ? ['Left out, not in the bestiary: ' + _mcpMissing(edit.missing).join('; ') + '.'] : [])];
   return mcpDone('edited the fight "' + was.name + '"', async () => {
     _mcpOpenKeep(f);
+    if (JSON.stringify({ name: f.name, rows: f.rows }) !== left) throw Object.assign(new Error('Not undone: the fight "' + f.name + '" has changed there since Claude\'s change, and undoing it would erase that too.'), { mcpKeep: true });
     Object.assign(f, { name: was.name, rows: was.rows });
     cbState.nextId = Math.max(cbState.nextId, was.nextId);
     _mcpFightsShown();
@@ -120,6 +124,7 @@ function _mcpDeleteFight(args) {
   const f = found.fight;
   const refuse = _mcpOpenRefuse(f, 'deleting it');
   if (refuse) return refuse;
+  if (f.id === initiativeTvFight()) return _mcpNo('Not done: "' + f.name + '" is the fight running on the TV, and only the DM ends it. Ask the DM to end the fight first.');
   if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('fight', { name: f.name, rows: (f.rows || []).length }));
   const index = cbState.fights.indexOf(f), kept = { ...f, rows: f.rows || [] };
   combatDeleteFight(cbState, f.id, combatFightId);

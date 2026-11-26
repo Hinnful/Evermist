@@ -172,6 +172,14 @@ function notesOrderRebuild(old, keys, groups, at, newGid) {
 
 // ─── Two copies ──────────────────────────────────────────────────────────────
 
+// An undo's list as a new edit stamped `at`, so it wins the merge on every computer; no list comes back as an empty one,
+// since a list taken out would leave the other computer's newer one standing.
+function notesOrderUndone(was, at) {
+  const l = was ? _noCopy(was) : noListEmpty();
+  l.at = at;
+  return l;
+}
+
 // Each list the newer of the two, so a reorder of monsters here and of rooms there both survive; a list only one side
 // has is kept. `changed` when `theirs` brought anything.
 function notesOrderMerge(mine, theirs) {
@@ -209,5 +217,5 @@ function notesOrderRemap(value, maps, groups) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { NO_V, NOTES_ORDER_KEY, noName, noIsGroup, notesOrderEmpty, noListEmpty, cleanNotesOrder, notesOrderParse,
     notesOrderList, notesOrderApply, notesOrderFill, notesOrderMove, notesOrderHold, notesOrderUngroup, notesOrderRename,
-    notesOrderFlat, notesOrderRebuild, notesOrderMerge, notesOrderRemap };
+    notesOrderFlat, notesOrderRebuild, notesOrderMerge, notesOrderUndone, notesOrderRemap };
 }

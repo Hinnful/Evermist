@@ -13,6 +13,12 @@ const UP_INSTALLED_MS = 12000;
 let _upToast = null;
 let _upHideTimer = 0;
 
+// ⚠ THE LAST SAVE FIRST: the Windows installer kills the app about a second after the quit, well inside the
+// close's own wait for it (main.js holdCloseForSave).
+function installUpdateAfterSave() {
+  flushBeforeClose().catch(console.error).finally(() => window.electronAPI.installUpdate());
+}
+
 // ⚠ THE DM WINDOW ALONE. A two-column pane is an <iframe> of this same page with isPlayer false,
 // so without the isPane guard each pane raises its own toast over its map — and they share one
 // localStorage, so whichever ran first would eat the announcement for all of them.
@@ -39,11 +45,11 @@ function initUpdater() {
     btn.type = 'button';
     btn.className = 'about-update-btn';
     btn.textContent = 'Restart to update';
-    btn.addEventListener('click', () => api.installUpdate());
+    btn.addEventListener('click', installUpdateAfterSave);
 
     slot.append(label, btn);
     upToast(t('Version {v} is ready to install', { v: status.version }), 'Restart now',
-      () => api.installUpdate(), 0);
+      installUpdateAfterSave, 0);
   }
 
   function showManual() {

@@ -82,3 +82,41 @@ test('with sync off nothing is hashed: every stored form keys by file name, id o
   const keys = f => (f.order || []).concat(...Object.keys(f.groups || {}).map(g => f.groups[g].members), Object.keys(f.labels || {}));
   for (const f of forms) assert.ok(!keys(f).some(k => HASH.test(k)), JSON.stringify(f));
 });
+
+test('a backup carries the pictures layout of the pictures it holds only, and drops a group left empty', () => {
+  const L = { order: ['u1', 'gone'], groups: { g1: { name: 'Люди', members: ['a', 'b'] }, g2: { name: 'Пусто', members: ['zz'] } }, groupOrder: ['g1', 'g2'] };
+  assert.deepStrictEqual(plain(P.picturesLayoutFor(L, ['u1', 'a', 'b'])),
+    { v: 1, at: 0, order: ['u1'], groups: { g1: { name: 'Люди', members: ['a', 'b'] } }, groupOrder: ['g1'] });
+  assert.deepStrictEqual(plain(P.picturesLayoutFor(null, ['a'])), { v: 1, at: 0, order: [], groups: {}, groupOrder: [] });
+});
+
+const FILE = { order: ['u1', 'u2'], groups: { gA: { name: 'Люди', members: ['a1', 'a2'] }, gB: { name: 'Письма', members: ['b1', 'b2', 'b3'] } }, groupOrder: ['gA', 'gB'] };
+
+test('import into a fresh library: the pictures take the file\'s groups, group order and order', () => {
+  const mine = { order: [], groups: Object.create(null), groupOrder: [] };
+  const out = P.picturesLayoutMerge(mine, FILE, ['b3', 'a2', 'u2', 'b1', 'a1', 'u1', 'b2']);
+  assert.deepStrictEqual(plain(out), plain(FILE));
+});
+
+test('import into a library that has pictures: those keep their place, new ones go where the file puts them', () => {
+  const mine = { order: ['x1', 'u1'], groups: { mine1: { name: 'люди', members: ['x2', 'a1'] }, mine2: { name: 'Свои', members: ['x3'] } }, groupOrder: ['mine2', 'mine1'] };
+  const out = P.picturesLayoutMerge(mine, FILE, ['u2', 'a2', 'b1', 'b2']);
+  assert.deepStrictEqual(out.order, ['x1', 'u1', 'u2'], 'a new picture lands after the one before it in the file');
+  assert.deepStrictEqual(out.groups.mine1.members, ['x2', 'a1', 'a2'], 'a group of the same name, any case, is the file\'s group');
+  assert.deepStrictEqual(out.groupOrder, ['mine2', 'mine1', 'gB'], 'a missing group is made after the file\'s groups before it');
+  assert.deepStrictEqual(out.groups.gB, { name: 'Письма', members: ['b1', 'b2'] });
+  assert.deepStrictEqual(mine.order, ['x1', 'u1'], 'the library\'s own layout is not changed in place');
+});
+
+test('a picture already here keeps this library\'s group even when the file has it elsewhere', () => {
+  const mine = { order: ['a1'], groups: Object.create(null), groupOrder: [] };
+  const out = P.picturesLayoutMerge(mine, FILE, ['a2']);
+  assert.deepStrictEqual(out.order, ['a1']);
+  assert.deepStrictEqual(out.groups.gA.members, ['a2']);
+});
+
+test('a new picture placed before the next one the file lists that is already there', () => {
+  const mine = { order: ['u2'], groups: Object.create(null), groupOrder: [] };
+  assert.deepStrictEqual(P.picturesLayoutMerge(mine, FILE, ['u1']).order, ['u1', 'u2']);
+  assert.deepStrictEqual(P.picturesLayoutMerge(mine, null, ['u1']).order, ['u2'], 'an older backup with no layout changes nothing');
+});

@@ -31,7 +31,8 @@ belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig
 **THE BLOCKER SET IS THE RELEASE GATE, and the only set there is.** `.github/workflows/rig.yml`
 builds the packaged app and runs `blockers` on Windows and Mac (`scenarios/blockers/`: launch, prep,
 a table session, work kept, time of day) and `launch` alone on Linux. All three block: a red means no tag, no
-release and no installers. `/commit` runs none of it; its gate is unit tests, lint and the guards.
+release and no installers. `/commit` runs none of it; its gate is unit tests, lint and the guards. **`design-sweep`
+is a local tool, never in CI**: CI releases a working app; the sweep keeps the DM from ever seeing a misaligned row.
 
 **The blocker set stays small, and a blocker that fails while the app works is rewritten or
 deleted the same day, never loosened.** No longer timeout, no wider tolerance, no rerun count. A
@@ -131,7 +132,7 @@ screen`. Windows only.
 **On a Linux desktop the run gets a screen of its own.** Wayland ignores `--offscreen` and there is
 no parker, so `startHiddenDisplay` starts a virtual KWin and every app of the run opens on it.
 Without `kwin_wayland` the run stops before the first window. CI and cloud sessions have no
-desktop session, so xvfb-run's screen is used as it is. `--screens=N` (1-4, the = form, since a bare number reads as a scenario name) adds `--output-count N` and drops `--offscreen`, so the Player is placed; `tv-wayland` checks Show on TV with it.
+desktop session, so xvfb-run's screen is used as it is. `--screens=N` (1-4, the = form, since a bare number reads as a scenario name) adds `--output-count N` and drops `--offscreen`, so the Player is placed on a second screen.
 
 **`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
 `npm run stress` or `npm run memprobe` either - all three take the screen and all three are the
@@ -153,10 +154,13 @@ covers the same packaging bugs and needs no portable step.
 is run by name as a one-scenario probe.
 
 **`design-sweep` is kept and run on every interface change** (PROCESS.md, Building): it opens each screen and
-measures every row with `lib.alignSweep` and every hover with `lib.hoverSweep`.
+measures every row with `lib.alignSweep`, reads its rendered ink with `lib.inkSweep` (`ink.js`),
+and every hover with `lib.hoverSweep`. **The ink is judged on the mean of readings taken with the entry moved down
+by fractions of a pixel by layout, never one reading**: Chromium snaps a text's baseline and an svg's top to whole
+pixels apart, so one reading of a row flips with where its window lands.
 
-**A build's scenario is run once and then deleted.** It stays only when it guards the DM's data
-(sync, backup, trash, rollback, upgrade); those are re-run when that code changes.
+**A build's scenario is run once and then deleted, data guards included.** Only `blockers/`, `design-sweep`
+and `record.js` (the recording tool's) stay; a kept scenario breaks on the next interface change and nobody runs it.
 
 **A file's criteria ARE its header.** Plain-language lines at the top, each with its check directly
 beneath, in the same order. There is no separate criteria document.
@@ -239,11 +243,11 @@ A file exports one async function taking `rig`:
   the library the old one left.
 - `await rig.restart({ env })` — the same app with variables added to its environment (`null` removes one). **The
   rig never passes the shell's `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` to an app**, so a dev run has a Google
-  client only when a scenario hands it one here, and a build only when it was built with one (`sync-client`).
+  client only when a scenario hands it one here, and a build only when it was built with one.
 - `await rig.restart({ quit: 'os' })` — the same, closed from outside as the DM does (SIGTERM, or a `taskkill`
   without `/F`), and `rig.quitMs` says how long the exit took. **A plain restart closes with the page's own
   `window.close()`, which never reaches main's 'close' handler**, so only this form drives the close that waits for
-  the last save. `scenarios/close-keeps-edit.js` uses it.
+  the last save.
 - `rig.catchBrowser()` — Linux only, null elsewhere: `{ env, opened() }`. Restart with that `env` and the app's
   `shell.openExternal` reaches a stand-in `xdg-open` that only writes the address down, with the session bus dead
   so no real browser is reached; `opened()` lists the addresses. `lib.connectOpens` and `lib.consentFaults` click

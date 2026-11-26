@@ -27,6 +27,7 @@ function _rpFallbackName(poly) {
 // pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one edit.
 function _rpCommitName() {
   const el = _rpEl('rp-name');
+  if (el && el.value === el.rpFilled) return;   // untouched since filled: a blur writes nothing stale back
   if (el && notesForeignRoomEdit('name', { value: el.value })) return;
   if (el && paneRoomEdit('name', { value: el.value })) return;
   const poly = _rpFindRoom(_rpFieldPid);
@@ -43,6 +44,7 @@ function _rpCommitName() {
 
 function _rpCommitDesc() {
   const el = _rpEl('rp-desc');
+  if (el && el.value === el.rpFilled) return;
   const raw = el ? neStoredText(el) : '';
   if (el && notesForeignRoomEdit('desc', { value: raw })) return;
   if (el && paneRoomEdit('desc', { value: raw })) return;
@@ -79,6 +81,20 @@ function roomCardPatch(id, fields) {
 function _rpCommitFields() {
   _rpCommitName();
   _rpCommitDesc();
+}
+
+// A field filled from the room, remembered so a blur on it untouched writes nothing.
+function rpFill(el, v) {
+  el.value = v;
+  el.rpFilled = el.value;
+}
+
+// Before a change from outside (Claude): what is typed lands, and the next repaint refills the fields even with the
+// cursor in them, so a later blur cannot write the old text over the new.
+let _rpRefill = false;
+function roomCardSettle() {
+  if (_rpFieldPid != null || notesForeignRoom()) _rpCommitFields();
+  _rpRefill = true;
 }
 
 // The map is about to change. Room ids restart at 1 on every map, so a commit after the swap
@@ -248,6 +264,8 @@ function refreshRoomPanel() {
 
   // ⚠ AN EFFECT OR A LIGHT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
   // a deselect, or the tab can go without committing what was typed into a real room.
+  const refill = _rpRefill;
+  _rpRefill = false;
   if (!room) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }
     paneRoomAim(null);
@@ -265,8 +283,8 @@ function refreshRoomPanel() {
   const nameEl = _rpEl('rp-name');
   const descEl = _rpEl('rp-desc');
   // Never clobber a field being typed in.
-  if (!sameRoom || nameEl !== document.activeElement) nameEl.value = room.name != null ? room.name : _rpFallbackName(room);
-  if (!sameRoom || descEl !== document.activeElement) descEl.value = room.desc != null ? room.desc : '';
+  if (!sameRoom || refill || nameEl !== document.activeElement) rpFill(nameEl, room.name != null ? room.name : _rpFallbackName(room));
+  if (!sameRoom || refill || descEl !== document.activeElement) rpFill(descEl, room.desc != null ? room.desc : '');
   neRefreshLabels(descEl);
   _rpFieldPid = room.id;
   paneRoomAim(room);

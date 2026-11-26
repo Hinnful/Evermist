@@ -11,6 +11,8 @@ async function _mcpAnswer(req) {
   // Whatever the DM is typing lands first, and the field refills with Claude's text after.
   notesPanelSettle();
   try { return await run(req.args || {}); } catch (err) {
+    // A pure kernel's refusal thrown from inside mcpEditMap's change: the map was never written.
+    if (err && err.mcpRefusal) return _mcpNo(err.message);
     console.error('A Claude request failed:', err);
     return _mcpNo('Evermist could not do that: ' + ((err && err.message) || err));
   } finally { refreshRoomPanel(); }

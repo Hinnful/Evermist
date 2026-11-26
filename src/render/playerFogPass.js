@@ -221,7 +221,7 @@ function pixiDropPlayerFogNearPrev() {
   if (!pixiPFogNearPrevBT) return;
   pixiPFogNearPrevBT.destroy();
   pixiPFogNearPrevBT = null;
-  if (pixiPFogUniforms && pixiPFogNearBT) pixiPFogUniforms.uniforms.uNearPrev = new PIXI.Texture(pixiPFogNearBT);
+  if (pixiPFogUniforms && pixiPFogNearBT) pixiPFogUniforms.uniforms.uNearPrev = pixiPFogUniforms.uniforms.uNear;
 }
 
 // Whether a WebGL1 fragment shader may use fwidth: the extension fetched, probed by compiling a tiny
@@ -384,10 +384,11 @@ function pixiUploadPlayerFogCloud() {
 }
 
 // The outgoing mask and near copies of a fog change are done with: the shader reads the live ones.
+// ⚠ Through the live ones' own wrappers: a new PIXI.Texture per change subscribes to the base texture for good.
 function pixiClearPlayerFogPrev() {
   if (!pixiPFogShader) return;
   pixiDropPlayerFogNearPrev();
-  pixiPFogUniforms.uniforms.uMaskPrev = new PIXI.Texture(pixiPFogMaskBT);
+  pixiPFogUniforms.uniforms.uMaskPrev = pixiPFogUniforms.uniforms.uMask;
 }
 
 // Every per-frame number the shader reads. `u` is built in fog.js, which owns the cloud transform.

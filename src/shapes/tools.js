@@ -125,7 +125,9 @@ function toolWindowMouseUp() {
 
 // What a finished stroke leaves: the stencil rebuilt where fog was touched, then the transition
 // that shows it. Gated on the stroke having touched fog, so drawing an effect rebuilds nothing.
+// ⚠ The queued tail is painted first: painted after the rebuild, it reaches the TV and not the DM's fog.
 function settleFogAfterStroke() {
+  flushBrushOps();
   if (fogModifiedThisStroke && polygons.length > 0) rebuildFogFromPolygons();
   if (fogModifiedThisStroke) {
     startFogTransition(tool === 'shroud');

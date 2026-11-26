@@ -45,7 +45,7 @@ function _cbSearch(input, addFirst) {
   const q = input.value.trim();
   if (!q) { _cbSuggestClose(); return; }
   const items = combatSearchBlocks(cbState.blocks, q).slice(0, 8).map(b => ({ label: b.name, src: b.source || '', entry: b }));
-  items.push({ label: t('+ New creature'), src: q, isNew: true });
+  items.push({ label: t('New creature'), src: q, isNew: true });
   const pick = i => {
     const it = items[i], r = { id: cbState.nextId++, init: '', name: '', hp: '', ac: '', conds: [], side: 'enemy', sbChanged: false };
     if (it.isNew) r.name = q; else combatPickInto(r, it.entry, cbState.rows);
@@ -73,7 +73,7 @@ function _cbSuggestOpen(input, items, at, pick) {
   el.className = 'cb-menu';
   el.id = 'cb-suggest';
   el.dataset.noI18n = ''; el.dataset.keepsFocus = '';
-  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i === at ? 'on' : ''}${b.isNew ? ' new' : ''}">${_cbEsc(b.label)}<span class="src">${_cbEsc(b.src)}</span></div>`).join('');
+  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i === at ? 'on' : ''}${b.isNew ? ' new' : ''}">${b.isNew ? uiIcon('plus') : ''}<span class="lb">${_cbEsc(b.label)}</span><span class="src">${_cbEsc(b.src)}</span></div>`).join('');
   // mousedown, not click: the field's blur would close the list first.
   el.addEventListener('mousedown', e => {
     e.preventDefault(); e.stopPropagation();

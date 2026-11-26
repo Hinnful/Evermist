@@ -83,6 +83,12 @@ describe('what waits', () => {
     assert.ok(S.syHeld('local:evermist.campaignNotes', ctx));
     assert.equal(S.syHeld('local:evermist.placeNotes', ctx), null);
   });
+  it('holds both records the bestiary lives in while a monster\'s note is open', () => {
+    const open = { openNoteKey: 'local:evermist.combat' };
+    assert.ok(S.syHeld('local:evermist.combat', open));
+    assert.ok(S.syHeld('local:evermist.combatFights', open));
+    assert.equal(S.syHeld('local:evermist.combatFights', { openNoteKey: 'local:evermist.campaignNotes' }), null);
+  });
 });
 
 describe('the 30-day trash', () => {
@@ -122,9 +128,60 @@ describe('the 30-day trash', () => {
     const m = S.syGoneMerge({ a: { at: 5, restoredAt: 6 } }, { a: { at: 9, purged: true }, b: { at: 1 } });
     assert.deepEqual(m, { a: { at: 9, restoredAt: 6, purged: true }, b: { at: 1 } });
   });
+  it('a deletion beaten by a later edit leaves the trash and the 30-day purge', () => {
+    const g = { x: { at: 10 * DAY } };
+    const r = S.syGoneRevived(g, { x: 12 * DAY }, NOW);
+    assert.deepEqual(r.x, { at: 10 * DAY, restoredAt: 12 * DAY });
+    assert.deepEqual(S.syTrashIds(r), []);
+    assert.deepEqual(S.syTrashDue(r, 41 * DAY), []);
+    assert.deepEqual(S.syTrashDue(g, 41 * DAY), ['x'], 'without it the purge takes the map');
+  });
+  it('leaves a deletion no later edit beat, a purged one and one already undone', () => {
+    const g = { old: { at: 10 * DAY }, same: { at: 10 * DAY }, p: { at: 10 * DAY, purged: true }, u: { at: 10 * DAY, restoredAt: 11 * DAY } };
+    assert.equal(S.syGoneRevived(g, { old: 9 * DAY, same: 10 * DAY, p: 50 * DAY, u: 50 * DAY, none: 50 * DAY }, NOW), g);
+  });
+  it('a stamp from a fast clock undoes at most at now', () => {
+    assert.equal(S.syGoneRevived({ x: { at: 10 * DAY } }, { x: NOW + 9 * DAY }, NOW).x.restoredAt, NOW);
+  });
+  it('a delete after the revival puts the map back in the trash', () => {
+    let g = S.syGoneRevived({ x: { at: 10 * DAY } }, { x: 12 * DAY }, NOW);
+    g = S.syGoneNote(g, 'x', 20 * DAY);
+    assert.deepEqual(S.syTrashIds(g), ['x']);
+    assert.equal(S.syGoneWins(g.x, 12 * DAY, NOW), true);
+    assert.deepEqual(S.syGoneRevived(g, { x: 12 * DAY }, NOW), g);
+  });
   it('a purged map stays gone even against a copy edited later', () => {
     const g = S.syPurge({ m: { at: 10 * DAY } }, ['m']);
     assert.equal(S.syGoneWins(g.m, 50 * DAY, NOW), true);
+  });
+  it('a first sync keeps every map this computer holds, a purged one included, and nothing it does not hold', () => {
+    const other = { p: { at: 10 * DAY }, t: { at: 20 * DAY }, away: { at: 10 * DAY } };
+    let g = S.syPurge(other, ['p', 'away'], 50 * DAY);
+    g = { ...g, old: { at: 5 * DAY, purged: true }, u: { at: 5 * DAY, restoredAt: 6 * DAY } };
+    const k = S.syGoneFirstKept(g, ['p', 't', 'old', 'u', 'fresh'], NOW);
+    for (const id of ['p', 't', 'old']) assert.equal(S.syGoneWins(k[id], 0, NOW), false, id + ' must survive');
+    assert.deepEqual(S.syTrashIds(k), []);
+    assert.deepEqual(S.syPurgedHeld(k, ['p', 'old', 'away']), ['away']);
+    assert.deepEqual(S.syRestored(k, []).sort(), ['old', 'p', 't', 'u'], 'the computer that deleted them gets them back');
+    assert.equal(k.u, g.u);
+    assert.equal(k.away, g.away);
+    assert.equal(S.syGoneWins(k.away, NOW, NOW), true);
+    assert.equal(S.syGoneFirstKept(k, ['p', 't'], NOW), k, 'already kept');
+  });
+  it('a kept map survives a merge with the record of the computer that purged it, and deleting it again goes to the trash', () => {
+    const purged = S.syPurge({ x: { at: 10 * DAY } }, ['x'], 12 * DAY);
+    const kept = S.syGoneFirstKept(S.syGoneParse(S.syGoneText(purged)), ['x'], 20 * DAY);
+    const onA = S.syGoneMerge(purged, S.syGoneParse(S.syGoneText(kept)));
+    assert.equal(S.syGoneWins(onA.x, 0, NOW), false);
+    assert.equal(S.syGonePurged(onA.x), false);
+    const again = S.syGoneNote(onA, 'x', 30 * DAY);
+    assert.deepEqual(S.syTrashIds(again), ['x']);
+    assert.equal(S.syGonePurged(S.syGoneMerge(again, purged).x), false);
+    assert.equal(S.syGonePurged(S.syPurge(again, ['x'], 61 * DAY).x), true);
+  });
+  it('a purge from a clock ahead of this one is still outlived by the kept map', () => {
+    const g = S.syPurge({ x: { at: NOW + DAY } }, ['x'], NOW + 2 * DAY);
+    assert.equal(S.syGoneWins(S.syGoneFirstKept(g, ['x'], NOW).x, 0, NOW), false);
   });
   it('sends and reads back only well-formed records, in one stable text', () => {
     const g = { b: { at: 2, id: 'b', extra: 1 }, a: { at: 1, restoredAt: 3, purged: true }, 'x/y': { at: 1 }, c: { at: -1 } };
@@ -267,5 +324,20 @@ describe('how full the Drive reads', () => {
     assert.deepEqual(S.syDriveSpace({ limit: 100 * G, usage: 120 * G }), { pct: 100, level: 'r' });
     assert.equal(S.syDriveSpace({ limit: 0, usage: 5 }), null);
     assert.equal(S.syDriveSpace(undefined), null);
+  });
+});
+
+describe('a stored text\'s time in the index', () => {
+  const T = 1000 * DAY;
+  it('takes 0 for a text first hashed before this computer\'s first sync, so the synced copy wins', () => {
+    const at = S.syIndexAt(null, 'old-import', T + 5 * DAY, false);
+    assert.equal(at, 0);
+    const remoteAt = T;   // the computer that has been syncing changed its module text then
+    assert.ok(remoteAt > at, 'the other computer\'s module text is the newer one here');
+  });
+  it('takes now for a change, a new text after the first sync, and keeps the time of an unchanged one', () => {
+    assert.equal(S.syIndexAt({ hash: 'a', at: 0 }, 'b', T, false), T, 'an edit during the first sync is an edit');
+    assert.equal(S.syIndexAt(null, 'a', T, true), T, 'a text new after the first sync is new');
+    assert.equal(S.syIndexAt({ hash: 'a', at: 7 }, 'a', T, true), 7);
   });
 });

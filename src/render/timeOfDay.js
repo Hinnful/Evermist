@@ -53,14 +53,27 @@ function applyTimeOfDayChoice(id) {
 // ─── The rooms' glow ──────────────────────────────────────────────────────────
 
 // The room mask blurred as the board's window glow; the shader takes the room itself back out.
+// ⚠ ON THE TV ONLY THE CLEARED ROOMS GLOW: the spill reaches past the fog's feather, so a hidden or half
+// room would draw its outline on revealed ground beside it. No reveal yet there means nothing glows.
 function todRoomGlow(maskCvs) {
   const w = maskCvs.width, h = maskCvs.height;
   const fresh = !_todGlowCvs || _todGlowCvs.width !== w || _todGlowCvs.height !== h;
   if (fresh) _todGlowCvs = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  let src = maskCvs;
+  if (isPlayer) {
+    src = Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const reveal = tvRevealCanvas();
+    if (reveal) {
+      const s = src.getContext('2d');
+      s.drawImage(maskCvs, 0, 0);
+      s.globalCompositeOperation = 'destination-in';
+      s.drawImage(reveal, 0, 0, w, h);
+    }
+  }
   const ctx = _todGlowCvs.getContext('2d');
   ctx.clearRect(0, 0, w, h);
   ctx.filter = 'blur(' + (TOD.glowBlur * w / 1.7).toFixed(2) + 'px)';
-  ctx.drawImage(maskCvs, 0, 0);
+  ctx.drawImage(src, 0, 0);
   ctx.filter = 'none';
   if (fresh || !_todGlowTex) {
     const old = _todGlowTex;
@@ -84,7 +97,8 @@ function _todLampSource() {
 function todLampTexture(weights) {
   const src = weights[0] > 0 ? _todLampSource() : null;
   if (!src) return _todLampTex || PIXI.Texture.EMPTY;
-  const key = src === mapVideo ? src.currentSrc : src;
+  // ⚠ Keyed on the texture's uid, never the picture itself: a cached source holds the old map after a switch.
+  const key = src === mapVideo ? src.currentSrc : pixiMapTexture.baseTexture.uid;
   if (key === _todLampFor) return _todLampTex;
   _todLampFor = key;
   const sw = src.videoWidth || src.width, sh = src.videoHeight || src.height;

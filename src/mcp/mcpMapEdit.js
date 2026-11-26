@@ -16,6 +16,7 @@ function _mcpMapBlocked(scene, what) {
   if (tv) return tv.text;
   const at = _mcpHolder(scene.id);
   if (at && at !== 'here') return 'Not done: "' + scene.name + '" is open in a column of two maps. Ask the DM to close the column first.';
+  if (sceneOpening && sceneOpening.id === scene.id) return 'Not done: the DM is opening "' + scene.name + '" right now. Try again in a moment.';
   if (at === 'here' && _mcpDmEditing()) return 'Not done: the DM is editing "' + scene.name + '" right now. Try again in a moment.';
   return null;
 }

@@ -11,7 +11,8 @@ function _cbRowOf(el) {
   return r && cbState.rows.find(x => x.id === Number(r.dataset.id));
 }
 
-function _cbSumText(v) { return v === null ? '' : Number.isNaN(v) ? '?' : String(v); }
+// The total after its = sign, an icon: empty while the line holds no sum.
+function _cbSumHtml(v) { return v === null ? '' : uiIcon('equals') + '<span>' + (Number.isNaN(v) ? '?' : String(v)) + '</span>'; }
 
 // The first condition as a chip, the rest as "+N"; hovering either lists them all.
 function _cbCondChips(r) {
@@ -37,7 +38,7 @@ function _cbRowHtml(r, shown, ex) {
   return `<div class="${cls}" data-id="${r.id}">
       <div class="cb-cell num init"><input data-f="init" value="${_cbEsc(r.init)}" placeholder="${_cbEsc(hint)}" inputmode="numeric" spellcheck="false"></div>
       <div class="cb-cell name"><input data-f="name" value="${_cbEsc(r.name)}" placeholder="Name" spellcheck="false"><span class="cb-conds">${_cbCondChips(r)}</span><button class="cb-addcond" data-b="cond" title="Add condition">${uiIcon('plus', 12, 2)}</button></div>
-      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"${ex.includes(r) ? ` class="ex" placeholder="${t(ex[0] === r ? '-12 damage' : '+5 healing')}"` : ''}><span class="sum">${_cbSumText(hp.value)}</span></div>
+      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"${ex.includes(r) ? ` class="ex" placeholder="${t(ex[0] === r ? '-12 damage' : '+5 healing')}"` : ''}><span class="sum">${_cbSumHtml(hp.value)}</span></div>
       <div class="cb-cell num ac"><input data-f="ac" value="${_cbEsc(r.ac || ac)}" inputmode="numeric" spellcheck="false"${ac ? ' class="sbn"' : ''}></div>
       <div class="cb-cell atk" title="Double-click to write your own line">${_cbAtkCell(sb)}
         <span class="cb-acts">
@@ -157,7 +158,7 @@ function _cbRowItems(r) {
     { label: 'Open stat block', pick: () => bcOpen(r) },
     { label: 'Duplicate', key: 'Ctrl+D', pick: () => _cbDuplicateRow(r) },
     { label: r.side === 'ally' ? 'Make enemy' : 'Make ally', pick: () => _cbSwitchSide(r) },
-    { label: 'Conditions', key: '›', pick: rect => _cbCondMenu(r, rect) },
+    { label: 'Conditions', sub: true, pick: rect => _cbCondMenu(r, rect) },
     ...(combatIsCleaned(r) ? [{ label: 'Return to fight', pick: () => { combatReturnRow(r); cbSave(); cbRender(); } }] : []),
     { sep: true },
     ..._cbTableItems(),

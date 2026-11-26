@@ -12,7 +12,7 @@ const SR_ICON = {
   place: SR_SVG('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
   road: SR_SVG('<path d="M5 21C8 14 9 9 7 3M19 21c-3-7-4-12-2-18"/><path d="M12 4v3M12 11v3M12 18v2"/>'),
   campaign: SR_SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>'),
-  monster: SR_SVG('<path d="M5 9c0-4 3-6 7-6s7 2 7 6v5l-3 3H8l-3-3z"/><circle cx="9.5" cy="10" r="1"/><circle cx="14.5" cy="10" r="1"/>'),
+  monster: SR_SVG('<path d="M5 11c0-4 3-6 7-6s7 2 7 6v5l-3 3H8l-3-3z"/><circle cx="9.5" cy="12" r="1"/><circle cx="14.5" cy="12" r="1"/>'),
   fight: SR_SVG('<path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/>'),
   music: SR_SVG('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'),
   faction: SR_SVG('<path d="M5 21V4h11l-2 4 2 4H5"/>'),
@@ -128,7 +128,7 @@ function _srRow(row, q, i) {
   _srBold(nm, e.label || e.name, q && wfRank(e.name, q) >= 0 ? q : '');
   l1.append(nm);
   if (e.kind === 'map' && searchSceneOnTv(e.id)) { const lv = _srEl('span', 'sr-live'); lv.append(_srEl('i'), _srEl('span', '', t('Live'))); l1.append(lv); }
-  if (e.where) l1.append(_srEl('span', 'sr-wh', e.where));
+  if (e.where) { const wh = _srEl('span', 'sr-wh'); wh.append(_srEl('span', '', e.where)); l1.append(wh); }
   tx.append(l1);
   const snip = q && row.rank === SP_NOTE ? spSnippet(e.text, q) : null;
   if (snip) {

@@ -83,6 +83,16 @@ describe('mcpRoomFind', () => {
   });
 });
 
+describe('mcpRoomNotesOver', () => {
+  it('refuses notes past the 20,000 characters a room keeps, which would be cut silently', () => {
+    assert.equal(P.mcpRoomNotesOver('a'.repeat(25000)), true);
+    assert.equal(P.mcpRoomNotesOver('a'.repeat(20000)), false);
+    assert.equal(P.mcpRoomNotesOver('a'.repeat(20000) + '\n  '), false);
+    assert.equal(P.mcpRoomNotesOver('  ' + 'a'.repeat(20000)), true, 'the slice comes before the trim, so leading spaces push text out');
+    assert.equal(P.mcpRoomNotesOver(undefined), false);
+  });
+});
+
 describe('mcpRoomNew', () => {
   it('builds a drawn room\'s fields, with notes only when there are some', () => {
     const r = P.mcpRoomNew(7, rect(0, 0, 10, 10), '  ', 'Dusty.', 'half', 'Room 7');

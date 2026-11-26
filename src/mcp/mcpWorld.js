@@ -110,7 +110,7 @@ function _mcpDeletePlace(args) {
   if (p.error) return _mcpNo(p.error);
   const kept = allScenes.filter(s => sanitizeGroupName(s.group) === p.name);
   if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('place', { name: p.name, notes: notesPlaceGet(p.name).length, maps: kept.length }));
-  const snap = worldSnapshotTake();
+  const snap = worldSnapshotTake(), notes = notesPlaceGet(p.name);
   forgetGroup(p.name);
   worldShapeDelete(p.name);
   notesPlaceSet(p.name, '');
@@ -120,6 +120,8 @@ function _mcpDeletePlace(args) {
   return mcpDone('deleted the group "' + p.name + '"', async () => {
     worldSnapshotPut(snap);
     if (!knownGroupNames().includes(p.name)) addGroup(p.name);
+    // A group with no outline is not in the snapshot's notes (worldPlaces.js), so its own are put back here.
+    if (notes && !notesPlaceGet(p.name)) notesPlaceSet(p.name, notes);
     sceneListChanged();
     _mcpWorldRefresh();
   }, 'Deleted the group "' + p.name + '" and its notes. ' + (kept.length ? kept.length + ' map(s) stay, now in no group.' : 'It held no maps.'));

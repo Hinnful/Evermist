@@ -139,7 +139,7 @@ function _cpInitGrid() {
   _cpEl('cp-grid-opacity').addEventListener('input', e => _cpFire('grid-opacity', e.target.value));
 }
 
-// "31 × 22 squares", from the open map (the selected column's in two-map mode). Hidden with no map.
+// "31 by 22 squares", from the open map (the selected column's in two-map mode). Hidden with no map.
 function _cpPaintGridCount() {
   const el = _cpEl('cp-grid-count');
   if (!el) return;
@@ -147,8 +147,8 @@ function _cpPaintGridCount() {
   el.hidden = !(w > 0 && h > 0 && gridSize > 0);
   if (el.hidden) return;
   el.textContent = gridMode === 'square'
-    ? t('{c} × {r} squares', { c: Math.round(w / gridSize), r: Math.round(h / gridSize) })
-    : t('{c} × {r} hexes', { c: Math.round(w / (gridSize * Math.sqrt(3))), r: Math.round(h / (1.5 * gridSize)) });
+    ? t.plural(Math.round(h / gridSize), '{c} by {n} square', '{c} by {n} squares', { c: Math.round(w / gridSize) })
+    : t.plural(Math.round(h / (1.5 * gridSize)), '{c} by {n} hex', '{c} by {n} hexes', { c: Math.round(w / (gridSize * Math.sqrt(3))) });
 }
 
 function setGridTypeUI() {
@@ -244,7 +244,7 @@ function _cpPaintPlan() {
   const nm = _cpEl('cp-plan-name'), file = s.planName;
   nm.textContent = file ? file.replace(/\.(dd2vtt|uvtt|df2vtt)$/i, '') : t('Floor plan');
   nm.title = file || '';
-  _cpEl('cp-plan-meta').textContent = t('{rooms} · {lights}', {
+  _cpEl('cp-plan-meta').textContent = t('{rooms}, {lights}', {
     rooms: t.plural(rooms, '{n} room', '{n} rooms'),
     lights: lights ? t.plural(lights, '{n} light', '{n} lights') : t('no lights'),
   });

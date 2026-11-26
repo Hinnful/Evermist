@@ -88,7 +88,7 @@ async function _mcpAddPicture(args) {
     if (p) added.push(p); else failed.push('"' + f.name + '" would not open as a picture.');
   }
   if (!added.length) return _mcpNo('Nothing was added. ' + failed.join(' '));
-  if (args.name && added.length === 1) galleryRenameTo(added[0].id, String(args.name).trim() || added[0].name);
+  if (args.name && added.length === 1) await galleryRenameTo(added[0].id, String(args.name).trim() || added[0].name).catch(() => {});
   const now = added.map(p => '"' + galleryList().find(x => x.id === p.id).name + '"');
   const left = [...failed, ...read.skipped.map(s => '"' + s.name + '" ' + s.reason)];
   return mcpDone('added ' + now.join(', ') + ' to Pictures', async () => {
@@ -98,13 +98,14 @@ async function _mcpAddPicture(args) {
     'Added ' + now.join(', ') + ' to Pictures. Nothing was shown on the TV.' + (left.length ? ' Left out: ' + left.join(' ') : ''));
 }
 
-function _mcpRenamePicture(args) {
+async function _mcpRenamePicture(args) {
   const found = _mcpPicture(args.name);
   if (found.error) return _mcpNo(found.error);
   const to = String(args.newName || '').trim();
   if (!to) return _mcpNo('A picture needs a name.');
   const was = found.pic.name;
-  galleryRenameTo(found.pic.id, to);
+  try { await galleryRenameTo(found.pic.id, to); }
+  catch (_) { return _mcpNo('Not renamed: Evermist could not save the new name, so the picture keeps its name "' + was + '". The disk may be full.'); }
   return mcpDone('renamed the picture "' + was + '" to "' + to + '"', async () => galleryRenameTo(found.pic.id, was), 'Renamed the picture "' + was + '" to "' + to + '".');
 }
 

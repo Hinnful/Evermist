@@ -165,3 +165,24 @@ describe('ship guard', () => {
     it('allows ' + cmd.split('\n')[0], () => assert.equal(run(ship, cmd), null, cmd));
   }
 });
+
+describe('board guard', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const board = require('../.claude/hooks/guard-board.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-board-'));
+  const page = (name, html) => { const f = path.join(dir, name); fs.writeFileSync(f, html); return f; };
+  const withCss = page('board.html', '<link rel="stylesheet" href="src/css/base.css"><div>x</div>');
+  const plain = page('report.html', '<style>p{}</style><p>x</p>');
+  const call = (input, tool = 'Artifact') => board.target({ tool_name: tool, tool_input: input });
+
+  it('checks a board publish', () => assert.equal(call({ file_path: withCss }), withCss));
+  it('checks an update of a board', () => assert.equal(call({ file_path: withCss, url: 'https://claude.ai/artifact/x', action: 'publish' }), withCss));
+  it('passes a page that links no app stylesheet', () => assert.equal(call({ file_path: plain }), null));
+  it('passes a typed artifact', () => assert.equal(call({ file_path: withCss, type_url: 'https://claude.ai/t' }), null));
+  it('passes an asset upload', () => assert.equal(call({ file_path: withCss, url: 'u', asset: true }), null));
+  it('passes a read', () => assert.equal(call({ action: 'read', url: 'u' }), null));
+  it('passes a missing file', () => assert.equal(call({ file_path: path.join(dir, 'gone.html') }), null));
+  it('passes another tool', () => assert.equal(call({ file_path: withCss }, 'Write'), null));
+});

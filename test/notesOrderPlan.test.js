@@ -104,6 +104,44 @@ describe('notesOrderMerge', () => {
   });
 });
 
+describe('notesOrderUndone', () => {
+  it('an undo-written list wins the merge over the other side holding the later reorder', () => {
+    const original = list(['a', 'b', 'c'], null, 100);
+    const reordered = list(['c', 'a', 'b'], null, 200);
+    const undone = O.notesOrderUndone(original, 300);
+    assert.equal(original.at, 100);
+    assert.deepEqual(undone.order, ['a', 'b', 'c']);
+    const onB = O.cleanNotesOrder({ lists: { monster: reordered } });
+    const fromA = O.cleanNotesOrder({ lists: { monster: undone } });
+    const b = O.notesOrderMerge(onB, fromA);
+    assert.equal(b.changed, true);
+    assert.deepEqual(b.value.lists.monster.order, ['a', 'b', 'c']);
+    const a = O.notesOrderMerge(fromA, onB);
+    assert.equal(a.changed, false);
+    assert.deepEqual(a.value.lists.monster.order, ['a', 'b', 'c']);
+  });
+  it('the old list as it was, without the stamp, would lose to the reorder', () => {
+    const onB = O.cleanNotesOrder({ lists: { monster: list(['c', 'a', 'b'], null, 200) } });
+    const fromA = O.cleanNotesOrder({ lists: { monster: list(['a', 'b', 'c'], null, 100) } });
+    assert.deepEqual(O.notesOrderMerge(onB, fromA).value.lists.monster.order, ['c', 'a', 'b']);
+  });
+  it('an undo back to no list writes an empty list that wins and shows the built order', () => {
+    const undone = O.notesOrderUndone(null, 300);
+    assert.deepEqual(plain(undone), { at: 300, order: [], groups: {} });
+    const onB = O.cleanNotesOrder({ lists: { roads: list(['r2', 'r1'], null, 200) } });
+    const m = O.notesOrderMerge(onB, O.cleanNotesOrder({ lists: { roads: undone } }));
+    assert.equal(m.value.lists.roads.at, 300);
+    assert.deepEqual(shown(O.notesOrderApply(m.value.lists.roads, kids(['r1', 'r2']))), ['r1', 'r2']);
+  });
+  it('keeps the groups and copies them', () => {
+    const was = list(['#g', 'c'], { '#g': { name: 'G', members: ['a', 'b'] } }, 5);
+    const u = O.notesOrderUndone(was, 9);
+    u.groups['#g'].members.push('x');
+    assert.deepEqual(was.groups['#g'].members, ['a', 'b']);
+    assert.equal(u.at, 9);
+  });
+});
+
 describe('notesOrderRemap', () => {
   it('moves scene ids and group uids to the library ones, rooms keeping their uid', () => {
     const v = O.cleanNotesOrder({ lists: { campaign: { at: 1, order: ['old', 'gOld', 'same'] }, 'map:old': { at: 1, order: ['old:r1'], groups: {} }, 'place:gOld': { at: 1, order: ['old'] } } });

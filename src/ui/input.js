@@ -305,7 +305,12 @@ function initInput() {
       else if (e.code === 'KeyV') { e.preventDefault(); pasteShapeAtCursor(); }
       else if (e.code === 'KeyD') { e.preventDefault(); duplicateSelectedShape(); }
       else if (e.code === 'KeyX') { e.preventDefault(); cutSelectedShape(); }
-      else if (e.code === 'KeyF' && !e.target.isContentEditable) { e.preventDefault(); searchOpen(); }
+      // A column has no search of its own: the DM window opens it (panes.js).
+      else if (e.code === 'KeyF' && !e.target.isContentEditable) {
+        e.preventDefault();
+        if (isPane && parent !== window) parent.postMessage({ type: 'pane-search-key', pane: paneId }, '*');
+        else searchOpen();
+      }
       return;
     }
     // Enter finishes a piece drawn into the open edit, else opens the picked shape's edit and closes it (editRow.js).

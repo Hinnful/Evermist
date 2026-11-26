@@ -24,8 +24,8 @@ const _cbGlyph = paths => `<svg width="13" height="13" viewBox="0 0 24 24" fill=
 
 function _cbDamageSeg(p) {
   const look = CB_DAMAGE_LOOK[p.type];
-  if (!look) return `<span class="pd">${_cbEsc(p.dmg)}</span>`;
-  return `<span class="pd${CB_WEAPON_TYPES.includes(p.type) ? ' w' : ''}" style="--c:${look[0]}">${_cbGlyph(look[1])}${_cbEsc(p.dmg)}</span>`;
+  if (!look) return `<span class="pd"><span>${_cbEsc(p.dmg)}</span></span>`;
+  return `<span class="pd${CB_WEAPON_TYPES.includes(p.type) ? ' w' : ''}" style="--c:${look[0]}">${_cbGlyph(look[1])}<span>${_cbEsc(p.dmg)}</span></span>`;
 }
 
 // A Multiattack is one frame; a several-pill alternative gets its own, so "or" never splits it.
@@ -46,8 +46,8 @@ const _cbPillName = n => n.replace(/\s*\([^)]*\)/g, '').trim() || n;
 
 function cbAttackPill(a) {
   if (a.group) return _cbGroup(a);
-  if (a.fallback) return `<span class="cb-pill fb" title="${_cbEsc(a.t)}"><span class="pn">${_cbGlyph(CB_GLYPH_INFO)}${_cbEsc(_cbPillName(a.n))}</span></span>`;
-  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.ba ? '<span class="pb">' + t('Bonus') + '</span>' : ''}<span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}${_cbEsc(_cbPillName(a.n))}</span>${
-    a.rc ? `<span class="pr">${_cbEsc(a.rc)}</span>` : ''}<span class="ph">${_cbEsc(a.hit)}</span>${a.parts.map(_cbDamageSeg).join('')}${
-    a.grab ? `<span class="pg">${t('Grappled DC {dc}', { dc: _cbEsc(a.grab) })}</span>` : ''}</span>`;
+  if (a.fallback) return `<span class="cb-pill fb" title="${_cbEsc(a.t)}"><span class="pn">${_cbGlyph(CB_GLYPH_INFO)}<span>${_cbEsc(_cbPillName(a.n))}</span></span></span>`;
+  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.ba ? '<span class="pb"><span>' + t('Bonus') + '</span></span>' : ''}<span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}<span>${_cbEsc(_cbPillName(a.n))}</span></span>${
+    a.rc ? `<span class="pr"><span>${_cbEsc(a.rc)}</span></span>` : ''}<span class="ph"><span>${_cbEsc(a.hit)}</span></span>${a.parts.map(_cbDamageSeg).join('')}${
+    a.grab ? `<span class="pg"><span>${t('Grappled DC {dc}', { dc: _cbEsc(a.grab) })}</span></span>` : ''}</span>`;
 }

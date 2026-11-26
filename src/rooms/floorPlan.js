@@ -75,7 +75,8 @@ function planDoorsFor(derived) {
 // The same on a map `mapW` wide with grid `grid` (captureGridConfig's shape), open or not.
 function _planDoorsOn(derived, mapW, grid) {
   if (!derived || !derived.rooms.length || !(grid.cellSize > 0)) return [];
-  const rooms = vttScaleRooms(derived.rooms, mapW, derived.srcW);
+  const rooms = vttRoomRecords(vttScaleRooms(derived.rooms, mapW, derived.srcW),
+                               vttScaleRooms(derived.boundaries, mapW, derived.srcW));
   const portals = vttScaleRooms([derived.portals || []], mapW, derived.srcW)[0];
   return planDoorPlacements(rooms, portals, doorCellForGrid(grid.cellSize, grid.mode), grid.offsetX, grid.offsetY,
                             grid.mode === 'square');

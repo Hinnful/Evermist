@@ -67,6 +67,14 @@ describe('the list of fights', () => {
     combatRenameFight(st, 'fA', '   ');
     assert.equal(st.fights[0].name, 'Road');
   });
+  it('keeps an app-given name the DM confirms as shown, in any language', () => {
+    const ru = n => ({ 'New fight': 'Новый бой' })[n] || n;
+    const st = combatAddFight(twoFights(), ids());
+    combatRenameFight(st, st.openId, 'Новый бой', ru);
+    assert.equal(st.fights[2].name, 'New fight');
+    combatRenameFight(st, st.openId, 'Засада', ru);
+    assert.equal(st.fights[2].name, 'Засада');
+  });
   it('opens the neighbour when the open fight is deleted, and never leaves the list empty', () => {
     const st = combatDeleteFight(twoFights(), 'fA', ids());
     assert.equal(st.openId, 'fB');
@@ -84,10 +92,28 @@ describe('the list of fights', () => {
 describe('what goes to disk', () => {
   it('keeps the open fight and the bestiary in the shape saved before the list', () => {
     const p = combatSavedParts(twoFights());
-    assert.deepEqual(Object.keys(p.combat), ['rows', 'blocks', 'nextId']);
+    assert.deepEqual(Object.keys(p.combat), ['rows', 'blocks', 'nextId', 'openId']);
     assert.equal(p.fights.fights[0].rows, undefined);
     assert.deepEqual(p.fights.fights[1].rows.map(r => r.name), ['Strahd']);
   });
+  // The two keys as cbSave writes them after a switch: the list with every fight's rows, then the open fight, then the list.
+  const load = disk => {
+    const d = JSON.parse(disk.combat);
+    return Object.assign({ rows: d.rows }, combatFightsFrom(JSON.parse(disk.fights), ids(), d.openId));
+  };
+  const rowsOf = st => Object.fromEntries(st.fights.map(f => [f.id, combatFightRows(st, f).map(r => r.name)]));
+  for (const [failing, at] of [['the open fight', 1], ['the list after it', 2]]) {
+    it('keeps each fight\'s rows when ' + failing + ' fails to write after a switch', () => {
+      const before = combatSavedParts(twoFights());
+      const disk = { combat: JSON.stringify(before.combat), fights: JSON.stringify(before.fights) };
+      const p = combatSavedParts(combatOpenFight(twoFights(), 'fB'));
+      const writes = [['fights', p.moving], ['combat', p.combat], ['fights', p.fights]];
+      for (const [k, v] of writes.slice(0, at)) disk[k] = JSON.stringify(v);
+      const st = load(disk);
+      assert.equal(st.openId, 'fB');
+      assert.deepEqual(rowsOf(st), { fA: ['Goblin'], fB: ['Strahd'] });
+    });
+  }
   it('lets the build before the list open the open fight and the whole bestiary', () => {
     const old = oldLoad(JSON.stringify(combatSavedParts(twoFights()).combat));
     assert.deepEqual(old.rows.map(r => r.name), ['Goblin']);

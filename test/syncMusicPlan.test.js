@@ -85,6 +85,41 @@ describe('one tick\'s moves', () => {
     assert.deepEqual(M.syMuPlan(base({ st, files: [file('mA', H('a'), 'f1'), file('mB', H('a'), 'f2')] })).purge, ['f1', 'f2']);
     assert.deepEqual(M.syMuPlan(base({ st, first: true, files: [file('mA', H('a'), 'f1')] })).purge, []);
   });
+  it('sends a purged track the DM adds again once, and purges it no more, here or on a computer still holding the purge', () => {
+    const list = [{ name: 'A.mp3', size: 3, hash: H('a') }];
+    const old = { [H('a')]: { at: NOW - 40 * DAY, name: 'A.mp3', purged: true } };
+    let st = M.syMuObserve({ init: true, tracks: {}, gone: old }, list, [], NOW);
+    let files = [], uploads = 0, purges = 0;
+    for (let tick = 0; tick < 4; tick++) {
+      if (tick) st = M.syMuObserve(st, list, [], NOW + tick);
+      st = { ...st, gone: M.syMuGoneMerge(st.gone, old) };
+      const p = M.syMuPlan(base({ st, list, files }));
+      assert.deepEqual(p.remove, []);
+      uploads += p.upload.length; purges += p.purge.length;
+      files = files.filter(f => !p.purge.includes(f.id)).concat(p.upload.map(u => file('mA', u.hash, 'f' + tick)));
+    }
+    assert.equal(uploads, 1, 'one upload');
+    assert.equal(purges, 0, 'no purge after it');
+    assert.equal(files.length, 1);
+    const other = M.syMuPlan(base({ st: { init: true, tracks: {}, gone: M.syMuGoneMerge(old, st.gone) }, list: [], files, remotes: [{ machine: 'mA', rec: { tracks: { [H('a')]: { name: 'A.mp3', at: NOW } } } }] }));
+    assert.deepEqual([other.purge, other.download.map(d => d.hash)], [[], [H('a')]], 'another computer fetches it and purges nothing');
+  });
+  it('keeps a purged track gone from a copy the DM did not add again', () => {
+    const gone = { [H('a')]: { at: NOW - 40 * DAY, name: 'A.mp3', purged: true, purgedAt: NOW - 10 * DAY } };
+    const list = [{ name: 'A.mp3', size: 3, hash: H('a') }];
+    const st = { init: true, tracks: { [H('a')]: { name: 'A.mp3', at: NOW - 50 * DAY } }, gone };
+    const p = M.syMuPlan(base({ st: M.syMuObserve(st, list, [], NOW), list, files: [file('mB', H('a'), 'f1')] }));
+    assert.deepEqual([p.remove.map(r => r.hash), p.purge, p.upload], [[H('a')], ['f1'], []]);
+  });
+  it('a track added again after its purge and deleted again goes to the trash for its 30 days', () => {
+    const list = [{ name: 'A.mp3', size: 3, hash: H('a') }];
+    let st = M.syMuObserve({ init: true, tracks: {}, gone: { [H('a')]: { at: NOW - 40 * DAY, name: 'A.mp3', purged: true } } }, list, [], NOW);
+    st = M.syMuObserve(st, [], [], NOW + DAY);
+    assert.deepEqual(M.syMuTrash(st.gone, {}).map(x => x.hash), [H('a')]);
+    assert.deepEqual(M.syMuTrashDue(st.gone, NOW + 2 * DAY), []);
+    const g = M.syMuPurge(st.gone, M.syMuTrashDue(st.gone, NOW + 32 * DAY), NOW + 32 * DAY);
+    assert.equal(M.syMuPurged(g[H('a')]), true);
+  });
   it('calls a file loose only when no record lists it, no deletion keeps it and its owner has a record', () => {
     const records = [{ machine: 'mA', rec: { tracks: { [H('a')]: { name: 'A.mp3' } } } }];
     const gone = { [H('c')]: { at: 5 }, [H('d')]: { at: 5, purged: true } };
@@ -104,7 +139,7 @@ describe('deletions and the 30-day trash', () => {
     assert.deepEqual(M.syMuTrash(g, {}).map(x => x.name).sort(), ['A.mp3', 'B.mp3']);
     assert.deepEqual(M.syMuTrash(g, { [H('b')]: {} }).map(x => x.name), ['A.mp3']);
     assert.deepEqual(M.syMuTrashDue(g, NOW), [H('a')]);
-    g = M.syMuPurge(g, M.syMuTrashDue(g, NOW));
+    g = M.syMuPurge(g, M.syMuTrashDue(g, NOW), NOW);
     assert.equal(M.syMuRestore(g, H('a'), NOW), g);
     g = M.syMuRestore(g, H('b'), NOW);
     assert.deepEqual(M.syMuTrash(g, {}), []);

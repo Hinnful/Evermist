@@ -128,9 +128,17 @@ function worldRoadsSnapshot() {
 }
 
 // The ids stay with their roads, so a pick survives an undo.
+// ⚠ AN END ON A MAP DELETED SINCE COMES BACK OPEN, as the delete left it: no drag can move an end off a map that is gone.
+// A map still under its undo toast is not gone.
 function worldRoadsRestore(snap) {
   _wrRecs = Object.create(null);
-  for (const [uid, rec] of JSON.parse(snap)) _wrAdopt(uid, wrCleanRoad(rec));
+  const held = new Set(allScenes.map(s => s.id).concat(smPending ? smPending.ids : []));
+  for (const [uid, rec] of JSON.parse(snap)) {
+    const road = wrCleanRoad(rec);
+    const gone = road.ends.filter(e => e.kind === 'scene' && !held.has(e.ref)).map(e => e.ref)
+      .concat(road.scenes.filter(s => !held.has(s.id)).map(s => s.id));
+    _wrAdopt(uid, gone.length ? wrOpenEnds(road, 'scene', gone) : road);
+  }
   worldRoadsSave();
 }
 

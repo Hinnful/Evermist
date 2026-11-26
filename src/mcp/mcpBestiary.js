@@ -36,7 +36,11 @@ function _mcpEditMonster(args) {
   cbState.blocks[id] = made.entry;
   if (!cbSave(true)) { cbState.blocks[id] = old; return _mcpNo('Nothing was changed: Evermist\'s storage is full.'); }
   bestiaryRender();
-  return mcpDone('replaced the stat block of "' + old.name + '"', async () => { cbState.blocks[id] = old; cbSave(); bestiaryRender(); },
+  const left = JSON.stringify(cbState.blocks[id]);
+  return mcpDone('replaced the stat block of "' + old.name + '"', async () => {
+    if (JSON.stringify(cbState.blocks[id]) !== left) throw Object.assign(new Error('Not undone: the monster "' + made.entry.name + '" has changed there since Claude\'s change, and undoing it would erase that too.'), { mcpKeep: true });
+    cbState.blocks[id] = old; cbSave(); bestiaryRender();
+  },
     'Replaced the stat block of "' + old.name + '"' + (made.entry.name !== old.name ? ', now "' + made.entry.name + '"' : '') + '. Fights already built keep their own copies.');
 }
 

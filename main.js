@@ -23,8 +23,21 @@ const OFFSCREEN_AT = offscreen ? { x: -9000, y: -9000 } : {};
 const reveal = (win) => (offscreen ? win.showInactive() : win.show());
 // A Claude call started the app (mcpShim.js): no window and no splash until the DM opens Evermist.
 let inBackground = process.argv.includes('--background');
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) app.quit();
+// ⚠ AN APPIMAGE UPDATE STARTS THIS COPY BEFORE THE OLD ONE HAS QUIT, which holds its quit up to 5 s for the last save
+// (holdCloseForSave). Quitting on the first refusal left the DM with no Evermist, so this copy asks again for 10 s.
+let gotLock = app.requestSingleInstanceLock();
+const lockReady = gotLock || process.env.APPIMAGE_SILENT_INSTALL !== 'true' ? Promise.resolve(gotLock) : new Promise(resolve => {
+  const until = Date.now() + 10000;
+  const tryAgain = () => {
+    gotLock = app.requestSingleInstanceLock();
+    if (gotLock || Date.now() > until) {
+      console.error('[update] the relaunched copy ' + (gotLock ? 'took the lock' : 'gave up: the old copy still holds the lock after 10 s'));
+      resolve(gotLock);
+    } else setTimeout(tryAgain, 250);
+  };
+  setTimeout(tryAgain, 250);
+});
+lockReady.then(ok => { if (!ok) app.quit(); });
 if (stressMode) {
   const id = powerSaveBlocker.start('prevent-display-sleep');
   console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
@@ -317,7 +330,8 @@ function bringToFront() {
 
 // ⚠ ONE APP PER LIBRARY. Two would both write the same scenes, and a second launch is either the DM
 // opening the app Claude started or Claude's own call, which needs no window.
-app.on('second-instance', (_event, argv) => { if (!argv.includes('--background')) bringToFront(); });
+// A copy the updater relaunched asks for the lock while this one quits: it must not open a window here.
+app.on('second-instance', (_event, argv) => { if (!quitAsked && !argv.includes('--background')) bringToFront(); });
 
 let mapsDir;
 
@@ -371,8 +385,8 @@ ipcMain.handle('mem-metrics', () => {
 
 const IDLE_QUIT_MS = 15 * 60 * 1000;
 
-app.whenReady().then(() => {
-  if (!gotLock) return;
+app.whenReady().then(async () => {
+  if (!(await lockReady)) return;
   const userData = app.getPath('userData');
   mapsDir = path.join(userData, 'maps');
   const musicDir = path.join(userData, 'music');

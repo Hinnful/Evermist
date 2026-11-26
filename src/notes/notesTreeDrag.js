@@ -63,8 +63,8 @@ function _ndBefore(b, zone, dragKey) {
 const _ndGroupOf = b => { const p = _ndParent(b); return p && p.kind === 'ngroup' ? p.id : null; };
 
 // One list written and its old value kept for the tree's undo.
-function _ndWriteList(lk, next, world, after) {
-  ntUndoPush({ lists: [{ key: lk, was: notesOrderGet(lk) }], world: world || null });
+function _ndWriteList(lk, next, card, after) {
+  ntUndoPush({ lists: [{ key: lk, was: notesOrderGet(lk) }], card: card || null });
   notesOrderPut(lk, next);
   ntRefresh();
   if (after) after();

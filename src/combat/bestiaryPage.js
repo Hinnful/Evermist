@@ -195,7 +195,7 @@ function _bpRead(b, noNotes, spent, ed) {
 // Editing, the head's strip says how to edit, and the name and the source in it are values too.
 function bpEditHead(b) {
   return `<span class="bs-mode" data-no-i18n><span>${t('Editing')}</span><span class="bs-hint">${t('Click a value to change it')}</span></span>`
-    + `<h2 data-no-i18n>${_cbEd('name', b.name, 'Name')}<span class="bs-src">${_cbEd('source', b.source, 'no source')}</span></h2>`;
+    + `<h2 data-no-i18n>${_cbEd('name', b.name, 'Name')}</h2><div class="bs-src" data-no-i18n>${_cbEd('source', b.source, 'no source')}</div>`;
 }
 
 // The lines "Add line" put on the page while it is edited; a fresh Edit, or another page, starts with none.

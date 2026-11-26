@@ -203,7 +203,8 @@ function _cornerFieldInput(num) {
   num.value = num.value.replace(/[^0-9]/g, '');
   const poly = _cornerFieldPoly();
   if (!poly || num.value === '') return;
-  if (!cornerField.pushed) { pushUndo(); cornerField.pushed = true; }
+  // pushUndo empties the redo history; Escape gives it back (cornerFieldClose).
+  if (!cornerField.pushed) { cornerField.redo = worldMapOpen ? worldRedoTake() : redoStack.slice(); pushUndo(); cornerField.pushed = true; }
   _cornerWrite(poly, cornerField.flats, parseInt(num.value, 10));
   drawCursor(lastScreenX, lastScreenY);
 }
@@ -219,7 +220,7 @@ function cornerFieldClose(keep) {
     if (!keep) {
       if (f.before.r === undefined) delete poly.cornerRadius; else poly.cornerRadius = f.before.r;
       if (f.before.radii) poly.cornerRadii = f.before.radii; else delete poly.cornerRadii;
-      if (worldMapOpen) worldUndoDropLast(); else undoStack.pop();
+      if (worldMapOpen) worldUndoDropLast(f.redo); else { undoStack.pop(); redoStack.push(...f.redo); }
       shapeGeometryChanged();
       fogDirty = true;
       scheduleRender();

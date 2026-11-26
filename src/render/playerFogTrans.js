@@ -151,7 +151,7 @@ function pixiPlayerFogChangeBegin(cvs) {
   const full = ptFullEnsure(), spr = new PIXI.Sprite(new PIXI.Texture(pixiPFogMaskBT));
   spr.width = full.w; spr.height = full.h;
   pixiApp.renderer.render(spr, { renderTexture: full.old, clear: true });
-  spr.destroy();
+  spr.destroy({ texture: true });   // the wrapper subscribes to the mask's updates
   ptPending = { oldA, gw: g.gw, gh: g.gh, w: cvs.width, h: cvs.height, nearCopied };
 }
 

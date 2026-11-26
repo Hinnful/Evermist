@@ -94,14 +94,20 @@ function syHeld(key, ctx) {
   }
   if (c.fightTable && (key === 'local:evermist.combat' || key === 'local:evermist.combatFights')) return 'fights';
   if (c.openNoteKey && c.openNoteKey === key) return 'note';
+  // A monster's note lives in the bestiary, which both combat records carry.
+  if (c.openNoteKey === 'local:evermist.combat' && key === 'local:evermist.combatFights') return 'note';
   return null;
 }
 
 // ─── Deletion and the 30-day trash ───────────────────────────────────────────
-// `gone` is { sceneId: { at, restoredAt?, purged? } }. An entry is never dropped, not even after a purge, so a
+// `gone` is { sceneId: { at, restoredAt?, purged?, purgedAt? } }. An entry is never dropped, not even after a purge, so a
 // computer that was offline longer than 30 days cannot bring the map back.
 
 const _syClamp = (t, now) => (Number.isFinite(t) && t > 0 ? Math.min(t, now) : 0);
+
+// A purge stands until a first sync keeps the map after it (syGoneFirstKept). A purge with no time (the previous
+// release's) always stands.
+const syGonePurged = e => !!e && e.purged === true && !(Number.isFinite(e.purgedAt) && (e.restoredAt || 0) > e.purgedAt);
 
 // The latest time inside a record's `edits`, a stamp past `now` counting as `now`.
 function sySceneEditedAt(rec, now) {
@@ -118,7 +124,7 @@ function sySceneEditedAt(rec, now) {
 // A purged map stays gone whatever the copy says.
 function syGoneWins(entry, editedAt, now) {
   if (!entry) return false;
-  if (entry.purged) return true;
+  if (syGonePurged(entry)) return true;
   const at = _syClamp(entry.at, now);
   if (at <= 0) return false;
   if (_syClamp(entry.restoredAt, now) >= at) return false;
@@ -133,8 +139,39 @@ function syGoneNote(gone, id, now) {
 // A restored map counts as an edit at `now`. A purged one cannot be restored.
 function syRestore(gone, id, now) {
   const e = gone[id];
-  if (!e || e.purged) return gone;
+  if (!e || syGonePurged(e)) return gone;
   return { ...gone, [id]: { ...e, restoredAt: now } };
+}
+
+// A deletion a later edit beat is undone at that edit's time, so it leaves the trash and the 30-day purge on every
+// computer. `edited` is { sceneId: newest edit time anywhere }. A purged or already undone entry is left alone.
+function syGoneRevived(gone, edited, now) {
+  let out = gone;
+  for (const id of Object.keys(edited || {})) {
+    const e = gone[id], t = _syClamp(edited[id], now);
+    if (!e || syGonePurged(e) || (e.restoredAt || 0) >= (e.at || 0) || t <= (e.at || 0)) continue;
+    if (out === gone) out = { ...gone };
+    out[id] = { ...e, restoredAt: t };
+  }
+  return out;
+}
+
+// Every map this computer holds as its first sync starts survives it, a purged one included: its deletion is undone
+// now, so it goes up and comes back on the computer that deleted it. A backup import keeps map ids, so a library filled
+// from one may hold maps another computer has deleted since.
+function syGoneFirstKept(gone, localIds, now) {
+  let out = gone;
+  for (const id of localIds || []) {
+    const e = gone[id];
+    if (!e) continue;
+    let next = null;
+    if (syGonePurged(e)) { const p = Math.max(e.purgedAt || 0, e.at || 0); next = { ...e, purgedAt: p, restoredAt: Math.max(now, p + 1) }; }
+    else if ((e.restoredAt || 0) < (e.at || 0)) next = { ...e, restoredAt: Math.max(now, e.at) };
+    if (!next) continue;
+    if (out === gone) out = { ...gone };
+    out[id] = next;
+  }
+  return out;
 }
 
 // Both computers' deletion records, combined: the later time of each field, a purge once either has it.
@@ -147,21 +184,23 @@ function syGoneMerge(a, b) {
     const r = Math.max(x.restoredAt || 0, y.restoredAt || 0);
     if (r) e.restoredAt = r;
     if (x.purged || y.purged) e.purged = true;
+    const p = Math.max(x.purgedAt || 0, y.purgedAt || 0);
+    if (p) e.purgedAt = p;
     out[id] = e;
   }
   return out;
 }
 
 // What the trash holds: deleted, not undone, not purged.
-const syTrashIds = gone => Object.keys(gone || {}).filter(id => !gone[id].purged && !((gone[id].restoredAt || 0) >= (gone[id].at || 0)));
+const syTrashIds = gone => Object.keys(gone || {}).filter(id => !syGonePurged(gone[id]) && !((gone[id].restoredAt || 0) >= (gone[id].at || 0)));
 
 // The ids past their 30 days.
 const syTrashDue = (gone, now) => syTrashIds(gone).filter(id => now - gone[id].at > SY_TRASH_MS);
 
-// `ids` are kept as records and marked purged: "Empty now" and the 30-day purge.
-function syPurge(gone, ids) {
+// `ids` are kept as records and marked purged at `now`: "Empty now" and the 30-day purge.
+function syPurge(gone, ids, now) {
   const out = { ...gone };
-  for (const id of ids) if (out[id]) out[id] = { ...out[id], purged: true };
+  for (const id of ids) if (out[id]) out[id] = { ...out[id], purged: true, purgedAt: Math.max(now || 0, out[id].at || 0) };
   return out;
 }
 
@@ -174,6 +213,7 @@ function syGoneClean(gone) {
     out[id] = { at: g.at };
     if (Number.isFinite(g.restoredAt) && g.restoredAt > 0) out[id].restoredAt = g.restoredAt;
     if (g.purged === true) out[id].purged = true;
+    if (Number.isFinite(g.purgedAt) && g.purgedAt > 0) out[id].purgedAt = g.purgedAt;
   }
   return out;
 }
@@ -185,7 +225,7 @@ function syGoneParse(text) {
 // Restored maps, which come back from the Drive where this computer no longer holds them.
 const syRestored = (gone, localIds) => {
   const here = new Set(localIds);
-  return Object.keys(gone || {}).filter(id => !here.has(id) && !gone[id].purged && (gone[id].restoredAt || 0) >= (gone[id].at || 0));
+  return Object.keys(gone || {}).filter(id => !here.has(id) && !syGonePurged(gone[id]) && (gone[id].restoredAt || 0) >= (gone[id].at || 0));
 };
 
 // The restored maps not here, split by where they come back from: this computer's trash when it holds them
@@ -196,7 +236,7 @@ function syRestoreFrom(gone, localIds, trashIds) {
 }
 
 // The maps in this computer's trash that a purge on any computer has emptied.
-const syPurgedHeld = (gone, trashIds) => (trashIds || []).filter(id => !!(gone && gone[id] && gone[id].purged));
+const syPurgedHeld = (gone, trashIds) => (trashIds || []).filter(id => !!gone && syGonePurged(gone[id]));
 
 // The newest copy of a record any computer holds, own included: the latest edit, then the latest upload.
 function syNewestRecord(records, key) {
@@ -293,12 +333,20 @@ function syDriveSpace(space) {
   return { pct, level: pct >= 90 ? 'r' : 'y' };
 }
 
+// A stored text's `at` in the index: when its content last changed here. One this computer first hashes before its
+// first sync has finished has never been synced, so it takes 0 and the copy the other computers have been syncing
+// wins; a later change takes `now`, and an unchanged one keeps its time.
+function syIndexAt(prev, hash, now, firstDone) {
+  if (prev && prev.hash === hash) return prev.at;
+  return prev || firstDone ? now : 0;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SY_FORMAT, SY_TRASH_MS, SY_SCENE_BLOBS, syRecordBody, syBlobName, syBlobNameOk, syKeyOk, syToUpload, syNewRemote,
-    syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGoneWins, syGoneNote, syRestore, syGoneMerge,
+    syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGonePurged, syGoneWins, syGoneNote, syRestore, syGoneRevived, syGoneFirstKept, syGoneMerge,
     syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syRestoreFrom, syPurgedHeld, syNewestRecord,
     syPurgeFiles, syPicFilesGone, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
-    syKeptParse, syKeptList, syDriveSpace,
+    syKeptParse, syKeptList, syDriveSpace, syIndexAt,
   };
 }

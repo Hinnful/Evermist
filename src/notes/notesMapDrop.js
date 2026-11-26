@@ -48,11 +48,13 @@ function _nmLeave(id) {
 // ⚠ THE TREE IS READ BEFORE THE CAMPAIGN CHANGES: a Campaign refresh rebuilds it, and these nodes would be stale.
 function nmDrop(a, b, zone) {
   if (zone === 'hold') { _nmPair(a, b); return; }
-  const to = zone === 'in' ? b : _ndParent(b), from = _ndParent(a), world = worldSnapshotTake();
+  const to = zone === 'in' ? b : _ndParent(b), from = _ndParent(a);
+  let card = null;
   const lk = _ndListKey(to);
   const next = notesOrderMove(_ndFilled(to, lk), a.id, null, zone === 'in' ? null : _ndBefore(b, zone, a.id), Date.now());
   if (to !== from) {
     _nmReady();
+    card = _nmCardWas(a.id);
     const group = to.kind === 'place' ? to.id : '';
     if (group && !_nmJoin(a.id, group)) {
       messageDialog({ title: 'Nothing changed', message: t('“{name}” has no room for another map outside the groups inside it. Make it bigger on the Campaign.', { name: group }) });
@@ -61,7 +63,7 @@ function nmDrop(a, b, zone) {
     if (!group) _nmLeave(a.id);
     if (worldMapOpen) worldMapRefresh();
   }
-  _ndWriteList(lk, next, to !== from ? world : null);
+  _ndWriteList(lk, next, card);
 }
 
 // Held on a loose map: the two make a new group where the target stood, and its name opens in the tree.
@@ -69,21 +71,48 @@ function _nmPair(a, b) {
   _nmReady();
   const mate = allScenes.find(s => s.id === b.id);
   if (!mate || !wmCleanPos(mate.worldPos)) return;
-  const world = worldSnapshotTake(), pair = wmPairPlace(mate.worldPos), campaign = _ndFilled(_ndParent(b), 'campaign');
+  const card = _nmCardWas(a.id), pair = wmPairPlace(mate.worldPos), campaign = _ndFilled(_ndParent(b), 'campaign');
   worldUndoPush();   // the Campaign's own Ctrl+Z takes the pair back too, as one step
   worldRoadsDetach(a.id);
   worldSceneSet(a.id, { worldPos: pair.pos });
   const name = worldPlaceCreate(pair.shape);
   worldUndoDropLast();
+  card.made = worldPlaceByName(name).id;
   if (worldMapOpen) worldMapRefresh();
   const uid = mxGroupUidFor(name), now = Date.now(), inner = 'place:' + uid;
   const top = notesOrderMove(campaign, uid, null, b.id, now);
-  ntUndoPush({ lists: [{ key: 'campaign', was: notesOrderGet('campaign') }, { key: inner, was: notesOrderGet(inner) }], world });
+  ntUndoPush({ lists: [{ key: 'campaign', was: notesOrderGet('campaign') }, { key: inner, was: notesOrderGet(inner) }], card });
   notesOrderPut('campaign', top);
   notesOrderPut(inner, notesOrderMove(notesOrderFill(null, [b.id, a.id]), a.id, null, null, now));
   ntRefresh();
   ntOpenKey('place:' + name);
   ntRenameStartKey('place:' + name);
+}
+
+// ─── The tree's undo of a drop ───────────────────────────────────────────────
+// ⚠ ONLY WHAT THE DROP CHANGED goes back, never a Campaign snapshot: groups, notes, roads and cards edited since stay.
+
+function _nmCardWas(id) {
+  const s = allScenes.find(x => x.id === id);
+  return { id, pos: s && wmCleanPos(s.worldPos) ? { ...s.worldPos } : null };
+}
+
+// The card back where it stood, the group a pair made gone (followed by its id, so a rename since still finds it),
+// and every map refiled by the outlines.
+function nmUndoCard(card) {
+  if (card.made) {
+    const name = worldPlaceNameOfId(card.made);
+    if (name) {
+      notesPanelSettle();
+      forgetGroup(name);
+      worldShapeDelete(name);
+      notesPlaceSet(name, '');
+    }
+  }
+  if (card.pos && allScenes.some(x => x.id === card.id)) worldSceneSet(card.id, { worldPos: card.pos });
+  worldAssignAll();
+  sceneListChanged();
+  if (worldMapOpen) worldMapRefresh();
 }
 
 // Move to group for a map: every group of the Campaign, and No group while it is in one.

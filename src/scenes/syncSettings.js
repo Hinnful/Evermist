@@ -9,6 +9,7 @@ let _ssKept = null;       // false where the sign-in is not remembered across re
 let _ssTrashAt = -1;      // the last sync Recently deleted was read after
 let _ssSyncAt = -1;       // the last sync the Campaign map's kept pictures were read after
 let _ssBusy = false;      // a button's call is running
+let _ssDoneAt = -1;       // the last finished sync, which proves the sign-in again
 
 const _ssEl = id => document.getElementById(id);
 const _ssPaneOpen = () => dockActivePane() === 'settings';
@@ -22,6 +23,7 @@ function _ssWhen(at) {
 function _ssStatus() {
   const st = syncEngine.status();
   if (st.state === 'signedOut') _ssSigned = false;
+  else if (st.state === 'idle' && st.last && st.last !== _ssDoneAt) { _ssDoneAt = st.last; _ssSigned = true; }
   const s = syStatusLine(st);
   const note = _ssKept === false && st.state !== 'syncing' ? ' ' + t('Sign-in is not remembered on this computer.') : '';
   const line = _ssEl('sy-line');
@@ -31,7 +33,7 @@ function _ssStatus() {
   if (space) {
     const dot = document.createElement('span'), pct = document.createElement('span');
     dot.className = 'dim';
-    dot.textContent = ' · ';
+    dot.textContent = ', ';
     pct.className = 'sp ' + space.level;
     pct.textContent = t('{n}% full', { n: space.pct });
     line.append(dot, pct);

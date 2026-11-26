@@ -47,17 +47,16 @@ function closeActivePolygon(e) {
   activePolygon = null;
   const shape = commitClosedShape(verts, repairNow(e));
   drawCursor(null, null);
-  // The polygon tool paints its own fog below rather than going through toolMouseUp's block,
+  // The polygon tool settles its own fog below rather than going through toolMouseUp's block,
   // so the flag that block reads must not be left set for the next release to act on.
   fogModifiedThisStroke = false;
-  // ⚠ NOTHING BELOW RUNS FOR JOIN, TRIM OR A REFUSAL. applyPolygonToFog paints the drawn shape
-  // rather than rebuilding the stencil, and a refusal leaves no shape to dereference at all.
-  // Each of those settled its own fog inside commitShapeOp.
+  // ⚠ NOTHING BELOW RUNS FOR JOIN, TRIM OR A REFUSAL: a refusal leaves no shape, and each of
+  // those settled its own fog inside commitShapeOp.
   if (!shape) return;
   if (placeMode !== 'rooms') { fogDirty = true; scheduleRender(); return; }
-  // applyPolygonToFog paints just this room rather than rebuilding the whole stencil, which is
-  // why the polygon tool does not share the rectangle path's rebuild.
-  applyPolygonToFog(shape);
+  // ⚠ REBUILD FROM EVERY ROOM, NEVER PAINT THIS ONE ON TOP. The new room sits after any room it
+  // contains, so a hidden room inside a revealed polygon must stay fogged; painting over clears it.
+  rebuildFogFromPolygons();
   startFogTransition(mode === 'shroud');
   rebuildFogEffect();
   fogDirty = true;

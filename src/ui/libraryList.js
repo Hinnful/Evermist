@@ -107,7 +107,8 @@ function _llMenuEl(rows, extra) {
     if (r.sep) { if (menu.lastElementChild && !menu.lastElementChild.matches('.sm-msep')) menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
     const b = document.createElement('button');
     b.className = 'sm-mi' + (r.danger ? ' danger' : '') + (r.on ? ' on' : '');
-    b.innerHTML = (r.icon ? uiIcon(r.icon, 13) : '') + '<span class="nm"></span><span class="ky"></span>';
+    // The tick is drawn, never a ✓ character: a glyph with no capitals centres by its box.
+    b.innerHTML = '<span class="sm-mk">' + uiIcon('check', 12, 2) + '</span>' + (r.icon ? uiIcon(r.icon, 13) : '') + '<span class="nm"></span><span class="ky"></span>';
     b.querySelector('.nm').textContent = r.raw ? r.label : t(r.label);
     // A submenu's arrow has no capitals to centre on, so it is drawn as an icon, which centres by its box.
     if (r.sub) b.querySelector('.ky').innerHTML = uiIcon('next', 12); else b.querySelector('.ky').textContent = r.key || '';
@@ -367,7 +368,7 @@ window.addEventListener('click', e => { if (e.isTrusted && e.timeStamp - _llSwal
 // A new press is a new click, so a drop whose own click never came cannot eat it.
 window.addEventListener('mousedown', e => { _llSwallow = -1e9; if (_llMenu && !_llMenu.contains(e.target)) libCloseMenu(); }, true);
 window.addEventListener('wheel', () => libCloseMenu(), { passive: true });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && _llMenu) { e.stopPropagation(); libCloseMenu(); } else _llKey(e); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _llMenu) { e.stopImmediatePropagation(); libCloseMenu(); } else _llKey(e); }, true);
 
 // ─── The parts each pane draws ───────────────────────────────────────────────
 

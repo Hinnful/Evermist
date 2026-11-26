@@ -226,8 +226,8 @@ function _nwEscape(e) {
   const a = document.activeElement, inside = _nwEl().contains(a);
   if (nePickerOpen()) return;
   if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && inside) return;
-  if ([...document.querySelectorAll('.sm-menu')].some(motionOpen) || ['cd-modal', 'cl-modal', 'mt-modal'].some(id => motionOpen(document.getElementById(id)))) return;
-  if (searchIsOpen() || bsHasFocus() || (worldMapOpen && !inside)) return;
+  if ([...document.querySelectorAll('.sm-menu')].some(motionOpen) || ['cd-modal', 'cl-modal', 'mt-modal', 'mu-modal'].some(id => motionOpen(document.getElementById(id)))) return;
+  if (legendVisible || searchIsOpen() || bsHasFocus() || (worldMapOpen && !inside)) return;
   if (!inside && (activePolygon || shape !== 'select' || shapeOp !== 'new' || selectedPolygonId != null)) return;
   e.stopPropagation();
   nwHide();

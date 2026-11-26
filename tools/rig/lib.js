@@ -1,5 +1,7 @@
 'use strict';
 
+const ink = require('./ink');
+
 // lib.js — the one page-side helper set, and the blockers' shared setup, that every
 // blocker scenario uses. Nothing here asserts; it only puts the app into a state a scenario can read.
 //
@@ -95,12 +97,23 @@ const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
 // ─── The alignment sweep ─────────────────────────────────────────────────────
-// .claude/rules/design-system.md, "Alignment": everything in a row centres on one line - a text by its capitals, a
-// glyph with none by its ink, a box by its middle. A row is any visible flex row with two or more in-flow items;
-// a field, a multi-line block and a graphic taller than 30px are left out, since none has one line to meet.
+// .claude/rules/design-system.md, "Alignment": texts in a row share one baseline, and a box, an icon or a glyph with
+// no capitals centres on the capitals of the row's main (largest) text. A row is any visible flex row with two or more
+// in-flow items; a field and a graphic taller than 30 CSS px are left out, and an item holding two or more lines of
+// text is one block, beside which a box centres on the block. Two faults need no tolerance: bare texts in one row more
+// than 1.5x apart in size (the smaller goes on its own line), and a glyph with no capitals written as text beside text
+// (it sits by the font's metrics, never by its ink).
+// Each row also comes back as items for ink.js to measure on the rendered pixels.
+// A box item (`boxSel`: a button, a link, a label round a control, an atom) is a box whether filled or not: its text
+// is no bare text of the row, and a filled one is measured by its painted edges.
 const ALIGN_SWEEP = `
-globalThis.__rigAlignSweep = (rootSel, tol) => {
-  tol = tol === undefined ? 0.5 : tol;
+globalThis.__rigAlignSweep = (rootSel, boxSel) => {
+  const sizesApart = ${ink.sizesApart.toString()};
+  const BOX = boxSel.split(/,(?![^(]*\\))/).filter((s) => { try { document.querySelector(s); return true; } catch (e) { return false; } }).join(',');
+  const boxOf = (from, to) => { for (let e = from; e; e = e.parentElement) { if (e.matches(BOX)) return e; if (e === to) break; } return null; };
+  const LETTER = /[\\p{L}\\p{N}]/u;
+  // A word with no letter made only of these is punctuation; any other mark in it is a glyph.
+  const PUNCT = /^[.,:;!?…"'«»„“”()\\[\\]{}–—\\-\\/%]+$/;
   const shown = (e) => {
     const r = e.getBoundingClientRect();
     if (r.width < 1 || r.height < 1 || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return false;
@@ -123,6 +136,9 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
     }
     return tops.size;
   };
+  const rangeRect = (n, a, b) => { const rg = document.createRange();
+    if (a === undefined) rg.selectNodeContents(n); else { rg.setStart(n, a); rg.setEnd(n, b); }
+    return [...rg.getClientRects()].find((r) => r.width > 0) || null; };
   // A zero-width probe one cap tall, set on the text's own line: its bottom is the baseline. A text that is a
   // flex item on its own is wrapped in a span for the read, which lays out the same, and unwrapped after.
   const metrics = (node) => {
@@ -137,17 +153,7 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
     const r = probe.getBoundingClientRect();
     probe.remove();
     if (wrap) { wrap.replaceWith(node); }
-    const text = node.textContent.trim();
-    // A text with no letter or digit (›, ·, ×) has no capitals: the eye reads where its ink sits.
-    let inkC = null;
-    if (!/[\\p{L}\\p{N}]/u.test(text)) {
-      const ctx = (globalThis.__rigInk = globalThis.__rigInk || document.createElement('canvas').getContext('2d'));
-      ctx.font = getComputedStyle(parent).font;
-      const m = ctx.measureText(text);
-      inkC = r.bottom + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
-    }
-    return { base: r.bottom, capC: (r.top + r.bottom) / 2, inkC, size: parseFloat(getComputedStyle(parent).fontSize),
-      text: text.slice(0, 24) };
+    return { capH: r.height, text: node.textContent.trim().slice(0, 24) };
   };
   const name = (e) => {
     const bits = [];
@@ -157,16 +163,81 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
     }
     return bits.join(' > ');
   };
+  // A box the eye reads as a box: a fill, a shadow or a border all round.
+  const plate = (e) => {
+    const cs = getComputedStyle(e), bg = cs.backgroundColor.match(/[\\d.]+/g);
+    if ((bg && (bg.length < 4 || +bg[3] > 0.02)) || cs.backgroundImage !== 'none' || cs.boxShadow !== 'none') return true;
+    return ['Top', 'Right', 'Bottom', 'Left'].every((s) => parseFloat(cs['border' + s + 'Width']) > 0 && cs['border' + s + 'Style'] !== 'none');
+  };
+  // Height in CSS px: a screen rect carries the UI zoom, and the graphic cutoff is a CSS size.
+  const cssH = (e) => e.getBoundingClientRect().height / (e.currentCSSZoom || 1);
+  const pseudoText = (cs) => [...cs.content.matchAll(/"((?:[^"\\\\]|\\\\.)*)"/g)].map((m) => m[1]).join('');
+  const skipText = (n) => !!n.parentElement.closest('select, option, textarea, svg, [contenteditable=""], [contenteditable=true]');
   const roots = rootSel ? [...document.querySelectorAll(rootSel)] : [document.body];
-  const faults = [];
+  const faults = [], ink = [], mixed = new Map(), glyphs = new Set();
+  globalThis.__rigInkEls = []; globalThis.__rigInkRoots = roots;
   let rows = 0;
   for (const root of roots) {
+    // A lettered text on the same line as a glyph, within four boxes of it: the text the glyph stands beside.
+    const besideText = (host, top, bottom) => {
+      for (let a = host, k = 0; a && k < 4 && root.contains(a); a = a.parentElement, k++) {
+        const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode()) {
+          const t = n.textContent.trim();
+          if (!LETTER.test(t) || !shown(n.parentElement) || skipText(n)) continue;
+          const rg = document.createRange(); rg.selectNodeContents(n);
+          for (const r of rg.getClientRects()) if (r.width > 0 && Math.min(r.bottom, bottom) - Math.max(r.top, top) > 0.3 * Math.min(r.height, bottom - top)) return t.slice(0, 24);
+        }
+      }
+      return null;
+    };
+    const glyphWord = (t) => t.split(/\\s+/).filter((w) => w && !LETTER.test(w) && !PUNCT.test(w));
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      const t = n.textContent.trim();
+      if (!t || !shown(n.parentElement) || skipText(n)) continue;
+      if (LETTER.test(t)) {
+        const g = glyphWord(t);
+        if (g.length) glyphs.add(name(n.parentElement) + ': "' + t.slice(0, 24) + '" writes ' + g.map((x) => '"' + x + '"').join(', ') + ' as text; a glyph with no capitals beside text is an icon (icons.js)');
+        continue;
+      }
+      if (PUNCT.test(t.replace(/\\s+/g, ''))) continue;
+      if (/^[+\\-−±]$/.test(t)) { const nx = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); nx.currentNode = n;
+        const after = nx.nextNode(); if (after && /^\\d/.test(after.textContent)) continue; }
+      const r = rangeRect(n);
+      const by = r && besideText(n.parentElement, r.top, r.bottom);
+      if (by) glyphs.add(name(n.parentElement) + ': "' + t.slice(0, 12) + '" is written as text beside "' + by + '"; a glyph with no capitals beside text is an icon (icons.js)');
+    }
+    for (const e of [root, ...root.querySelectorAll('*')]) {
+      if (!shown(e) || e.closest('svg, select')) continue;
+      for (const p of ['::before', '::after']) {
+        const cs = getComputedStyle(e, p);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        const t = pseudoText(cs).trim();
+        if (!t) continue;
+        const r = e.getBoundingClientRect();
+        if (LETTER.test(t)) {
+          const g = glyphWord(t);
+          if (g.length) glyphs.add(name(e) + p + ': content "' + t.slice(0, 24) + '" writes ' + g.map((x) => '"' + x + '"').join(', ') + ' as text; a glyph with no capitals beside text is an icon (icons.js)');
+          continue;
+        }
+        if (PUNCT.test(t.replace(/\\s+/g, ''))) continue;
+        const by = besideText(e, r.top, r.bottom);
+        if (by) glyphs.add(name(e) + p + ': content "' + t.slice(0, 12) + '" is written as text beside "' + by + '"; a glyph with no capitals beside text is an icon (icons.js)');
+      }
+    }
     for (const row of [root, ...root.querySelectorAll('*')]) {
       const cs = getComputedStyle(row);
       // A select's options are its open list, not a row.
       if (!/flex/.test(cs.display) || /column/.test(cs.flexDirection) || !shown(row) || row.closest('select')) continue;
       const kids = [...row.children].filter((c) => shown(c) && !/absolute|fixed/.test(getComputedStyle(c).position));
-      if (kids.length < 2) continue;
+      // A row's own text and its ::before/::after stand in it too, as anonymous items.
+      const texts0 = [...row.childNodes].filter((n) => { if (n.nodeType !== 3 || !n.textContent.trim()) return false;
+        const rg = document.createRange(); rg.selectNodeContents(n);
+        return new Set([...rg.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.bottom))).size === 1; });
+      const pseudos = ['::before', '::after'].map((p) => ({ p, cs: getComputedStyle(row, p) }))
+        .filter(({ cs: c }) => c.display !== 'none' && c.content !== 'none' && c.content !== 'normal' && !/absolute|fixed/.test(c.position) && c.visibility !== 'hidden');
+      if (kids.length + texts0.length + pseudos.length < 2) continue;
       // A wrapping row is measured line by line: each flex line is a row of its own.
       const flexLines = [];
       for (const c of kids) {
@@ -174,44 +245,300 @@ globalThis.__rigAlignSweep = (rootSel, tol) => {
         if (cur && (cs.flexWrap === 'nowrap' || r.top < cur.bottom)) { cur.items.push(c); cur.bottom = Math.max(cur.bottom, r.bottom); }
         else flexLines.push({ items: [c], bottom: r.bottom });
       }
+      if (!flexLines.length) flexLines.push({ items: [], bottom: 0 });
+      const one = flexLines.length === 1;
       for (const fl of flexLines) {
-        const texts = [], marks = [];
+        // A line whose main text sits in a field cannot be read: the field's text has no probe.
+        if (fl.items.some((c) => c.matches('input:not([type=range]), textarea'))) continue;
+        const field = (c) => c.matches('input, textarea, select, canvas, img, video') || c.querySelector('input:not([type=range]), textarea, select');
+        // Bare texts: words standing in the row itself, not inside a plate or a box item that is the row's item.
+        const bare = [];
+        const addBare = (n) => { const t = n.textContent.trim(), pe = n.parentElement;
+          if (!LETTER.test(t) || !shown(pe) || getComputedStyle(pe).position === 'absolute' || skipText(n)) return;
+          for (let e = pe; e && e !== row; e = e.parentElement) if (plate(e) || e.matches(BOX)) return;
+          bare.push({ size: parseFloat(getComputedStyle(pe).fontSize), text: t.slice(0, 24) }); };
         for (const c of fl.items) {
-          if (c.matches('input, textarea, select, canvas, img, video') || c.querySelector('input:not([type=range]), textarea, select')) continue;
+          if (field(c) || lines(c) !== 1) continue;
+          const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(); n; n = w.nextNode()) addBare(n);
+        }
+        if (one) texts0.forEach(addBare);
+        const sizes = [...new Set(bare.map((b) => b.size))].sort((a, b) => b - a);
+        if (sizesApart(sizes)) {
+          const sig = bare.map((b) => b.size + b.text).sort().join('|');
+          mixed.set(sig, name(row) + ': bare texts of ' + sizes.map((s) => s + 'px').join(' and ') + ' share the row: ' +
+            bare.map((b) => '"' + b.text + '" ' + b.size + 'px').join(', ') + '; a text more than 1.5x smaller than the row\\'s main text goes on its own line');
+        }
+        const inkItems = [];
+        // A text's item: its span, each letter's span and the font's cap height. Null when it shows no width.
+        const textOf = (n, c, m, what) => {
+          const r = rangeRect(n), pr = n.parentElement.getBoundingClientRect(), cr = c ? c.getBoundingClientRect() : pr;
+          if (!r) return;
+          const x0 = Math.max(r.left, pr.left, cr.left), x1 = Math.min(r.right, pr.right, cr.right);
+          // The text's own plate bounds where its ink can be: outside it lies the row's surface.
+          let y0 = r.top - 2, y1 = r.bottom + 2;
+          for (let e = n.parentElement; e && e !== row.parentElement; e = e.parentElement) {
+            if (e === row || plate(e)) { const b = e.getBoundingClientRect(); y0 = Math.max(y0, b.top); y1 = Math.min(y1, b.bottom); if (e !== row) break; }
+          }
+          if (x1 - x0 < 1) return null;
+          const t = n.textContent;
+          if (!LETTER.test(t)) return { kind: 'glyph', what, x0, x1, y0, y1, el: n.parentElement };
+          // Each letter's span and the letter itself, for ink.js to read its baseline and cap top per letter, since the
+          // bar of an Н is not its top. Only the letters on its first line.
+          const chars = [];
+          for (let i = 0; i < t.length && i < 80; i++) {
+            if (!LETTER.test(t[i])) continue;
+            const q = rangeRect(n, i, i + 1);
+            if (q && q.right > x0 && q.left < x1 && Math.abs(q.bottom - r.bottom) < 1) chars.push([Math.max(q.left, x0), Math.min(q.right, x1), t[i]]);
+          }
+          return { kind: 'text', what, x0, x1, y0, y1, chars, capH: m.capH, size: parseFloat(getComputedStyle(n.parentElement).fontSize), el: n.parentElement };
+        };
+        // A box item's text (\`box\`, the box) also carries the middle of that box as laid out.
+        const inkText = (n, c, m, what, box) => {
+          const it = textOf(n, c, m, what);
+          if (!it) return;
+          if (it.kind === 'text' && box) { const b = box.getBoundingClientRect(); it.box = true; it.lay = (b.top + b.bottom) / 2; }
+          inkItems.push(it);
+        };
+        // A plate holding the text n: should its fill be too faint to read, it stands by that text's capitals.
+        const plateText = (n) => { const t = textOf(n, null, metrics(n), ''); if (t && t.kind === 'text') { const o = inkItems[inkItems.length - 1]; delete t.el; o.text = t; } };
+        // One line of a text node, first or last, as laid out: its line box, the text's content area grown to the
+        // line-height about its middle (the block's strut when taller), inside the content box of the block that
+        // holds it, so a line trimmed by \`text-box\` ends where the trim puts it.
+        const lineItem = (n, c, last) => {
+          const rg = document.createRange(); rg.selectNodeContents(n);
+          const rs = [...rg.getClientRects()].filter((q) => q.width > 0);
+          if (!rs.length) return null;
+          const r = last ? rs[rs.length - 1] : rs[0], same = rs.filter((q) => Math.abs(q.bottom - r.bottom) < 1);
+          const pr = n.parentElement.getBoundingClientRect(), cr = c.getBoundingClientRect();
+          const x0 = Math.max(Math.min(...same.map((q) => q.left)), pr.left, cr.left), x1 = Math.min(Math.max(...same.map((q) => q.right)), pr.right, cr.right);
+          if (x1 - x0 < 1) return null;
+          let blk = n.parentElement;
+          while (blk.parentElement && /^(inline|contents)$/.test(getComputedStyle(blk).display)) blk = blk.parentElement;
+          const z = n.parentElement.currentCSSZoom || 1, lh = (e) => { const v = getComputedStyle(e).lineHeight; return v === 'normal' ? 0 : parseFloat(v) * z; };
+          const L = Math.max(lh(n.parentElement), lh(blk), r.height), mid = (r.top + r.bottom) / 2;
+          const bc = getComputedStyle(blk), bb = blk.getBoundingClientRect();
+          const top = Math.max(mid - L / 2, bb.top + (parseFloat(bc.borderTopWidth) + parseFloat(bc.paddingTop)) * z);
+          const bottom = Math.min(mid + L / 2, bb.bottom - (parseFloat(bc.borderBottomWidth) + parseFloat(bc.paddingBottom)) * z);
+          return { x0, x1, top, bottom, base: r.bottom };
+        };
+        // A block's first line is its first lettered text's first line, and its last line its last one's last line,
+        // leaving out text in a box item or a plate inside it.
+        const inkBlock = (c) => {
+          const own = [], w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(); n; n = w.nextNode()) {
+            const pe = n.parentElement;
+            if (!LETTER.test(n.textContent) || !shown(pe) || getComputedStyle(pe).position === 'absolute' || skipText(n)) continue;
+            let held = false;
+            for (let e = pe; e && e !== c && !held; e = e.parentElement) held = plate(e) || e.matches(BOX);
+            if (!held) own.push(n);
+          }
+          if (!own.length) return;
+          const first = lineItem(own[0], c, false), last = lineItem(own[own.length - 1], c, true);
+          if (!first || !last) return;
+          const m = metrics(own[0]);
+          // Its text on one line after all (the second line is a box or a plate): a text like any other.
+          if (Math.abs(first.base - last.base) < 1) { inkText(own[0], c, m, '"' + m.text + '"', false); return; }
+          inkItems.push({ kind: 'block', what: '"' + m.text + '"', x0: Math.min(first.x0, last.x0), x1: Math.max(first.x1, last.x1), y0: first.top, y1: last.bottom,
+            top: first.top, bottom: last.bottom, el: c });
+        };
+        const inkBox = (e, kind) => { const r = e.getBoundingClientRect();
+          inkItems.push({ kind, what: name(e), x0: r.left, x1: r.right, y0: r.top, y1: r.bottom, el: e }); };
+        for (const c of fl.items) {
+          if (field(c)) continue;
           const n = firstText(c);
           if (n) {
-            if (lines(c) !== 1) continue;
+            const b = boxOf(n.parentElement, c);
+            if (lines(c) !== 1) {
+              // A block holding text on several lines (a name over its source, a title over its description) is one
+              // item, standing by its middle, unless that text sits in a box item or a plate.
+              let held = !!b;
+              for (let e = n.parentElement; e && !held; e = e === c ? null : e.parentElement) held = plate(e);
+              if (!held) inkBlock(c);
+              continue;
+            }
+            // A filled box item, or any plate round the text, stands where it is painted; an unfilled one by its text,
+            // judged as a box.
+            if (b && plate(b) && cssH(b) <= 30) { inkBox(b, 'plate'); plateText(n); continue; }
+            let pl = null;
+            for (let e = n.parentElement; e && !pl; e = e === c ? null : e.parentElement) if (plate(e) && cssH(e) <= 30) pl = e;
+            if (pl) { inkBox(pl, 'plate'); inkItems[inkItems.length - 1].lettered = true; plateText(n); continue; }
             const m = metrics(n);
-            if (m) texts.push(m);
+            inkText(n, c, m, '"' + m.text + '"', b);
           } else {
             // An empty value's dim placeholder is ::before text on the baseline, with no text node to measure.
             if ([c, ...c.querySelectorAll('*')].some((e) => !e.firstChild && getComputedStyle(e, '::before').content.startsWith('"'))) continue;
             const r = c.getBoundingClientRect();
-            if (r.height <= 30) marks.push({ c: (r.top + r.bottom) / 2, what: name(c) });
+            if (cssH(c) > 30) continue;
+            // A switch or a dot inside a bare box is the plate the eye reads.
+            const fill = plate(c) ? c : [...c.querySelectorAll('*')].find((d) => { const q = d.getBoundingClientRect();
+              return shown(d) && !d.closest('svg') && plate(d) && q.width * q.height >= 0.5 * r.width * r.height; });
+            if (fill) inkBox(fill, 'plate'); else inkBox(c, 'icon');
           }
         }
-        // A line whose main text sits in a field cannot be read: the field's text has no probe.
-        if (fl.items.some((c) => c.matches('input:not([type=range]), textarea'))) continue;
-        if (!texts.length || texts.length + marks.length < 2) continue;
-        rows++;
-        // One centre line: a text by the middle of its capitals (its ink when it has none), a box by its middle.
-        // The median item sets the line, so one stray item is named, not the rest of the row.
-        const items = [...texts.map((t) => ({ c: t.inkC === null ? t.capC : t.inkC, what: '"' + t.text + '"' })), ...marks.map((m) => ({ c: m.c, what: m.what }))];
-        const sorted = items.map((i) => i.c).sort((a, b) => a - b), line = sorted[Math.floor((sorted.length - 1) / 2)];
-        const off = items.filter((i) => Math.abs(i.c - line) > tol);
-        if (off.length) faults.push(name(row) + ': off the centre line of the row ' + off.map((i) => i.what + ' ' + (i.c - line).toFixed(2) + 'px').join(', '));
+        if (one) {
+          for (const n of texts0) { const m = metrics(n); inkText(n, null, m, '"' + m.text + '"', false); }
+          // A ::before/::after sits between the row's padding and its first (or after its last) item.
+          const rb = row.getBoundingClientRect(), z = rb.width / (row.offsetWidth || rb.width);
+          const cl = rb.left + (parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft)) * z, cr = rb.right - (parseFloat(cs.borderRightWidth) + parseFloat(cs.paddingRight)) * z;
+          const its = [...fl.items.map((c) => c.getBoundingClientRect()), ...texts0.map((n) => rangeRect(n)).filter(Boolean)];
+          for (const { p, cs: pc } of pseudos) {
+            const t = pseudoText(pc).trim();
+            if (LETTER.test(t)) continue;
+            const x0 = p === '::before' ? cl : its.length ? Math.max(...its.map((r) => r.right)) : cl;
+            const x1 = p === '::before' ? (its.length ? Math.min(...its.map((r) => r.left)) : cr) : cr;
+            if (x1 - x0 >= 1) inkItems.push({ kind: 'glyph', what: name(row) + p + (t ? ' "' + t + '"' : ''), x0, x1, y0: rb.top, y1: rb.bottom, el: row });
+          }
+        }
+        if (inkItems.some((i) => i.kind === 'text' || i.kind === 'block' || i.lettered) && inkItems.length >= 2) {
+          // An item another box covers (a sticky header, a scroll edge) shows nothing of its own to measure.
+          const own = inkItems.filter((i) => { const x = (i.x0 + i.x1) / 2, y = (i.y0 + i.y1) / 2, h = document.elementFromPoint(x, y);
+            for (let a = i.el.parentElement; a && a !== document.body; a = a.parentElement) {
+              if (/visible/.test(getComputedStyle(a).overflow)) continue;
+              const b = a.getBoundingClientRect(); if (x < b.left || x > b.right || y < b.top || y > b.bottom) return false;
+            }
+            return h && (i.el.contains(h) || h.contains(i.el)); });
+          if (own.length >= 2) {
+            rows++;
+            globalThis.__rigInkEls.push(own.map((i) => [i.el, i.el.getBoundingClientRect().top]));
+            ink.push({ row: name(row), k: globalThis.__rigInkEls.length - 1, items: own.map((i) => { const o = Object.assign({}, i); delete o.el; return o; }) });
+          }
+        }
       }
     }
   }
-  return { rows, faults };
+  faults.push(...mixed.values(), ...glyphs);
+  return { rows, faults, ink };
+};
+// The swept roots moved down by d CSS px on screen by layout (a top offset, never a transform), or put back with null.
+// Resolves with how far each root and each inked item moved, so a reading can be taken back to where it stood.
+globalThis.__rigInkShift = (d) => {
+  const roots = [];
+  for (const r of globalThis.__rigInkRoots) {
+    if (!r.__rigInk) r.__rigInk = { style: r.getAttribute('style'), top: r.getBoundingClientRect().top, tf: getComputedStyle(r).transform };
+    const o = r.__rigInk;
+    if (o.style === null) r.removeAttribute('style'); else r.setAttribute('style', o.style);
+    if (d === null) { delete r.__rigInk; continue; }
+    // Read before any write: a computed style is live.
+    const c = getComputedStyle(r), cs = { position: c.position, top: c.top, bottom: c.bottom, marginTop: c.marginTop };
+    const px = (v) => (v === 'auto' ? 0 : parseFloat(v));
+    const put = (k) => {
+      if (cs.position === 'static') { r.style.position = 'relative'; r.style.top = k + 'px'; }
+      else if (cs.position === 'relative') r.style.top = px(cs.top) + k + 'px';
+      else if (cs.position === 'sticky') r.style.marginTop = px(cs.marginTop) + k + 'px';
+      else { r.style.top = px(cs.top) + k + 'px'; if (cs.bottom !== 'auto') r.style.bottom = px(cs.bottom) - k + 'px'; }
+    };
+    // A zoom on the root or above scales its own offsets.
+    const z = r.currentCSSZoom || 1;
+    put(d / z);
+    let moved = r.getBoundingClientRect().top - o.top;
+    if (d && moved && Math.abs(moved - d) > 0.01) { r.setAttribute('style', o.style || ''); put(d / z * d / moved); moved = r.getBoundingClientRect().top - o.top; }
+    roots.push({ moved, transform: getComputedStyle(r).transform === o.tf });
+  }
+  return { roots, items: globalThis.__rigInkEls.map((els) => els.map(([e, t]) => e.getBoundingClientRect().top - t)) };
 };
 0`;
 
+// What the alignment rule calls a box item beyond the tags: the buttons, plates, switches and checkboxes of
+// design-system.md's atom registry, read from it so a control that joins the registry is a box here too.
+const BOX_ATOMS = /button|^Link$|^Well|^Tool$|^Number stepper$|^Thing|^Status word$|^Key$|^Switch$|^Checkbox$/;
+const BOX_ITEMS = ['button', '[role=button]', 'a', 'label:has(input, select, textarea, button)'].concat(
+  (require('fs').readFileSync(require('path').join(__dirname, '../../.claude/rules/design-system.md'), 'utf8').split('\n## Atoms')[1] || '')
+    .split('\n## ')[0].split('\n').map((l) => l.split('|')).filter((c) => c.length > 3 && BOX_ATOMS.test(c[1].trim()))
+    .flatMap((c) => [...c[2].matchAll(/`([^`]+)`/g)].map((m) => m[1]))).join(',');
+
 // Every visible row under `rootSel` (the whole page when omitted) measured against the alignment rule.
-// Resolves with { rows, faults }; a fault names the row and the offset.
-async function alignSweep(session, rootSel, tol) {
+// Resolves with { rows, faults, ink }: the faults that need no measuring (sizes too far apart, capless glyphs) and the rows as
+// items for inkSweep, which judges where they stand.
+async function alignSweep(session, rootSel) {
   await session.evaluate(ALIGN_SWEEP);
-  return session.evaluate('__rigAlignSweep(' + JSON.stringify(rootSel || null) + ', ' + (tol === undefined ? 0.5 : tol) + ')');
+  return session.evaluate('__rigAlignSweep(' + JSON.stringify(rootSel || null) + ', ' + JSON.stringify(BOX_ITEMS) + ')');
+}
+
+// The eye's own check: each row alignSweep found, shot at 4 device pixels per CSS pixel and measured on its ink
+// (ink.js) with the swept roots moved down by a layout offset at each fraction of OFFSETS, so the judgment is the same
+// wherever the window lands. A row whose mean lies within 1/N of a limit is read again at the fractions in between,
+// twice at most: it then tips only within 1/16px of the limit. Rows are shot in bands, so a tall pane never becomes one
+// huge image. Resolves with { faults, measured, unmoved }; `unmoved` names a root no layout offset moved, whose rows
+// were judged at the positions it did reach. Resolves with { relaid: true } when the entry's layout changed on its own
+// while it was read, and nothing it read counts.
+const OFFSETS = [0, 0.25, 0.5, 0.75];
+async function inkSweep(session, rows) {
+  const dpr = await session.evaluate('devicePixelRatio');
+  const scale = 4 / dpr, unmoved = [];
+  const span = (r) => { const xs = r.items.flatMap((i) => [i.x0, i.x1]), ys = r.items.flatMap((i) => [i.y0, i.y1]);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }; };
+  const [vw, vh] = await session.evaluate('[innerWidth, innerHeight]');
+  const bandsOf = (list) => {
+    const bands = [];
+    for (const x of list.map((r) => ({ r, s: span(r) })).sort((a, b) => a.s.y0 - b.s.y0)) {
+      const b = bands[bands.length - 1];
+      if (b && Math.max(b.y1, x.s.y1) - b.y0 <= 300) { b.rows.push(x.r); b.x0 = Math.min(b.x0, x.s.x0); b.x1 = Math.max(b.x1, x.s.x1); b.y1 = Math.max(b.y1, x.s.y1); }
+      else bands.push({ rows: [x.r], ...x.s });
+    }
+    return bands;
+  };
+  const readings = new Map(rows.map((r) => [r, []]));
+  // How far each inked item stands from where alignSweep found it.
+  const now = () => session.evaluate('__rigInkEls.map((els) => els.map(([e, t]) => e.getBoundingClientRect().top - t))');
+  const same = (a, b) => a.every((row, k) => row.every((v, i) => Math.abs(v - b[k][i]) <= 0.02));
+  const read = async (list, offsets) => {
+    const bands = bandsOf(list);
+    for (const d of offsets) {
+      const sh = await session.evaluate('__rigInkShift(' + d + ')');
+      // The entry laid itself out again (a late answer grew it, and its centring moved it): every item found before
+      // stands somewhere else, so the rows are found again (design-sweep) rather than read where they were.
+      if (!d && !same(sh.items, sh.items.map((r) => r.map(() => 0)))) return 'relaid';
+      if (d && !sh.roots.every((r) => Math.abs(r.moved - d) <= 0.02 && r.transform)) {
+        const back = await session.evaluate('__rigInkShift(0)');
+        if (!same(back.items, back.items.map((r) => r.map(() => 0)))) return 'relaid';
+        unmoved.push('moved ' + sh.roots.map((r) => r.moved.toFixed(3) + 'px' + (r.transform ? '' : ' with its transform changed')).join(', ') + ' for ' + d + 'px');
+        return false;
+      }
+      await session.evaluate('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(1))))');
+      const got = [];
+      for (const b of bands) {
+        // One px of room below for the offset.
+        const clip = { x: Math.max(0, Math.floor(b.x0) - 2), y: Math.max(0, Math.floor(b.y0) - 3) };
+        clip.width = Math.min(vw, Math.ceil(b.x1) + 2) - clip.x; clip.height = Math.min(vh, Math.ceil(b.y1) + 4) - clip.y;
+        if (clip.width < 1 || clip.height < 1) continue;
+        const shot = await session.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, clip: { ...clip, scale } }, 60000);
+        const img = ink.decodePng(Buffer.from(shot.data, 'base64'));
+        for (const row of b.rows) got.push([row, ink.measureRow(img, clip, row, sh.items[row.k])]);
+      }
+      if (!same(await now(), sh.items)) return 'relaid';
+      for (const [row, m] of got) readings.get(row).push(m);
+    }
+    return true;
+  };
+  const judge = (row) => (readings.get(row).length ? ink.judgeRow(row, readings.get(row)) : null);
+  // A dimmed item (a defeated row, a disabled control) is shot at full opacity: opacity moves nothing, and a plate
+  // dimmed below the judge's fill step would be read by its letters instead of its edges.
+  await session.evaluate(`(() => { for (const e of document.querySelectorAll('*')) { const o = +getComputedStyle(e).opacity;
+    if (o > 0.05 && o < 1) { e.dataset.rigInkOpacity = e.style.opacity; e.style.opacity = '1'; } } return 1; })()`);
+  try {
+    let list = rows, offsets = OFFSETS;
+    for (let pass = 0; pass < 3 && list.length; pass++) {
+      const done = await read(list, offsets);
+      if (done === 'relaid') return { relaid: true };
+      if (!done) break;
+      // The fractions halfway between the n read so far.
+      const n = offsets.length * 2 ** pass;
+      offsets = Array.from({ length: n }, (_, i) => (2 * i + 1) / (2 * n));
+      list = list.filter((r) => { const j = judge(r); return j && j.near; });
+    }
+  } finally {
+    await session.evaluate('__rigInkShift(null), 1');
+    await session.evaluate(`(() => { for (const e of document.querySelectorAll('[data-rig-ink-opacity]')) { e.style.opacity = e.dataset.rigInkOpacity; delete e.dataset.rigInkOpacity; } return 1; })()`);
+  }
+  const faults = [], measured = [];
+  for (const row of rows) {
+    const m = judge(row);
+    if (!m) continue;
+    measured.push(m);
+    if (m.fault) faults.push(m.fault);
+  }
+  return { faults, measured, unmoved };
 }
 
 // The hover rule: a plate inside something the pointer lights stands off the surface it lies on at least as well
@@ -318,6 +645,21 @@ const SURFACE_SWEEP = `(() => {
         for (const n of nodes) { rg.selectNodeContents(n); const r = rg.getBoundingClientRect();
           if (r.height && r.bottom > bottom + 0.5) { out.add(name(e) + ' clips the tails of its letters by ' + (r.bottom - bottom).toFixed(1) + 'px'); break; } } });
       return [...out]; },
+    // A vertical divider, 1px of the line token, runs its container's full height: the container's padding is
+    // cancelled with negative margins (design-system.md, "Wells and dividers"). A line drawn as a border is not read.
+    divider(rootSel) { const root = rootSel ? document.querySelector(rootSel) : document.body; if (!root) return [];
+      const probe = document.createElement('i'); probe.style.background = 'var(--g-line)'; root.appendChild(probe);
+      const line = getComputedStyle(probe).backgroundColor; probe.remove();
+      const out = [];
+      [root, ...root.querySelectorAll('*')].forEach(e => { const p = e.parentElement;
+        if (!p || !seen(e) || e.closest('svg') || getComputedStyle(e).backgroundColor !== line) return;
+        const z = zoomOf(e), b = e.getBoundingClientRect();
+        if (Math.abs(b.width / z - 1) > 0.05 || b.height / z < 6) return;
+        const pc = getComputedStyle(p), pb = p.getBoundingClientRect(), pz = zoomOf(p);
+        const top = b.top - (pb.top + parseFloat(pc.borderTopWidth) * pz), bottom = pb.bottom - parseFloat(pc.borderBottomWidth) * pz - b.bottom;
+        if (top > 0.5 || bottom > 0.5) out.push(name(e) + ' stops ' + (top / pz).toFixed(1) + 'px short of the top of ' + name(p) + ' and ' + (bottom / pz).toFixed(1) +
+          'px short of its bottom; a divider runs its container\\'s full height'); });
+      return out; },
     snap(rootSel) { const root = document.querySelector(rootSel); if (!root) return null; const m = new Map();
       const walk = (e, path) => { if (seen(e)) { const b = e.getBoundingClientRect(); m.set(path, { n: name(e), tag: e.tagName, x: b.x, y: b.y, el: e }); }
         [...e.children].forEach((c, i) => walk(c, path + '/' + i)); };
@@ -337,7 +679,7 @@ async function surfaceSweep(session, rootSel) {
   await session.evaluate(SURFACE_SWEEP);
   const sel = JSON.stringify(rootSel || null);
   return (await session.evaluate('__rigSurface.native(' + sel + ')')).concat(await session.evaluate('__rigSurface.padding(' + sel + ')'),
-    await session.evaluate('__rigSurface.clip(' + sel + ')'));
+    await session.evaluate('__rigSurface.clip(' + sel + ')'), await session.evaluate('__rigSurface.divider(' + sel + ')'));
 }
 
 // The boxes under `rootSel` that move when `toggle` (page JS) runs; `except` names the box the toggle changes.
@@ -499,4 +841,4 @@ function wav(seconds, tone) {
   return buf;
 }
 
-module.exports = { DM_MAP, wav, alignSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };
+module.exports = { DM_MAP, wav, alignSweep, inkSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };

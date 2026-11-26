@@ -15,6 +15,7 @@ function worldSceneSet(id, patch) {
   const entry = allScenes.find(s => s.id === id);
   if (entry) Object.assign(entry, fields);
   if (currentScene && currentScene.id === id) Object.assign(currentScene, fields);
+  if (sceneOpening && sceneOpening.id === id) Object.assign(sceneOpening, fields);
   const column = panesActive ? paneColumnOf(id) : null;
   if (column) sendToPane({ type: 'pane-scene-place', ...fields }, column);
   return sceneStore.updateScene(id, rec => {
@@ -65,7 +66,13 @@ function renameGroup(from, to) {
 
 // ⚠ A NAME ANOTHER PLACE WEARS IS REFUSED: a merge would drop one outline and leave its scenes on bare ground.
 function renameGroupAsking(from, next) {
-  if (!worldPlaceByName(next) && !knownGroupNames().some(n => n !== from && n === next)) { renameGroup(from, next); return; }
+  if (!worldPlaceByName(next) && !knownGroupNames().some(n => n !== from && n === next)) {
+    // ⚠ ITS OWN STEP, taken after the notes settle: else Ctrl+Z also undoes the edit before and drops the notes typed since.
+    notesPanelSettle();
+    worldUndoPush();
+    renameGroup(from, next);
+    return;
+  }
   messageDialog({ title: 'Nothing changed', message: t('There is already a group called “{name}”. Pick another name.', { name: next }) });
 }
 

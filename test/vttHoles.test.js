@@ -1,7 +1,8 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { vttDerivePlan, vttSignedArea } = require('../src/rooms/vttPlan.js');
-const { vttRoomHoles } = require('../src/rooms/vttHoles.js');
+const { vttRoomHoles, vttRoomRecords } = require('../src/rooms/vttHoles.js');
+const { planDoorPlacements, doorPoint } = require('../src/shapes/doorGeometry.js');
 
 const P = (x, y) => ({ x, y });
 const area = ring => Math.abs(vttSignedArea(ring));
@@ -37,5 +38,19 @@ describe('vttRoomHoles', () => {
   it('skips an outline that sits in no room, and one bigger than the room around it', () => {
     const sq = (a, b) => [P(a, a), P(b, a), P(b, b), P(a, b)];
     assert.deepEqual(vttRoomHoles([sq(10, 20)], [sq(0, 100), sq(30, 40)]), [[]]);
+  });
+});
+
+describe('vttRoomRecords', () => {
+  it('places the door into a vault standing inside a hall', () => {
+    const d = vttDerivePlan(nested());
+    const placed = planDoorPlacements(vttRoomRecords(d.rooms, d.boundaries), d.portals, 100, 0, 0, true);
+    const recs = vttRoomRecords(d.rooms, d.boundaries);
+    // The vault's doorway is the portal at (10, 8) squares, 100 px a square.
+    const atVault = placed.some(p => {
+      const c = doorPoint(recs[p.roomIndex], p.door);
+      return c && Math.hypot(c.x - 1000, c.y - 800) < 60;
+    });
+    assert.ok(atVault, 'the vault doorway got no door: ' + JSON.stringify(placed));
   });
 });

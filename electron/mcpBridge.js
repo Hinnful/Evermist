@@ -12,15 +12,14 @@ const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const { mcpManifest } = require('./mcpConfig.js');
-const { TOOLS } = require('./mcpShim.js');
+const { TOOLS, MAX_CALL_BYTES, tooLarge } = require('./mcpShim.js');
 
 const REPLY_MS = 20000;
 const SLOW_MS = 300000;   // a PDF book is read, a folder of maps imported
 // ⚠ A TOOL THAT READS FILES BELONGS HERE. Past REPLY_MS Claude is told it failed while the work goes on, and its retry
 // does it twice.
 const SLOW = new Set(['import_monsters', 'create_scene', 'copy_scene', 'shrink_map', 'set_backdrop', 'view_scene', 'load_module_text', 'import_maps_zip',
-  'load_floor_plan', 'add_picture', 'add_music', 'add_music_from_youtube']);
-const MAX_BODY = 1024 * 1024;
+  'load_floor_plan', 'add_picture', 'add_music', 'add_music_from_youtube', 'undo_last_change']);
 const pending = new Map();
 let getDmWin = () => null;
 let sendTo = () => {};
@@ -84,12 +83,14 @@ function serve(token) {
       req.resume();
       return;
     }
-    let body = '';
-    req.setEncoding('utf8');
-    req.on('data', c => { body += c; if (body.length > MAX_BODY) req.destroy(); });
+    // ⚠ A CALL TOO LARGE IS READ TO ITS END AND ANSWERED 413. A dropped socket reads to the shim as a closed app.
+    const chunks = [];
+    let bytes = 0;
+    req.on('data', c => { bytes += c.length; if (bytes <= MAX_CALL_BYTES) chunks.push(c); });
     req.on('end', async () => {
+      if (bytes > MAX_CALL_BYTES) { reply(413, { text: tooLarge(bytes), isError: true }); return; }
       let call;
-      try { call = JSON.parse(body); } catch { reply(400, { text: 'Unreadable request.', isError: true }); return; }
+      try { call = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { reply(400, { text: 'Unreadable request.', isError: true }); return; }
       lastCall = Date.now();
       if (state.off) { reply(200, { text: OFF_TEXT, isError: true }); return; }
       setState({ seen: true });

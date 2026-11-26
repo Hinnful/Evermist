@@ -119,7 +119,7 @@ function drawEffectGridGlow(ctx, vp) {
   }
   // Every light as one union, as lights.js draws their glow; lightPolys is what both screens hold.
   if (typeof lightPolys !== 'undefined' && lightPolys.length) {
-    items.push({ key: lightPolys, color: LIGHT_RGB,
+    items.push({ key: lightPolys, color: LIGHT_RGB, reveal: tvRevealCanvas(),
       shapes: lightPolys.map(rings => rings.map(flat => {
         const pts = [];
         for (let i = 0; i < flat.length; i += 2) pts.push({ x: flat[i], y: flat[i + 1] });
@@ -230,6 +230,8 @@ function _drawEdgeSquares(ctx, vp, it) {
   const clip = _glowLayer(1, W, H), c = clip.getContext('2d');
   _fillShapes(c, it.shapes, v => ({ x: (v.x - mx1) * scale, y: (v.y - my1) * scale }));
   l.drawImage(clip, 0, 0);
+  // A light's cells stop where its glow does on the TV: half fog is see-through, and they would give the room away.
+  if (it.reveal) l.drawImage(it.reveal, -mx1 * scale, -my1 * scale, mapWidth * scale, mapHeight * scale);
   ctx.save();
   ctx.globalAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.7;
   ctx.drawImage(lines, 0, 0, W, H, ox, oy, W, H);
@@ -254,6 +256,7 @@ function renderPlayerGrid(vp) {
 // the scene, so a change has to reach the Player AND the store, and scheduleAutoSync debounces both.
 function commitGridChange() {
   if (paneForward('grid', { config: captureGridConfig() })) return;
+  if (isPane && parent !== window) parent.postMessage({ type: 'pane-grid-changed', pane: paneId }, '*');
   noteSettingsChange();
   gridDirty = true;
   // A door is one cell wide, so the cell changing resizes every door already placed.

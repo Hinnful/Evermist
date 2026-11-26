@@ -60,10 +60,9 @@ async function _mcpSceneRecord(id) {
 const MCP_OLD_TOOLS = 'This Evermist has a newer set of tools than the Claude extension that sent this call. Ask the DM to press Connect to Claude again in Settings, then try again.';
 
 // Whether the TV shows this scene now. In Manual a map the DM opens waits for Send, and the TV keeps the last one sent.
+// ⚠ With two maps this window holds no Player: each column answers for its half.
 function _mcpOnTv(id) {
-  const shown = tvShowsOtherMap() ? tvSceneId === id : !!(currentScene && currentScene.id === id);
-  return mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,
-    isOpen: shown, inColumn: panesActive && !!paneColumnOf(id) });
+  return panesActive ? !!paneTvColumn(id) : tvShownSceneId() === id;
 }
 
 // A refusal when the TV shows this scene, else null. Fog, fog colour, the map and a delete all alter the TV's picture.

@@ -300,6 +300,10 @@ const TOOLS = [
 ];
 
 const START_MS = 60000;
+// ⚠ A CALL PAST THIS IS REFUSED AT BOTH ENDS, here and by the bridge's 413, never sent on as a closed app: that
+// started a hidden Evermist and retried for a minute.
+const MAX_CALL_BYTES = 1024 * 1024;
+const tooLarge = bytes => 'The call is too large: it is ' + (Math.round(bytes / 10485.76) / 100) + ' MB, and Evermist takes at most 1 MB in one call. Send the text in smaller parts, over several calls.';
 
 function readAddress() {
   try { return JSON.parse(fs.readFileSync(process.env.EVERMIST_MCP || '', 'utf8')); } catch { return null; }
@@ -309,9 +313,11 @@ function postOnce(tool, args) {
   const at = readAddress();
   if (!at || !at.port || !at.token) return Promise.resolve({ closed: true, text: CLOSED, isError: true });
   const body = JSON.stringify({ tool, args });
+  const bytes = Buffer.byteLength(body);
+  if (bytes > MAX_CALL_BYTES) return Promise.resolve({ text: tooLarge(bytes), isError: true });
   return new Promise(resolve => {
     const req = http.request({ host: '127.0.0.1', port: at.port, path: '/call', method: 'POST', timeout: 330000,
-      headers: { 'content-type': 'application/json', 'x-evermist-token': at.token, 'content-length': Buffer.byteLength(body) } }, res => {
+      headers: { 'content-type': 'application/json', 'x-evermist-token': at.token, 'content-length': bytes } }, res => {
       let out = '';
       res.setEncoding('utf8');
       res.on('data', c => { out += c; });
@@ -457,4 +463,4 @@ function serveStdio() {
 // is not the main module there, and a server that waits for that never answers. Only Evermist's main
 // process requires it for the tool list.
 if (process.type !== 'browser') serveStdio();
-module.exports = { TOOLS, sessionEnv, ownScope };
+module.exports = { TOOLS, MAX_CALL_BYTES, tooLarge, sessionEnv, ownScope };

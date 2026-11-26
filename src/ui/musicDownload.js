@@ -222,7 +222,7 @@ function _muRenderActionBar() {
   }
   const end = _muEl('mu-ltb-end');
   if (end && _muLookup) {
-    end.textContent = [_muLookup.title, t.plural(_muLookup.entries.length, '{n} track', '{n} tracks')].filter(Boolean).join(' · ');
+    end.textContent = [_muLookup.title, t.plural(_muLookup.entries.length, '{n} track', '{n} tracks')].filter(Boolean).join(', ');
   }
 
   const go = _muEl('btn-mu-get');
@@ -232,7 +232,7 @@ function _muRenderActionBar() {
     let bytes = 0;
     if (_muLookup) for (const e of _muLookup.entries) if (_muPicked.has(e.id)) bytes += e.size || 0;
     const size = formatBytes(bytes);
-    label.textContent = t('Download {n}', { n: n }) + (size ? ' · ' + size : '');
+    label.textContent = t('Download {n}', { n: n }) + (size ? ', ' + size : '');
   }
   _muShowFoot();
 }
@@ -278,7 +278,7 @@ async function _muQueueStep() {
     _muPushProgress();
     const failed = _muLookup ? _muLookup.entries.filter(e => e.failed) : [];
     _muSetStatus(failed.length
-      ? t.plural(failed.length, '{n} track failed', '{n} tracks failed') + ' · ' + t('hover a row for the reason')
+      ? t.plural(failed.length, '{n} track failed', '{n} tracks failed') + ', ' + t('hover a row for the reason')
       : 'Done.', failed.length > 0);
     _muRefreshTracks();
     _muRenderLookup();

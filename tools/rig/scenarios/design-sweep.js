@@ -5,7 +5,16 @@
 //
 // Criteria:
 // - Every entry opens; one that does not is named and fails the run.
-// - Everything in a row stands on one centre line, within 0.5px: a text by its capitals, a glyph by its ink, a box by its middle.
+// - A row's bare texts stay within 1.5x of each other in size (a button's or a plate's text is not bare), and no glyph
+//   without capitals (✓ › + ×, in text or in ::before/::after) is written as text beside text.
+// - Every row, shot at 4 device pixels per CSS pixel with the entry moved down by 0, 0.25, 0.5 and 0.75px, stands as
+//   the rule says, on the mean of the four (the same wherever the window lands): its texts on one baseline whatever
+//   their sizes, within one device pixel; a box, an icon, a glyph or an unfilled button's text within 0.25px of the
+//   capitals of the row's main (largest) text, and within 1.5px at any one position; in a row with no text, its boxes
+//   within 0.25px of each other as laid out, or by their painted edges. A row's item that holds text on
+//   several lines and is no box (a heading over its source, a label column) stands in the row as laid out, by the
+//   middle of its first line box's top and its last one's bottom.
+// - A vertical divider (1px of the line token) runs its container's full height.
 // - A plate inside anything the pointer lights never merges with what it lies on, and stands off it under the
 //   pointer at least as well as at rest.
 // - No control is the browser's own, and text in a filled control keeps 6px from its sides.
@@ -186,7 +195,8 @@ module.exports = async function (rig) {
     await dm.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: false });
   }
   await dm.evaluate('(async () => { ' + SETUP + ' })()');
-  const all = new Map(), unchecked = [], menus = {}, times = [];
+  const all = new Map(), unchecked = [], menus = {}, times = [], inkRows = [];
+  let inkMs = 0;
   const fault = (where, f) => { if (!all.has(f)) all.set(f, where); };
   const run = js => dm.evaluate('(async () => { ' + js + ' })()');
   const still = () => lib.settle(dm, "document.getAnimations().every(a => a.playState !== 'running' || a.effect.getComputedTiming().iterations === Infinity)", 3000);
@@ -260,12 +270,24 @@ module.exports = async function (rig) {
         await lib.settle(dm, 'false', 250);
         await still();
         await unlisted(where);
-        const { rows, faults } = await lib.alignSweep(dm, e.root);
+        let { rows, faults, ink } = await lib.alignSweep(dm, e.root);
+        const t0 = Date.now();
+        let inked = await lib.inkSweep(dm, ink);
+        // An entry a late answer grew (a footer shown once a check returns) is found again where it now stands.
+        for (let k = 0; inked.relaid && k < 2; k++) {
+          await still();
+          ({ rows, faults, ink } = await lib.alignSweep(dm, e.root));
+          inked = await lib.inkSweep(dm, ink);
+        }
+        inkMs += Date.now() - t0;
+        if (inked.relaid) { unchecked.push(where + ': its layout kept changing while its rows were read'); inked = { faults: [], measured: [], unmoved: [] }; }
+        inkRows.push(...inked.measured.map(m => Object.assign({ where }, m)));
+        inked.unmoved.forEach(u => unchecked.push(where + ': no layout offset moved its root (' + u + '), so its rows were judged at one position'));
         const hover = await lib.hoverSweep(dm, e.root);
         const surface = await lib.surfaceSweep(dm, e.root);
-        rig.note(where + ': ' + rows + ' rows, ' + faults.length + ' off; ' + hover.hosts + ' lit, ' + hover.faults.length +
-          ' swallowed; ' + surface.length + ' controls off');
-        faults.concat(hover.faults, surface).forEach(f => fault(where, f));
+        rig.note(where + ': ' + rows + ' rows, ' + faults.length + ' mixed or capless; ' + inked.measured.length + ' inked, ' + inked.faults.length + ' off; ' +
+          hover.hosts + ' lit, ' + hover.faults.length + ' swallowed; ' + surface.length + ' controls off');
+        faults.concat(inked.faults, hover.faults, surface).forEach(f => fault(where, f));
         if (shots) {
           const r = await dm.evaluate(`(() => { const b = document.querySelector(${JSON.stringify(e.root)}).getBoundingClientRect();
             return { x: Math.max(0, b.x - 8), y: Math.max(0, b.y - 8), width: Math.min(innerWidth, b.width + 16), height: Math.min(innerHeight - Math.max(0, b.y - 8), b.height + 16 + ${e.below || 0}) }; })()`);
@@ -293,10 +315,12 @@ module.exports = async function (rig) {
   const timeRows = times.map(t => t.id.padEnd(24) + t.kind.padEnd(8) + t.by.padEnd(7) + 'seen ' + String(t.seen).padStart(4) + 'ms (by ' + Math.round(t.seenBy) +
     ')  rest ' + String(t.rest).padStart(4) + 'ms (by ' + Math.round(t.restBy) + ')');
   rig.note('times from the press:\n    ' + timeRows.join('\n    '));
+  rig.note('ink: ' + inkRows.length + ' rows measured in ' + Math.round(inkMs / 1000) + 's');
   if (shots) {
     fs.writeFileSync(path.join(shots, 'times.txt'), timeRows.join('\n') + '\n');
     fs.writeFileSync(path.join(shots, 'faults.txt'), list.join('\n') + '\n');
     fs.writeFileSync(path.join(shots, 'unchecked.txt'), unchecked.join('\n') + '\n');
+    fs.writeFileSync(path.join(shots, 'ink.json'), JSON.stringify(inkRows, null, 1));
   }
   rig.note('not checked: ' + unchecked.length + (unchecked.length ? '\n    ' + unchecked.join('\n    ') : ''));
   rig.check(unchecked.length === 0, unchecked.length + ' inventory entries could not be checked; the note above names each');

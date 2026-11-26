@@ -28,6 +28,7 @@ function createFakeDrive() {
     quotaFull: false,           // creating a file fails with storageQuotaExceeded
     quotaLimit: 15 * 1024 * 1024 * 1024,
     quotaUsed: null,            // a number stands in for the bytes the files hold, so a scenario sets how full it reads
+    refuseRefresh: 0,           // a status the refresh grant answers instead of a token: 400 is a revoked sign-in, 5xx Google down
     cutNext: null,              // { bytes, down }: the next upload PUT dies after this many bytes; `down` keeps the Drive
                                 // unreachable afterwards, as a lid closed mid-upload
     stats: { uploads: [], requests: [], consents: 0, refreshes: 0, unauthorized: 0, deletes: [], sessions: [], puts: [] },
@@ -104,6 +105,9 @@ function createFakeDrive() {
         const hash = crypto.createHash('sha256').update(form.get('code_verifier') || '').digest('base64url');
         if (!c || c.challenge !== hash || c.redirectUri !== form.get('redirect_uri')) return send(res, 400, { error: 'invalid_grant' });
       }
+      if (form.get('grant_type') === 'refresh_token' && drive.refuseRefresh) {
+        return send(res, drive.refuseRefresh, { error: drive.refuseRefresh === 400 ? 'invalid_grant' : 'backend_error' });
+      }
       const at = 'at-' + (nextToken++);
       valid.add(at);
       if (form.get('grant_type') === 'refresh_token') drive.stats.refreshes++;
@@ -159,6 +163,7 @@ function createFakeDrive() {
       if (range && range[3] !== '*') s.total = parseInt(range[3], 10);
       // A status query: how much does the server hold?
       if (range && range[1] === undefined) {
+        if (s.done) { sessions.delete(m[1]); return send(res, 200, meta(s.done)); }
         if (s.total >= 0 && s.received === s.total) return finishUpload(res, m[1], s);
         return send(res, 308, '', s.received ? { Range: 'bytes=0-' + (s.received - 1) } : {});
       }
@@ -173,7 +178,10 @@ function createFakeDrive() {
           if (got >= cut) return;
           const take = c.subarray(0, cut - got);
           s.chunks.push(take); s.received += take.length; got += take.length;
-          if (got >= cut) { req.socket.destroy(); if (lid) drive.down(); }
+          if (got < cut) return;
+          // Every byte in: as on Drive, the file exists although its answer is lost with the connection.
+          if (s.total >= 0 && s.received === s.total) { s.done = create(s.meta, Buffer.concat(s.chunks)); drive.stats.uploads.push({ name: s.done.name, size: s.received }); }
+          req.socket.destroy(); if (lid) drive.down();
         });
         return;
       }
@@ -254,6 +262,9 @@ function createFakeDrive() {
     files() { return Array.from(files.values()).map(meta); },
     read(id) { const f = files.get(id); return f ? f.data : null; },
     usage,
+    // Another Google account signed in at the same address: its hidden folder is empty, and the old account's files,
+    // folder ids and upload sessions are out of its reach.
+    newAccount() { files.clear(); sessions.clear(); },
     // Seed a file as if another computer had left it.
     put(metaIn, data) { return meta(create(metaIn, data)); },
   });

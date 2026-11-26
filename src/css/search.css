@@ -31,18 +31,20 @@
   .sr-row.on .sr-wh, .sr-row.on .sr-sn { color: var(--g-body); }
   .sr-thumb { border-radius: 4px; background: var(--g-raised) center / cover; }
   .sr-tx { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-  /* The first line's words trim to their capitals so the icon centres on them; the 11px ones lift onto the name's baseline. */
+  /* The first line's words share the name's size and trim to their capitals, so every item centres on one line. */
   .sr-l1 { display: flex; gap: 6px; align-items: center; min-width: 0; }
   .sr-nm { flex: none; max-width: 70%; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; text-box: trim-both cap alphabetic; }
-  .sr-wh, .sr-sn { color: var(--g-dim); font-size: 11px; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; }
-  .sr-wh, .sr-act, .sr-live > span { text-box: trim-both cap alphabetic; }
-  .sr-wh, .sr-act, .sr-live { translate: 0 calc(1cap / 22); }
+  .sr-sn { color: var(--g-dim); font-size: 11px; white-space: nowrap; overflow-x: clip; text-overflow: ellipsis; }
+  .sr-wh { min-width: 0; display: flex; align-items: center; gap: 4px; color: var(--g-dim); white-space: nowrap; }
+  .sr-wh > span { min-width: 0; overflow-x: clip; text-overflow: ellipsis; }
+  .sr-wh > svg { flex: none; display: block; }
+  .sr-wh > span, .sr-act, .sr-live > span { text-box: trim-both cap alphabetic; }
   /* The match is bold in its own line's colour, in a name and in a note excerpt alike. */
   .sr-row b { font-weight: 700; }
-  .sr-act { margin-left: auto; flex: none; display: none; font-size: 11px; color: var(--b-icon); white-space: nowrap; }
+  .sr-act { margin-left: auto; flex: none; display: none; color: var(--b-icon); white-space: nowrap; }
   .sr-row.on .sr-act { display: block; }
   /* The map on the TV: the minimap pill's pulsing dot and its word. */
-  .sr-live { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 4px; color: var(--b-icon); font: 600 11px/1 system-ui, -apple-system, sans-serif; }
+  .sr-live { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 4px; color: var(--b-icon); font: 600 12px/1 system-ui, -apple-system, sans-serif; }
   .sr-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--b-icon); animation: tvPulse 2.6s ease-in-out infinite; }
 
   .sr-msg { padding: 20px 16px; text-align: center; color: var(--g-dim); font-size: 12px; }

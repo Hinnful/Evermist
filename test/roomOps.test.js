@@ -264,6 +264,16 @@ describe('roomOps — cut', () => {
     for (const p of bare.pieces) assert.deepEqual(ph(p), []);
   });
 
+  it('never builds a piece past the wall from a path started inside the room', () => {
+    // Ctrl+click inside, out through the right wall, back in: the stretch between the crossings is outside.
+    const out = cutRing(rect(0, 0, 100, 100),
+                        [{ x: 50, y: 50 }, { x: 150, y: 50 }, { x: 150, y: 80 }, { x: 50, y: 80 }], 1);
+    for (const p of out.pieces || []) {
+      assert.ok(pv(p).every(v => v.x <= 100 + 1e-9), 'a piece reaches past the wall: ' + JSON.stringify(pv(p)));
+    }
+    if (out.pieces) assert.equal(Math.round(out.pieces.reduce((s, p) => s + ringArea(pv(p)), 0)), 10000);
+  });
+
   it('refuses a path that crosses the outline four times', () => {
     // Down through the room, out of the bottom, back in, and out of the top again.
     const out = cutRing(rect(0, 0, 100, 100),

@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
-const { mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpCombatUndoImport } = require('../src/mcp/mcpCombatPlan.js');
+const { mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpCombatUndoImport, mcpCombatChangedSince } = require('../src/mcp/mcpCombatPlan.js');
 
 const rows = () => [
   { id: 1, init: '', name: 'Goblin', hp: '', ac: '15', conds: [], side: 'enemy', sb: { name: 'Goblin', ac: '15 (leather)' } },
@@ -170,5 +170,31 @@ describe('mcpCombatUndoImport', () => {
     const before = { rows: [], blocks: {}, nextId: 1, openId: 'f0', fights: [{ id: 'f0', name: 'A' }, { id: 'f9', name: 'B', rows: [] }] };
     const now = { rows: [], blocks: {}, nextId: 1, openId: 'f3', fights: [{ id: 'f0', name: 'A', rows: [] }, { id: 'f9', name: 'B', rows: [] }, { id: 'f3', name: 'C' }] };
     assert.match(mcpCombatUndoImport(now, before).error, /open at the table/);
+  });
+});
+
+describe('mcpCombatChangedSince', () => {
+  const snap = { rows: [{ id: 1 }], blocks: { b1: { id: 'b1' } }, nextId: 2, openId: 'f0', fights: [{ id: 'f0', name: 'Fight' }] };
+  const left = () => ({ rows: [{ id: 1 }], blocks: { b1: { id: 'b1' }, b2: { id: 'b2' } }, nextId: 3, openId: 'f0',
+    fights: [{ id: 'f0', name: 'Fight' }, { id: 'f2', name: 'Ambush', rows: [{ id: 2 }] }] });
+  it('finds nothing when the table is as the import left it', () => {
+    assert.deepEqual(mcpCombatChangedSince(left(), left(), snap), []);
+  });
+  it('names a fight the DM made since', () => {
+    const now = left(); now.fights.push({ id: 'f3', name: 'Mine', rows: [] });
+    assert.deepEqual(mcpCombatChangedSince(now, left(), snap), ['the fights']);
+  });
+  it('names a monster the DM added or changed since', () => {
+    const now = left(); now.blocks.b3 = { id: 'b3' };
+    assert.deepEqual(mcpCombatChangedSince(now, left(), snap), ['the bestiary']);
+    const typed = left(); typed.blocks.b1.notes = 'mine';
+    assert.deepEqual(mcpCombatChangedSince(typed, left(), snap), ['the bestiary']);
+  });
+  it('ignores the open fight\'s rows when the undo leaves them, and names them when it would put them back', () => {
+    const now = left(); now.rows = [{ id: 1, hp: '-5' }];
+    assert.deepEqual(mcpCombatChangedSince(now, left(), snap), []);
+    const opened = { ...left(), openId: 'f2', rows: [{ id: 2 }] }, played = { ...opened, rows: [{ id: 2, hp: '-3' }] };
+    assert.deepEqual(mcpCombatChangedSince(played, opened, snap), ['the fight open at the table']);
+    assert.deepEqual(mcpCombatChangedSince(opened, opened, snap), []);
   });
 });

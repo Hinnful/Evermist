@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 314."
+description: "Open work only. 13 open items; IDs run to 317."
 metadata: 
   node_type: memory
   type: project
@@ -167,6 +167,24 @@ Filed 2026-11-24, found in 310. In Music, Sounds and Pictures the row the DM dra
 rig: its box reads about 2.5 times too far down (`.lib-ghost`, a zoomed fixed element), the same on 5.20.1. 310 no longer
 uses that box for the drop's glide. Whether the DM sees the ghost under the pointer on their own screen is unconfirmed:
 check there first, then fix or close.
+**Bug · DM only**
+
+### 315. The search's TV dot never shows in two-map mode
+Filed 2026-11-26, found in the 5.21.1 fix pass. The search marks a map the TV shows with a dot and "Live". In two-map
+mode the DM window holds no Player of its own, so the search never finds a map on the TV and the dot never shows.
+Small; the columns already report which map each half of the TV shows (`paneTvColumn`, `tvShownSceneId`).
+**Bug · DM only**
+
+### 316. The calibration hint in the left column sits under the minimap card
+Filed 2026-11-26, found in the 5.21.1 fix pass. In two-map mode, arming calibration in the left column puts the HUD's
+hint text partly under the minimap card; Done is clear and clickable. Moving the HUD sideways is a placement call for
+the DM. Small.
+**Look · DM only**
+
+### 317. The Bestiary window may cover the fight list
+Filed 2026-11-26, seen once in the rig at 1008x681 and not confirmed: with the Bestiary window open, a click on the
+fight table's fight list did not land, as if the window covered it. Check at a small app window first, then fix or
+close.
 **Bug · DM only**
 
 ---

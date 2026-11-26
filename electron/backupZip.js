@@ -48,12 +48,15 @@ function drained(job) {
 
 function openExport(destPath) {
   const job = { appended: 0, written: 0, metas: [], missingVideos: [], opened: false, failed: null, cancelled: false, closed: false, wake: null };
-  const out = fs.createWriteStream(destPath);
+  // Written beside the DM's name and moved onto it only once whole, so a failed or stopped export leaves an earlier
+  // file of that name as it was.
+  const part = destPath + '.part';
+  const out = fs.createWriteStream(part);
   const archive = archiver('zip', { zlib: { level: 6 } });
   job.archive = archive;
-  // A failed or cancelled export leaves no half-written zip under the DM's name, but never deletes a file it could not open.
   job.ended = new Promise(resolve => out.on('close', resolve)).then(async () => {
-    if ((job.failed || job.cancelled) && job.opened) await fs.promises.unlink(destPath).catch(() => {});
+    if (job.failed || job.cancelled) { if (job.opened) await fs.promises.unlink(part).catch(() => {}); }
+    else await fs.promises.rename(part, destPath).catch(err => { job.failed = err; return fs.promises.unlink(part).catch(() => {}); });
     job.closed = true;
     wake(job);
   });
@@ -99,6 +102,7 @@ ipcMain.handle('backup-zip-add-scene', async (event, s, done, total) => {
   if (s.mapType === 'video') {
     // A scene whose file has gone leaves the zip with no map, and only the renderer can say so.
     if (videoFile) appendTo(job, videoFile, `${base}/map${s.mapExt}`);
+    else if (s.mapBuffer) appendTo(job, s.mapBuffer, `${base}/map${s.mapExt}`);
     else job.missingVideos.push((s.metadata && s.metadata.name) || s.id);
   } else if (s.mapBuffer) {
     appendTo(job, s.mapBuffer, `${base}/map${s.mapExt}`);
@@ -115,7 +119,7 @@ ipcMain.handle('backup-zip-add-scene', async (event, s, done, total) => {
 });
 
 // rest is null to abandon the export, or the campaign-level entries that land at the zip root beside manifest.json:
-// moduleText, combat and campaign as JSON text, worldBg as { meta, buffer } or null, gallery as { meta, files: [{ name, buffer }] } or null.
+// moduleText, combat and campaign as JSON text, worldBg as { meta, buffer } or null, gallery as { meta, files: [{ name, buffer }], layout? } or null.
 ipcMain.handle('backup-zip-finish', async (_event, rest) => {
   const job = exp;
   if (!job) return { cancelled: true };
@@ -134,6 +138,8 @@ ipcMain.handle('backup-zip-finish', async (_event, rest) => {
       }
       if (gallery && gallery.meta) {
         archive.append(gallery.meta, { name: 'gallery.json' });
+        // Apart from gallery.json, whose list the previous release reads: it skips a root entry it does not name.
+        if (typeof gallery.layout === 'string') archive.append(gallery.layout, { name: 'gallery-layout.json' });
         for (const p of gallery.files || []) {
           if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `gallery/${p.name}` });
         }
@@ -213,17 +219,18 @@ ipcMain.handle('read-backup-world-background', async (_event, zipPath) => {
   return meta && img ? { meta, buffer: img } : null;
 });
 
-// The gallery: its list and each picture's bytes by zip name, or null when the backup has none.
+// The gallery: its list, each picture's bytes by zip name and its layout text (null in an older backup), or null when
+// the backup has none.
 ipcMain.handle('read-backup-gallery', (_event, zipPath) => new Promise((resolve, reject) => {
   yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
     if (err) return reject(err);
-    let meta = null;
+    let meta = null, layout = null;
     const files = {};
     zipfile.readEntry();
     zipfile.on('entry', entry => {
       const m = /^gallery\/([^/]+)$/.exec(entry.fileName);
-      const isMeta = entry.fileName === 'gallery.json';
-      if (!isMeta && !(m && PICTURE_NAME_RE.test(m[1]))) { zipfile.readEntry(); return; }
+      const isMeta = entry.fileName === 'gallery.json', isLayout = entry.fileName === 'gallery-layout.json';
+      if (!isMeta && !isLayout && !(m && PICTURE_NAME_RE.test(m[1]))) { zipfile.readEntry(); return; }
       zipfile.openReadStream(entry, (err2, rs) => {
         if (err2) { zipfile.close(); return reject(err2); }
         const chunks = [];
@@ -231,13 +238,14 @@ ipcMain.handle('read-backup-gallery', (_event, zipPath) => new Promise((resolve,
         rs.on('end', () => {
           const buf = Buffer.concat(chunks);
           if (isMeta) meta = buf.toString('utf8');
+          else if (isLayout) layout = buf.toString('utf8');
           else files[m[1]] = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
           zipfile.readEntry();
         });
         rs.on('error', e => { zipfile.close(); reject(e); });
       });
     });
-    zipfile.on('end', () => { zipfile.close(); resolve(meta ? { meta, files } : null); });
+    zipfile.on('end', () => { zipfile.close(); resolve(meta ? { meta, files, layout } : null); });
     zipfile.on('error', reject);
   });
 }));

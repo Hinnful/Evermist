@@ -144,6 +144,19 @@ function mcpCombatUndoImport(now, snap) {
   return { state };
 }
 
+// What of the fight table the DM changed since a zip import left it as `left`, as the words a refusal names: the
+// fights, the bestiary, and the open fight's rows only when the undo would put back the table's own rows (`snap` is
+// the table before the import). Empty when undoing the import would erase nothing of the DM's.
+function mcpCombatChangedSince(now, left, snap) {
+  const same = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+  const out = [];
+  if (!same(now.fights, left.fights)) out.push('the fights');
+  if (!same(now.blocks, left.blocks)) out.push('the bestiary');
+  const putsRows = now.openId !== null && !snap.fights.some(f => f.id === now.openId);
+  if (putsRows && (now.openId !== left.openId || !same(now.rows, left.rows))) out.push('the fight open at the table');
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { mcpCombatUndoImport, MCP_ROW_FIELDS, mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpWouldDeleteMonster };
+  module.exports = { mcpCombatUndoImport, mcpCombatChangedSince, MCP_ROW_FIELDS, mcpFightRowRead, mcpRowsRefusal, mcpRowEdits, mcpFindMonster, mcpReplacedEntry, mcpCopiedEntry, mcpRestoreEntry, mcpWouldDeleteMonster };
 }

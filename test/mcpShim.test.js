@@ -164,6 +164,50 @@ describe('mcpShim', () => {
     assert.equal(r.result.content[0].text, 'Ready.');
   });
 
+  it('refuses a call over 1 MB itself, and starts no app for it', { timeout: 20000 }, async () => {
+    let reached = 0;
+    // The bridge as it was: past 1 MB it dropped the socket with no answer.
+    const server = http.createServer((req, res) => { let n = 0; req.on('data', c => { n += c.length; if (n > 1024 * 1024) req.destroy(); }); req.on('end', () => { reached++; res.end(JSON.stringify({ text: 'Done.' })); }); });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const file = path.join(dir, 'big.json');
+    fs.writeFileSync(file, JSON.stringify({ port: server.address().port, token: 'k' }));
+    const marker = path.join(dir, 'started-big');
+    const fake = path.join(dir, 'fake-big.js');
+    fs.writeFileSync(fake, 'require("fs").writeFileSync(' + JSON.stringify(marker) + ', "x");');
+    const child = spawn(process.execPath, [SHIM], { env: { ...process.env, EVERMIST_MCP: file, EVERMIST_LAUNCH: JSON.stringify([process.execPath, fake]) } });
+    let out = '';
+    child.stdout.on('data', c => { out += c; });
+    child.stdin.end(JSON.stringify({ jsonrpc: '2.0', ...call(1, 'set_notes', { level: 'campaign', text: 'x'.repeat(1100000) }) }) + '\n');
+    await new Promise(r => child.on('exit', r));
+    server.close();
+    const r = JSON.parse(out);
+    assert.equal(r.result.isError, true);
+    assert.match(r.result.content[0].text, /^The call is too large: it is 1\.05 MB, and Evermist takes at most 1 MB/);
+    assert.equal(fs.existsSync(marker), false, 'a hidden Evermist was started');
+    assert.equal(reached, 0);
+  });
+
+  it('hands back the app\'s 413 for a call too large as it is, and starts no app', { timeout: 20000 }, async () => {
+    process.type = 'browser';
+    const { tooLarge } = require('../electron/mcpShim.js');
+    delete process.type;
+    const server = http.createServer((req, res) => { req.resume(); req.on('end', () => { res.writeHead(413, { 'content-type': 'application/json' }); res.end(JSON.stringify({ text: tooLarge(1200000), isError: true })); }); });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const file = path.join(dir, 'big413.json');
+    fs.writeFileSync(file, JSON.stringify({ port: server.address().port, token: 'k' }));
+    const marker = path.join(dir, 'started-413');
+    const fake = path.join(dir, 'fake-413.js');
+    fs.writeFileSync(fake, 'require("fs").writeFileSync(' + JSON.stringify(marker) + ', "x");');
+    const child = spawn(process.execPath, [SHIM], { env: { ...process.env, EVERMIST_MCP: file, EVERMIST_LAUNCH: JSON.stringify([process.execPath, fake]) } });
+    let out = '';
+    child.stdout.on('data', c => { out += c; });
+    child.stdin.end(JSON.stringify({ jsonrpc: '2.0', ...call(1, 'list_campaign') }) + '\n');
+    await new Promise(r => child.on('exit', r));
+    server.close();
+    assert.match(JSON.parse(out).result.content[0].text, /^The call is too large: it is 1\.14 MB/);
+    assert.equal(fs.existsSync(marker), false);
+  });
+
   it('refuses a tool it does not have and a method it does not know', async () => {
     const [a, b] = await talk(path.join(dir, 'none.json'), [call(1, 'delete_everything'), { id: 2, method: 'nope' }]);
     assert.equal(a.error.code, -32602);

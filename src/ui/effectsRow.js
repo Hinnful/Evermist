@@ -142,7 +142,7 @@ function _renderPalette() {
       b.type = 'button';
       b.className = 'mt-tile' + (id === (pal.dataset.on || currentMaterial) ? ' on' : '');
       b.dataset.material = id;
-      b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
+      b.innerHTML = '<span class="mt-ck">' + uiIcon('check', 12, 2) + '</span><span class="mt-gl" style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
       b.lastChild.textContent = t(name);
       b.onclick = () => { if (pal.dataset.picked) setPickedMaterial(id); else setMaterial(id); materialPaletteClose(); };
       if (id === 'light' && pal.dataset.nolight) { b.disabled = true; b.title = t('An effect of several pieces cannot become a light'); }

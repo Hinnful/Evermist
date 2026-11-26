@@ -16,6 +16,7 @@ const CB_ICON_X = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" s
 
 let _cbSaveTimer = null;
 let _cbSaveFailed = false;
+let _cbDiskOpen = null;   // the fight whose rows CB_KEY holds on disk
 
 function cbZoom() {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2;
@@ -29,7 +30,10 @@ function cbSave(quiet) {
   _cbSaveTimer = null;
   try {
     const p = combatSavedParts(combatStampEdits(cbState, Date.now()));
+    // Two keys cannot be written as one: after a switch the list goes first with the open fight's rows in it too.
+    if (_cbDiskOpen !== cbState.openId) localStorage.setItem(CB_FIGHTS_KEY, JSON.stringify(p.moving));
     localStorage.setItem(CB_KEY, JSON.stringify(p.combat));
+    _cbDiskOpen = cbState.openId;
     localStorage.setItem(CB_FIGHTS_KEY, JSON.stringify(p.fights)); syncNoteLocal(CB_KEY); syncNoteLocal(CB_FIGHTS_KEY);
     return true;
   } catch (err) {
@@ -57,7 +61,8 @@ function _cbRead(key) {
 function _cbLoad() {
   const read = _cbRead(CB_KEY), d = read || {};
   cbState = Object.assign({ rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {}, nextId: d.nextId || 1, edits: d.edits },
-    combatFightsFrom(_cbRead(CB_FIGHTS_KEY), combatFightId));
+    combatFightsFrom(_cbRead(CB_FIGHTS_KEY), combatFightId, d.openId));
+  _cbDiskOpen = d.openId || cbState.openId;
   // Entries imported before statBlockJoinHp read a split HP as its first half.
   const copies = cbState.fights.flatMap(f => combatFightRows(cbState, f)).map(r => r.sb).filter(Boolean);
   for (const b of Object.values(cbState.blocks).concat(copies)) b.hp = statBlockJoinHp(b.hp);
@@ -68,7 +73,9 @@ function _cbLoad() {
 // Null when there is nothing to carry, and the zip then looks exactly as it always did.
 function cbBackupPayload() {
   const empty = cbState.fights.every(f => !combatFightRows(cbState, f).length);
-  if (empty && cbState.fights.length < 2 && !Object.keys(cbState.blocks).length) return null;
+  // A deletion is something to carry too, or deleting the last fight never leaves this computer.
+  const gone = cbState.edits && (cbState.edits.goneFights || cbState.edits.goneBlocks);
+  if (empty && cbState.fights.length < 2 && !Object.keys(cbState.blocks).length && !gone) return null;
   return JSON.stringify(combatBackupData(cbState));
 }
 
@@ -176,7 +183,8 @@ function cbMenu(items, rect, owner) {
   m.id = 'cb-menu';
   const draw = () => {
     m.innerHTML = items.map((it, i) => it.sep ? '<hr>' : `<div data-i="${i}" class="${it.danger ? 'danger' : ''}">${
-      multi ? `<span class="box${it.checked() ? ' on' : ''}"></span>` : ''}${_cbEsc(it.label)}${it.key ? `<span class="key">${it.key}</span>` : ''}</div>`).join('');
+      multi ? `<span class="box${it.checked() ? ' on' : ''}"></span>` : ''}<span class="lb">${_cbEsc(it.label)}</span>${
+      it.key ? `<span class="key">${it.key}</span>` : ''}${it.sub ? `<span class="sub">${uiIcon('next')}</span>` : ''}</div>`).join('');
   };
   draw();
   m.addEventListener('mousedown', e => e.stopPropagation());
@@ -508,7 +516,7 @@ function initCombatTracker() {
     const sb = cbRowBlock(r);
     if (f === 'hp') {
       const hp = combatRowHpState(combatFirstNum(sb.hp), r.hp), rowEl = e.target.closest('.cb-row');
-      e.target.nextElementSibling.textContent = _cbSumText(hp.value);
+      e.target.nextElementSibling.innerHTML = _cbSumHtml(hp.value);
       rowEl.classList.remove('low', 'dead');
       if (_cbHpClass(hp)) rowEl.classList.add(_cbHpClass(hp));
       cbHpWiden(e.target);

@@ -22,6 +22,7 @@ let _wxNextFlash = 0, _wxFlashAt = -1e9, _wxGustNext = 0, _wxGust = null, _wxGus
 
 let _wxMaskCvs = null, _wxMaskTex = null, _wxMaskKey = '', _wxMaskCheckAt = 0;
 let _wxMaskUrl = null, _wxMaskDirty = false, _wxMaskSent = false, _wxSendPending = false;
+let _wxHeldRooms = null, _wxHeldUrl = null, _wxGlowReveal = null;
 
 function _wxActive() {
   return weatherId !== 'none' || !!_wxPrev || _wxLevels.wet > 0.001 || _wxLevels.snow > 0.001 || todActive();
@@ -92,11 +93,18 @@ function _wxRefreshMask(now) {
   const w = Math.max(1, Math.ceil(mapWidth / FOG_SCALE)), h = Math.max(1, Math.ceil(mapHeight / FOG_SCALE));
   const fresh = !_wxMaskCvs || _wxMaskCvs.width !== w || _wxMaskCvs.height !== h;
   const cvs = fresh ? Object.assign(document.createElement('canvas'), { width: w, height: h }) : _wxMaskCvs;
+  _wxPaintRooms(cvs, polygons);
+  if (fresh) _wxSetMask(cvs); else { _wxMaskTex.baseTexture.update(); todRoomGlow(cvs); }
+  _wxMaskUrl = null;
+  _wxMaskDirty = true;
+}
+
+function _wxPaintRooms(cvs, rooms) {
   const ctx = cvs.getContext('2d');
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
   ctx.fillStyle = '#fff';
   const scale = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
-  for (const p of polygons) {
+  for (const p of rooms) {
     if (!p.vertices || p.vertices.length < 3) continue;
     const cr = (p.cornerRadius || 0) / FOG_SCALE;
     const pv = p.cornerRadii ? p.cornerRadii.map(r => (r != null ? r : (p.cornerRadius || 0)) / FOG_SCALE) : null;
@@ -104,9 +112,22 @@ function _wxRefreshMask(now) {
     buildRoundedPolyPath(ctx, scale(p.vertices), cr, pv, polyHoleRings(p).map(scale), scaleHandles(p.handles, 1 / FOG_SCALE));
     ctx.fill();
   }
-  if (fresh) _wxSetMask(cvs); else { _wxMaskTex.baseTexture.update(); todRoomGlow(cvs); }
-  _wxMaskUrl = null;
-  _wxMaskDirty = true;
+}
+
+// The rooms as the TV last got them (a delivery or Send). A cloned copy: a drag edits the live outlines in place.
+function _wxHoldRooms() {
+  _wxHeldRooms = structuredClone(polygons);
+  _wxHeldUrl = null;
+}
+
+function _wxHeldMaskUrl() {
+  if (!_wxHeldUrl) {
+    const w = Math.max(1, Math.ceil(mapWidth / FOG_SCALE)), h = Math.max(1, Math.ceil(mapHeight / FOG_SCALE));
+    const cvs = Object.assign(document.createElement('canvas'), { width: w, height: h });
+    _wxPaintRooms(cvs, _wxHeldRooms || []);
+    _wxHeldUrl = cvs.toDataURL('image/png');
+  }
+  return _wxHeldUrl;
 }
 
 function _wxMaskDataUrl() {
@@ -132,6 +153,7 @@ function _wxLoadMaskUrl(url) {
 // Riding a map's first delivery (playerWindow.js): the preset and, when something falls, the mask.
 function weatherPayload() {
   _wxSendPending = false;
+  _wxHoldRooms();
   if (!_wxActive()) { _wxMaskSent = false; return { weather: weatherId, timeOfDay: timeOfDayId, weatherMask: null }; }
   _wxMaskCheckAt = 0;
   _wxRefreshMask(performance.now());
@@ -147,15 +169,21 @@ function _wxFlushToPlayer(send) {
   if (!playerWindow || playerWindow.closed || !playerMapSent || tvShowsOtherMap()) { _wxSendPending = false; return; }
   const hasMask = _wxActive() && (!_wxMaskSent || (_wxMaskDirty && (autoSync || send)));
   if (!_wxSendPending && !hasMask) return;
+  // ⚠ THE FIRST MASK AFTER A DELIVERY WITH NOTHING FALLING rides a preset change, which is never held: in
+  // Manual it is the rooms as of the last Send, and the live outlines still wait for the next one.
+  const held = hasMask && !_wxMaskSent && !autoSync && !send;
   const msg = { type: 'weather', weather: weatherId, timeOfDay: timeOfDayId };
-  if (hasMask) msg.mask = _wxMaskDataUrl();
+  if (hasMask) msg.mask = held ? _wxHeldMaskUrl() : _wxMaskDataUrl();
   _wxSendPending = false;
   playerWindow.postMessage(msg, '*');
-  if (hasMask) { _wxMaskSent = true; _wxMaskDirty = false; }
+  if (hasMask) { _wxMaskSent = true; if (!held) _wxMaskDirty = false; }
 }
 
 // Send in Manual: the room outlines held since the last one.
-function weatherSendHeld() { _wxFlushToPlayer(true); }
+function weatherSendHeld() {
+  _wxHoldRooms();
+  _wxFlushToPlayer(true);
+}
 
 // Both ends of the push: the Player's inbox and the first delivery.
 function applyWeatherMessage(msg) {
@@ -227,6 +255,10 @@ function pumpWeather() {
   if (!isPlayer && _wxActive() && !selectDragging()) _wxRefreshMask(now);
   else _wxMaskCheckAt = 0;
   if (!isPlayer) _wxFlushToPlayer();
+  else if (_wxMaskCvs && todActive()) {
+    const reveal = tvRevealCanvas();
+    if (reveal !== _wxGlowReveal) { _wxGlowReveal = reveal; todRoomGlow(_wxMaskCvs); }
+  }
   if (!_wxActive() || !mapWidth || !mapHeight) {
     if (_wxMain) _wxMain.visible = _wxOld.visible = false;
     if (!_wxActive()) _wxMaskKey = '';

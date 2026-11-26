@@ -17,7 +17,7 @@ function resolveSceneName(desiredName, usedNames) {
 function mapExtFromScene(scene) {
   if (scene.mapType === 'video') {
     const m = (scene.mapPath || '').match(/\.[^.]+$/);
-    return m ? m[0] : '.webm';
+    return m ? m[0] : (scene.mapBlob && /mp4/.test(scene.mapBlob.type) ? '.mp4' : '.webm');
   }
   const t = scene.mapBlob && scene.mapBlob.type ? scene.mapBlob.type : 'image/jpeg';
   if (t.includes('png')) return '.png';
@@ -79,7 +79,8 @@ async function dataURLToArrayBuffer(dataURL) {
 // One scene's files as the export sends them to main.
 async function sceneExportData(scene) {
   const mapExt = mapExtFromScene(scene);
-  const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
+  // A video that never reached the disk plays from the library, so it goes from there.
+  const mapBuffer = scene.mapType !== 'video' || !scene.mapPath ? await blobToArrayBuffer(scene.mapBlob) : null;
 
   let fogBuffer = null;
   if (scene.baseFogBlob) {
@@ -137,8 +138,9 @@ async function doExport(selectedIds, opts) {
   showMapProgress('Creating export…');
   let opened = false, added = 0, finishing = false;
   try {
-    // ⚠ The open scene saves 5s after its last edit, and the zip is read from the store.
+    // ⚠ The open scene and each Two-maps column save 5s after their last edit, and the zip is read from the store.
     if (currentScene && selectedIds.includes(currentScene.id)) await doAutoSave();
+    await Promise.all(livePanes().map(flushPaneScene));
     // ⚠ ONE SCENE AT A TIME: the whole library in one message stalls the renderer once it outgrows its memory.
     for (let i = 0; i < selectedIds.length; i++) {
       if (job.stopped) break;

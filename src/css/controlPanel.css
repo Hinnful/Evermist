@@ -15,6 +15,8 @@
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: var(--cur-pointer); transition: background .12s, color .12s;
   }
+  /* A word centres on its capitals, as the lifted plate centres on its box; an icon's line is left untrimmed. */
+  .cp-segtab:not(:has(> svg)) { text-box: trim-both cap alphabetic; }
   .cp-segtab:hover:not(.active, :disabled) { color: var(--g-text); }
   .cp-segtab.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
@@ -182,7 +184,7 @@
     padding: 9px 9px 2px 14px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); text-box: trim-both cap alphabetic; }
   /* The icon button beside the dock: 24, no plate at rest. */
   .cp-adv-close {
     width: 24px; height: 24px; flex: none; padding: 0;

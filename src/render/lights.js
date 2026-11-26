@@ -161,8 +161,8 @@ function drawPlanLights() {
 
 // ─── Fog on the TV ────────────────────────────────────────────────────────────
 
-// Shrouded and half-shrouded ground draws no light on the TV. Half is the fog data's own partial
-// alpha, so the cut sits just above 0.
+// Shrouded and half-shrouded ground draws no light, and no effect, on the TV. Half is the fog data's own
+// partial alpha, so the cut sits just above 0.
 const LIGHT_REVEALED_MAX_ALPHA = 3;
 let _lightRevealBits = null, _lightRevealCanvas = null, _lightsFogDirty = false;
 
@@ -189,6 +189,14 @@ function _refreshLightReveal() {
   cx.putImageData(img, 0, 0);
   _lightRevealCanvas = c;
   _lightsTexDirty = true;
+  gridDirty = true;   // the lights' grid cells follow the same cut (grid.js)
+}
+
+// The TV's cleared ground as a white mask the size of the fog data, read back only when the fog changed;
+// null on the DM, or before any fog arrived. The effects mask by it too (effects.js).
+function tvRevealCanvas() {
+  if (isPlayer && _lightsFogDirty) _refreshLightReveal();
+  return isPlayer ? _lightRevealCanvas : null;
 }
 
 function _lightMaskedByFog(canvas) {
@@ -267,7 +275,7 @@ function pumpLights() {
     _lightLayerRef = pixiEffectsLayer; _lightSprite = null; _lightsTexDirty = true;
   }
   // A whole-fog readback: left dirty on a map with no lights, where it would hitch every reveal for nothing.
-  if (isPlayer && _lightsFogDirty && lightPolys.length) _refreshLightReveal();
+  if (lightPolys.length) tvRevealCanvas();
   const gridKey = mapWidth * 1e6 + mapHeight * 1e3 + gridSize;
   if (gridKey !== _lightGridKey) { _lightGridKey = gridKey; _lightsTexDirty = true; }
   if (_lightStrength() !== _lightStrengthNow) { _lightStrengthNow = _lightStrength(); _lightsTexDirty = true; }

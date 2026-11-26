@@ -410,6 +410,10 @@ function cutRing(src, path, minArea) {
   const hits = ringPathCrossings(ring, path);
   if (hits.length !== 2) return { reason: REASON_CUT };
   const c0 = hits[0], c1 = hits[1];
+  // ⚠ A path started INSIDE the room leaves first and comes back: its stretch between the crossings
+  // lies outside, and both pieces would be built from ground past the wall.
+  const next = c1.seg === c0.seg ? c1.point : path[c0.seg + 1];
+  if (!pointInRing((c0.point.x + next.x) / 2, (c0.point.y + next.y) / 2, ring)) return { reason: REASON_CUT };
   const inner = path.slice(c0.seg + 1, c1.seg + 1);
   const back  = inner.slice().reverse();
   const pieces = [

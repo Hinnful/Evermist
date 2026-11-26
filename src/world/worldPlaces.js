@@ -291,6 +291,7 @@ function _wpRestore(snap) {
 
 function worldUndoStep(from, to) {
   if (!from.length) return;
+  notesPanelSettle();   // as deleteGroup: or the Notes field writes a group the step takes away back
   to.push(_wpSnapshot());
   _wpRestore(from.pop());
   // As a room's undo: a place or road that survived stays picked at its level, only the indices go.
@@ -301,5 +302,7 @@ function worldUndoStep(from, to) {
 
 function worldUndo() { worldUndoStep(_wpUndo, _wpRedo); }
 function worldRedo() { worldUndoStep(_wpRedo, _wpUndo); }
-function worldUndoDropLast() { _wpUndo.pop(); }
+// `redo`, when given, is the redo history as it stood before the dropped step's push emptied it.
+function worldUndoDropLast(redo) { _wpUndo.pop(); if (redo) _wpRedo = redo; }
+function worldRedoTake() { return _wpRedo.slice(); }
 function worldUndoClear() { _wpUndo = []; _wpRedo = []; }

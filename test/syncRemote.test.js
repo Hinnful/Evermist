@@ -58,6 +58,28 @@ describe('the Drive remote', () => {
     assert.equal(drive.stats.uploads.filter(u => u.name === name).length, 1, 'one finished upload, not a half one beside it');
   });
 
+  test('a record cut off with the Drive gone, then changed to a text of the same length, goes up as the new text', async () => {
+    const old = '{"hp":12,"name":"goblin"}', now = '{"hp":11,"name":"goblin"}';
+    assert.equal(old.length, now.length);
+    drive.cutNext = { bytes: 10, down: true };
+    await assert.rejects(remote.putRecord('m5', 'local:evermist.combat', old, { hash: 'a', format: 1 }), e => e.syncCode === 'offline');
+    await drive.up();
+    await remote.putRecord('m5', 'local:evermist.combat', now, { hash: 'b', format: 1 });
+    const r = (await remote.snapshot()).records.find(x => x.machine === 'm5' && x.key === 'local:evermist.combat');
+    assert.equal(await remote.getText(r.fileId), now);
+  });
+
+  test('a record whose upload finished but whose answer was lost is kept when the same text is sent again', async () => {
+    const text = '{"name":"crypt"}';
+    drive.cutNext = { bytes: Buffer.byteLength(text), down: true };
+    await assert.rejects(remote.putRecord('m6', 'scene:keep', text, { hash: 'k', format: 1 }), e => e.syncCode === 'offline');
+    await drive.up();
+    await remote.putRecord('m6', 'scene:keep', text, { hash: 'k', format: 1 });
+    const r = (await remote.snapshot()).records.filter(x => x.machine === 'm6' && x.key === 'scene:keep');
+    assert.equal(r.length, 1, 'one record on the Drive');
+    assert.equal(await remote.getText(r[0].fileId), text);
+  });
+
   test('a file already on the Drive is not sent again', async () => {
     const data = Buffer.from('same bytes');
     const name = 'once.' + sha(data);
@@ -101,6 +123,28 @@ describe('the Drive remote', () => {
     assert.equal(fs.existsSync(dest + '2'), false);
   });
 
+  test('a download to disk past the access token\'s hour refreshes it and lands whole', async () => {
+    const data = Buffer.from('a long video');
+    const name = 'long.' + sha(data);
+    await remote.putBlobBuffer(name, data);
+    const id = (await remote.snapshot()).blobs.find(b => b.name === name).id;
+    const dest = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'evsync-')), 'out.bin');
+    drive.expireToken();
+    await remote.getBlobToFile(id, name, dest);
+    assert.equal(fs.readFileSync(dest).toString(), 'a long video');
+  });
+
+  test('a refresh Google cannot answer is a failed sync, and only a refused one signs out', async () => {
+    try {
+      drive.refuseRefresh = 503;
+      drive.expireToken();
+      await assert.rejects(remote.snapshot(), e => e.syncCode !== 'auth');
+      drive.refuseRefresh = 400;
+      await assert.rejects(remote.snapshot(), e => e.syncCode === 'auth');
+    } finally { drive.refuseRefresh = 0; }
+    await remote.snapshot();
+  });
+
   test('a name that is not a record or a map file is skipped', async () => {
     const m = drive.files().find(x => x.name === 'rec-m1');
     drive.put({ name: '..~evil.json', parents: [m.id] }, Buffer.from('{}'));
@@ -135,5 +179,20 @@ describe('the Drive remote', () => {
     assert.equal(snap.blobs.some(b => b.name === name), false);
     const folder = drive.files().find(f => f.name === 'music');
     assert.ok(drive.files().find(f => f.name === name).parents.includes(folder.id));
+  });
+
+  // Last: it empties the Drive.
+  test('after a sign-out, another account\'s Drive gets the records and files, not the old account\'s folders', async () => {
+    const data = Buffer.from('a map');
+    const name = 'map1.' + sha(data);
+    await remote.putRecord('m9', 'scene:x', '{"x":1}', { hash: 'h', format: 1 });
+    await remote.putBlobBuffer(name, data);
+    drive.newAccount();
+    remote.forget();
+    await remote.putRecord('m9', 'scene:x', '{"x":2}', { hash: 'h2', format: 1 });
+    await remote.putBlobBuffer(name, data);
+    const snap = await remote.snapshot();
+    assert.deepEqual(snap.records.map(r => r.key), ['scene:x']);
+    assert.deepEqual(snap.blobs.map(b => b.name), [name]);
   });
 });

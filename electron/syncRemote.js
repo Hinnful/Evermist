@@ -104,7 +104,9 @@ function createClient(cfg, opts) {
     if (!rt) throw new SyncError('auth', 'signed out');
     const form = new URLSearchParams({ client_id: cfg.clientId, client_secret: cfg.clientSecret, refresh_token: rt, grant_type: 'refresh_token' });
     const r = await request(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
-    if (r.status !== 200) throw new SyncError('auth', 'the sign-in was refused (' + r.status + ')');
+    // Only a refused grant signs out; Google down is a failed sync that tries again.
+    if (r.status === 400 || r.status === 401) throw new SyncError('auth', 'the sign-in was refused (' + r.status + ')');
+    if (r.status !== 200) throw new SyncError('server', 'Google did not answer the sign-in (' + r.status + ')');
     access = JSON.parse(r.body.toString()).access_token;
     return access;
   }
@@ -219,7 +221,9 @@ function createClient(cfg, opts) {
     if (r.status !== 404) check(r);
   }
 
-  return { base, token, call, check, json, list, folder, upload, remove, oldestFirst, forget: () => { access = null; } };
+  // A sign-out forgets the account's folders and uploads too: the next sign-in may be another account's Drive.
+  const forget = () => { access = null; folders.clear(); sessions.clear(); };
+  return { base, token, call, check, json, list, folder, upload, remove, oldestFirst, forget };
 }
 
 const props = p => { const out = {}; for (const k of Object.keys(p || {})) out[k] = String(p[k]); return out; };
@@ -263,8 +267,11 @@ function createRemote(cfg, opts) {
       const parent = await folder('rec-' + machine), name = keyToName(key);
       const older = await list(`name = '${esc(name)}' and '${parent}' in parents and trashed = false`);
       const buf = Buffer.from(text);
-      const f = await upload({ name, parents: [parent], mimeType: 'application/json', appProperties: props(p) }, bufSource(buf), name + '|' + buf.length);
-      for (const x of older) await remove(x.id);
+      const f = await upload({ name, parents: [parent], mimeType: 'application/json', appProperties: props(p) }, bufSource(buf),
+        // ⚠ Keyed on the text, not its length: a same-length new text would resume the old one's upload.
+        name + '|' + crypto.createHash('sha256').update(buf).digest('hex'));
+      // A resumed upload that had already finished answers with that file, which the listing above already held.
+      for (const x of older) if (x.id !== f.id) await remove(x.id);
       return f.id;
     },
 
@@ -293,8 +300,12 @@ function createRemote(cfg, opts) {
 
     async getBlobToFile(fileId, name, dest) {
       if (!sp.syBlobNameOk(name)) throw new SyncError('error', 'a file name Drive would not take');
-      const tok = await token();
-      const r = await request(base + '/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media', { headers: { Authorization: 'Bearer ' + tok }, toFile: dest });
+      // A download past the access token's hour gets a 401 like any call: refreshed once and asked again.
+      let r;
+      for (let attempt = 0; ; attempt++) {
+        r = await request(base + '/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media', { headers: { Authorization: 'Bearer ' + await token(attempt > 0) }, toFile: dest });
+        if (r.status !== 401 || attempt) break;
+      }
       try {
         check(r);
         if (await hashFile(dest) !== name.split('.')[1]) throw new SyncError('corrupt', 'the file from Drive does not match its hash');

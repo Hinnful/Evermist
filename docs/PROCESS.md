@@ -122,8 +122,8 @@ A bug report is an ordinary message and needs no command.
   <check>]`. A reachable line is never reported unchecked; it is checked first. `ship.js --accept <spec>`
   refuses a release whose spec has a line without a mark.
 - **Correctness work gets its check during the build.** Claude proves a behaviour without asking,
-  with a unit test or one rig scenario run once and then deleted. A scenario stays only when it
-  guards the DM's data (sync, backup, trash, rollback, upgrade), and is re-run when that code changes.
+  with a unit test or one rig scenario run once and then deleted, data guards included. Only the blocker
+  set, `design-sweep` and the recording tool's `record.js` stay in `tools/rig/scenarios/`.
 - **A change to the interface is done when `test/designSystem.test.js` passes and the `design-sweep`
   scenario is clean** (`npm run rig -- --dm-size 1280x1500 design-sweep`), and the DM sees it as 2x
   close-ups. The sweep stays in the repo by the DM's call: it is the one kept scenario that guards no data.
@@ -249,7 +249,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 | `tools/check-guards.js` | `/commit` | The same guards CI runs, before the push |
 | The rig's blocker set | CI on three platforms, every one blocking | The app starts, preps a map, runs a table session and keeps the DM's work |
 | `test/designSystem.test.js` | CI, every push; `/commit` | Colours, radii, type sizes, gaps and atom sizes against `.claude/rules/design-system.md` |
-| The rig's `design-sweep` | Every interface change, locally | Every inventory entry in every state: rows on one baseline, icons and switches on the capitals, no plate merging with its row or swallowed by its hover, no native control, text 6px clear of a control's side, nothing moving when a state changes, menus one size |
+| The rig's `design-sweep` | Every interface change, locally, before the DM sees it; never in CI | Every inventory entry in every state: one text size per row and no capless glyph as text; on the rendered pixels, averaged over where the window can land, icons, plates and switches within 0.25px of the capitals and texts of one size on one baseline; no plate merging with its row or swallowed by its hover, no native control, text 6px clear of a control's side, nothing moving when a state changes, menus one size |
+| `guard-board.js` (`tools/board-check.js`) | Every Artifact publish of a page that links `src/css/` | A mockup board's rows against the same alignment checks as `design-sweep`, in a window that never shows; a faulty board is refused with its rows named, so the DM sees only clean boards and has nothing to do |
 | `check-notes.js` | `/commit` | Release-note mechanics |
 | `guard-builder.js` | Every builder launch | A brief's four fields, an `Accept:` of what the DM does → sees |
 | `ship.js --accept` | `/commit`, every release | Every DoD line of every shipped spec marked as proven, user lines written as does → sees |

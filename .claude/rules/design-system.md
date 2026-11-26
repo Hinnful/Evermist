@@ -160,16 +160,22 @@ atom.
 and 16 from the block above; a section title 12 from its content. Switch rows of one group touch, 28 each, and
 read as one list.
 
-**Alignment: one row, one centre line.** Everything in a row centres on the same horizontal line: a text of any
-size by the middle of its capitals, a glyph with no capitals (›, ↑, ✓, ·) by its ink, an icon, a plate, a switch
-or a tag by the middle of its box. Texts share a baseline only inside one run of words of one size. Text in a plate
-centres on cap height (`text-box: trim-both cap alphabetic`), and the plate centres on the row; a row centres its
-items (`align-items: center`) with each text trimmed to its capitals, never a pixel nudge. A tag inside a line of
-text (the source after a monster's name) centres its capitals on the line's with a `cap` calc. A glyph with no
-capitals that must sit beside text (›, ✓, an arrow key) is drawn as an icon, which centres by its box. There is no
-exception for a label beside a big number. The rig's alignment sweep (`lib.alignSweep`, the
-`design-sweep` scenario) measures every item of every row against the row's centre line and fails one off by more
-than 0.5px; a window anywhere between the smallest and largest text is not a pass.
+**Alignment: one row, one line.** Texts in one row stand on one shared baseline, whatever their sizes. A text more
+than 1.5× smaller than the row's main (largest) text does not share its line: it goes on its own line, as a label above
+a number or a source under a name. An icon, a plate, a switch or a button centres on the capitals of the row's main
+text, by the middle of its box; a glyph with no capitals by its ink. Beside a block of two or more lines of text (a
+name over its source, a title over its description), a box centres on the block as laid out, from its first line's
+line box top to its last line's line box bottom (a line trimmed by `text-box` ends at its trim), as `align-items:
+center` places it; a single line keeps its capitals' middle. Text in a plate centres on cap height (`text-box:
+trim-both cap alphabetic`), and the plate centres on the row; a row centres its items (`align-items: center`) with each
+text trimmed to its capitals, never a pixel nudge. A glyph with no capitals beside text (✓ › → × + ·, an arrow key) is
+an icon from `icons.js`, which centres by its box, never a text character or CSS `content`. A button, a link and every
+atom below are box items, filled or not: their text is not a bare text. The rig's `design-sweep` fails a row whose bare
+texts are more than 1.5× apart in size or that writes a capless glyph as text (`lib.alignSweep`), and, read off 4x
+screenshots (`lib.inkSweep`) averaged over where the row can land, a row whose texts' baselines differ by more than one
+device pixel, or whose box, icon or glyph stands more than 0.25px off the main text's capitals (or a block's line boxes), a box by
+its painted edges and an icon by its ink (in a row with no text, boxes against each other by their layout or painted
+edges); and a vertical divider that stops short of its container's top or bottom.
 
 The interface font is the system's; Alegreya is the TV's alone. **No
 uppercase**: a heading is sentence case. Text in a button, a plate or beside an icon centres on cap height

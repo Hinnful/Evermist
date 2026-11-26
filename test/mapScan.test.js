@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { findMapFiles, readMapFiles, MAX_FOLDER_FILES } = require('../electron/mapScan.js');
+const { findMapFiles, listMapFolder, readMapFiles, MAX_FOLDER_FILES } = require('../electron/mapScan.js');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'evermist-scan-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -72,5 +72,21 @@ describe('readMapFiles', () => {
     fs.mkdirSync(path.join(root, 'empty'));
     assert.match((await readMapFiles(path.join(root, 'empty'))).error, /no image or video/);
     assert.equal((await readMapFiles(path.join(root, 'notes.txt'))).skipped.length, 1);
+  });
+});
+
+describe('listMapFolder', () => {
+  it('lists a folder\'s maps with path and size and reads no bytes, so each crosses IPC on its own', async () => {
+    const r = await listMapFolder(path.join(root, 'mixed'), { only: 'image', maxMB: 1 });
+    assert.deepEqual(r.files, [{ name: 'hall.png', path: path.join(root, 'mixed', 'hall.png'), type: 'image/png', size: 2 }]);
+    assert.deepEqual(r.skipped.map(s => s.name), ['huge.png', 'river.mp4']);
+    const one = await readMapFiles(r.files[0].path);
+    assert.deepEqual(one.files.map(f => [f.name, f.bytes.length]), [['hall.png', 2]]);
+  });
+  it('keeps the folder limit and the reasons a path is refused', async () => {
+    const r = await listMapFolder(path.join(root, 'many'));
+    assert.equal(r.files.length, MAX_FOLDER_FILES);
+    assert.ok(r.files.every(f => !('bytes' in f)));
+    assert.match((await listMapFolder(path.join(root, 'nope'))).error, /no file or folder/);
   });
 });

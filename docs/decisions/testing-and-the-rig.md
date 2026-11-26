@@ -537,6 +537,12 @@ It had not run since October, and "prove a fix both ways" covers what it was use
 ### A build proves itself with one scenario, run once and deleted · `SETTLED` (2026-11-15)
 Eleven one-shot feature scenarios were deleted. A scenario stays only when it guards the DM's data (sync, backup, trash, rollback, upgrade) and is re-run when that code changes. The rule itself lives in `docs/PROCESS.md`.
 
+### Data-guard scenarios are not kept either · `SETTLED` (2026-11-25)
+**Reverses** the data-guard clause above. 37 kept sync, backup, trash, rollback and upgrade scenarios were deleted:
+nobody ran them, any interface change broke them, they could not be reused, and one review-and-fix pass added nine
+more. A fix proves itself with one run and the scenario goes. Kept: the blocker set (the only thing CI runs, by
+design), `design-sweep` and `record.js`. **Rejected:** keeping a capped set of guards per subject.
+
 ### A nightly, non-blocking run of the deleted regression scenarios · `REJECTED` (2026-11-15)
 An unmaintained set generates CI work, and the maintained one caught about three app bugs in its life.
 
@@ -559,3 +565,6 @@ Release 5.20.0's two Mac jobs (`Gate / Mac`, `Gate / Build installer (Mac)`) wer
 
 ### keeps-work flaked on a slow runner because the app had two save-order bugs · `SETTLED` (5.17.1, 2026-11-20)
 The Windows runner failed `keeps-work`; the check was sound. On a slow machine an older autosave's fog encode could finish after a newer one and overwrite it, so a room revealed just after Draw rooms reopened fogged, and a delete still moving into the Trash could take the record and video of a map a backup restore had just brought back. Fixed in the app: autosaves write in order (`_autoSaveTail`), and a restore awaits `commitPendingDelete()`. The blocker was rewritten, not loosened: section B empties the library through `deleteScenesWithUndo` and that await, the DM's own path, instead of its own store and file deletes that raced the Trash. Proven both ways: without the fix it fails with the CI's messages, with it it passes.
+
+### design-sweep's ink check is a local tool, never in CI · `SETTLED` (2026-11-26)
+`design-sweep` judges rows on 4x screenshots averaged over four layout offsets, and `guard-board.js` runs `tools/board-check.js` on every board that links `src/css/`, refusing a misaligned one (an option showing today's look carries `data-as-is`). CI ships a working app; the sweep keeps misaligned rows from reaching the DM, so it stays out of CI.

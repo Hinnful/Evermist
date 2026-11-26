@@ -231,7 +231,7 @@ async function _enterPanes(sceneIdA, sceneIdB) {
   // over a scene a column now owns.
   await doAutoSave();
   clearTimeout(autoSaveTimer);
-  teardownParentMap();
+  const dyingPlayer = teardownParentMap();
 
   panesActive = true;
   document.body.classList.add('panes-on');
@@ -239,7 +239,7 @@ async function _enterPanes(sceneIdA, sceneIdB) {
   // The DM's own Player window held a map that no longer exists, so the shell takes its place.
   // With no Player up, the shell is warmed hidden instead, so the button has nothing left to boot.
   // Manual: turning Two maps on is not a Send, so each half keeps its fog until its column's Send.
-  if (hadPlayer) { _stageWaitsForSend = !autoSync; toggleStageWindow(); } else prewarmStage();
+  if (hadPlayer) { _stageWaitsForSend = !autoSync; toggleStageWindow(); } else prewarmStageAfter(dyingPlayer);
   sceneListChanged();   // the toggle lights and the trigger starts naming two maps
 }
 
@@ -266,10 +266,12 @@ async function _exitPanes(keepSceneId) {
   unbindStageHalves();
   // ⚠ A warm shell left running answers to the Player's window name, so the single-map warming
   // below would navigate it instead of opening its own.
-  closePrewarmedStage();
+  const dyingStage = closePrewarmedStage();
   _stageWindow = null;
   _stageWaitsForSend = false;
   await Promise.all(livePanes().map(flushPaneScene));
+  // A column leaving mid-calibration never reports off, and the hold would keep Notes and the Bestiary shut.
+  if (_paneCalHeld) paneCalibrateReported(false);
   panesActive = false;
   document.body.classList.remove('panes-on');
     if (typeof refreshTwoMapsButton === 'function') refreshTwoMapsButton();
@@ -284,7 +286,7 @@ async function _exitPanes(keepSceneId) {
   paneRoomsClear();
   paneEditRowForget();
   syncSize();
-  if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
+  if (!hadPlayer) prewarmPlayerAfter(dyingStage);   // warming would navigate the live window away
   // The map comes back out of the store, which is where the column has been saving it all along.
   if (keepSceneId) await switchScene(keepSceneId).catch(console.error);
   if (hadPlayer) {
@@ -310,10 +312,11 @@ function paneSceneToKeep(id) {
 }
 
 // ⚠ Hiding the map frees no decoder and no GPU texture, which is why entering tears it down.
+// Answers the warm Player window it closed, still closing.
 function teardownParentMap() {
   // ⚠ THE PLAYER'S WINDOW IS LEFT ALONE: entering navigates it to the shell instead.
   playerWindow = null;
-  closePrewarmedPlayer();
+  const dying = closePrewarmedPlayer();
   armGridCalibration(false);   // it holds the dock and a still of a map that is going
   cleanupVideo();
   stopFogTransition();
@@ -335,9 +338,19 @@ function teardownParentMap() {
   pixiFlushTexturePool();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   sceneListChanged();
+  return dying;
 }
 
 // ─── What the columns say back ───────────────────────────────────────────────
+
+let _paneCalHeld = false;
+
+function paneCalibrateReported(on) {
+  _paneCalHeld = on;
+  dockHoldForCalibration(on);
+  const btn = document.getElementById('cp-grid-calibrate');
+  if (btn) btn.classList.toggle('active', on);
+}
 
 function initPanes() {
   window.addEventListener('message', e => {
@@ -369,6 +382,7 @@ function initPanes() {
     if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
     // M from inside a column. The column's frame gives up focus, or the world map's keys stay in it.
     if (msg.type === 'pane-world-key') { if (document.activeElement === p.frame) p.frame.blur(); worldMapToggle(); return; }
+    if (msg.type === 'pane-search-key') { if (document.activeElement === p.frame) p.frame.blur(); searchOpen(); return; }
     if (msg.type === 'pane-tool') {
       if (msg.placeMode && placeMode !== msg.placeMode) setPlaceMode(msg.placeMode);
       if (shape !== msg.shape) setShape(msg.shape);
@@ -377,12 +391,9 @@ function initPanes() {
     }
     if (msg.type === 'pane-repair-key') { setRemoteRepairKey(msg.repair); return; }   // repairKeys.js: the bar's icon lights
     // Calibration ends inside the column (Done, Esc, a tool), so only its report puts the DM's pane back.
-    if (msg.type === 'pane-calibrate') {
-      dockHoldForCalibration(!!msg.on);
-      const btn = document.getElementById('cp-grid-calibrate');
-      if (btn) btn.classList.toggle('active', !!msg.on);
-      return;
-    }
+    if (msg.type === 'pane-calibrate') { paneCalibrateReported(!!msg.on); return; }
+    // A grid change made inside a column; the next dock nudge pushes a whole config, so it starts from this one.
+    if (msg.type === 'pane-grid-changed') { if (msg.pane === panesSelected) paneAdoptSelectedSettings(); return; }
     if (msg.type === 'pane-saved') { searchStale(msg.sceneId); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;
@@ -416,6 +427,15 @@ function paneColumnOf(sceneId) {
   return PANE_IDS.find(id => panes[id].sceneId === sceneId) || null;
 }
 
+// The column whose half of the TV shows this map, by its own reckoning: in Manual a half keeps the map last sent.
+function paneTvColumn(sceneId) {
+  for (const id of PANE_IDS) {
+    const w = panes[id].frame && panes[id].frame.contentWindow;
+    if (w && typeof w.tvShownSceneId === 'function' && w.tvShownSceneId() === sceneId) return w;
+  }
+  return null;
+}
+
 // ⚠ Two columns on one scene record autosave over each other, so the world map refuses.
 function paneHoldingScene(sceneId, exceptId) {
   for (const id of PANE_IDS) {
@@ -434,6 +454,8 @@ function loadSceneIntoSelectedPane(sceneId) {
     });
     return false;
   }
+  // ⚠ Already there: the column would not reload it, so the size and edit row forgotten below never come back.
+  if (panes[panesSelected].sceneId === sceneId) return true;
   // Recorded up front so the other column cannot be given it meanwhile; the column's own
   // `pane-scene-result` then says what it really ended up holding.
   panes[panesSelected].sceneId = sceneId;

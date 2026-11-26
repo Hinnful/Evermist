@@ -169,9 +169,10 @@
   #mat-grid { display: grid; grid-template-columns: repeat(2, minmax(max-content, 1fr)); gap: 0 2px; max-height: 300px; overflow-y: auto; scrollbar-gutter: stable; }
   #mat-grid .mt-tile { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 4px; border: 0; border-radius: 6px; background: none; color: var(--g-text);
     font: 400 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: var(--cur-pointer); white-space: nowrap; overflow: hidden; }
-  #mat-grid .mt-tile::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; color: var(--b-icon); }
-  #mat-grid .mt-tile.on::before { content: '\2713'; }
-  #mat-grid .mt-tile svg { width: 18px; height: 18px; flex: none; }
+  #mat-grid .mt-tile .mt-ck { width: 14px; flex: none; display: flex; justify-content: center; color: var(--b-icon); visibility: hidden; }
+  #mat-grid .mt-tile.on .mt-ck { visibility: visible; }
+  #mat-grid .mt-gl { display: flex; flex: none; }
+  #mat-grid .mt-gl svg { width: 18px; height: 18px; }
   #mat-grid .mt-tile > span:last-child { text-box: trim-both cap alphabetic; }
   #mat-grid .mt-tile:hover:not(:disabled) { background: var(--b-tint); color: var(--b-icon); }
   #mat-grid .mt-tile:disabled { background: none; }

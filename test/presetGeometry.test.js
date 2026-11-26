@@ -94,8 +94,8 @@ test('a shape with a hand tool steps down to by hand and stops there', () => {
 
 test('a size reads in feet and squares', () => {
   const plural = (n, one, other, vars) => i18nFill(n === 1 ? one : other, vars);
-  assert.strictEqual(presetSizeText(20, i18nFill, plural), '20 ft · 4 squares');
-  assert.strictEqual(presetSizeText(5, i18nFill, plural), '5 ft · 1 square');
+  assert.strictEqual(presetSizeText(20, i18nFill, plural), '20 ft, 4 squares');
+  assert.strictEqual(presetSizeText(5, i18nFill, plural), '5 ft, 1 square');
 });
 
 test('the cursor label names the unit', () => {

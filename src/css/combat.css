@@ -47,6 +47,8 @@
     padding: 1px 3px; cursor: var(--cur-text); user-select: text; background: var(--plate-edit-bg);
   }
   .cf-item .meta { flex: none; color: var(--g-dim); font-size: 12px; }
+  /* The started fight, whichever fight is open: its turn order is the one on the TV. */
+  .cf-item .cf-tv { --dot: var(--live); }
   .cf-new {
     display: block; width: 100%; border: 0; border-top: 1px solid var(--g-line); background: none;
     padding: 11px 12px; text-align: left; cursor: var(--cur-pointer); color: var(--g-dim); font: 600 13px/1 system-ui, sans-serif;
@@ -114,7 +116,9 @@
   .cb-cell.hp:has(.max) input { padding-left: 4px; }
   .cb-cell.hp .max { flex: none; padding-left: 9px; color: var(--g-text); font: 700 14px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
   .cb-cell.hp .sum { flex: none; padding: 0 10px 0 4px; pointer-events: none; color: var(--g-text); font: 400 14px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
-  .cb-cell.hp .sum:not(:empty)::before { content: '='; color: var(--g-mute); margin-right: 5px; }
+  .cb-cell.hp .sum:not(:empty) { display: inline-flex; align-items: center; gap: 4px; }
+  .cb-cell.hp .sum svg { flex: none; color: var(--g-mute); }
+  .cb-cell.hp .sum > span { text-box: trim-both cap alphabetic; }
   .cb-row.low .cb-cell.hp .sum { color: var(--y-text); }
   .cb-row.dead .cb-cell.hp .sum { color: var(--r-text); }
   .cb-chip {
@@ -182,7 +186,7 @@
     border-color: #4a82e8; background: #4a82e8 center / 11px no-repeat;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
-  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: var(--g-dim); font-weight: 400; font-size: 11px; }
+  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: var(--g-dim); font-weight: 400; }
   /* On the tint of the focused row, the source reads as the label does. */
   #cb-suggest div.on .src, #cb-suggest div:hover .src { color: var(--b-icon); opacity: .75; }
 
@@ -243,7 +247,7 @@
   .bs-pop .top { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--g-line); }
   .bs-pop .top button { border: 0; background: none; padding: 2px 0; color: var(--b-icon); cursor: var(--cur-pointer); font: 600 12px/1 system-ui, sans-serif; }
   .bs-pop .top button:last-child { margin-left: auto; color: var(--g-dim); }
-  .bs-pop .top .lbl { color: var(--g-dim); font-weight: 600; }
+  .bs-pop .top .lbl { color: var(--g-dim); font-weight: 600; text-box: trim-both cap alphabetic; }
   .bs-pop .opts { overflow-y: auto; padding: 4px; }
   .bs-pop .o { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: var(--cur-pointer); }
   .bs-pop .o:hover { background: var(--b-tint); }
@@ -392,6 +396,7 @@
   }
   .bs-f:hover { background: var(--g-hover); color: var(--g-text); }
   .bs-f svg { flex: none; width: 14px; height: 14px; }
+  .bs-f > .lb { text-box: trim-both cap alphabetic; }
   .cb-save:hover:not(:disabled) { background: var(--g-hover); }
   .bs-f:active, .cb-save:active:not(:disabled) { background: var(--g-pick); }
 
@@ -463,20 +468,21 @@
     min-height: 28px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 6px;
     background: none; color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); border: 0; width: 100%; text-align: left;
   }
-  .cf-item::before, .cf-new::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }
+  .cf-item > .ck { flex: none; width: 14px; display: flex; }
+  .cf-item > .ck svg, .cf-new > svg, #cb-suggest svg, .cb-menu .sub svg { display: block; flex: none; }
   /* These menus never tick a row, so they keep no check column; a tick box is the row's own. */
   .cb-menu div { padding-left: 10px; }
-  .cf-item.on::before { content: '\2713'; }
   .cf-item:hover, .cf-item.on:hover, .cb-menu div:hover, .bs-menu .it:hover, .bs-pop .o:hover, .cf-new:hover, #cb-suggest div.on {
     background: var(--b-tint); color: var(--b-icon);
   }
-  .cf-item:hover .meta, .bs-menu .it:hover small, .bs-pop .o:hover .c, .cb-menu div:hover .key { color: var(--b-icon); opacity: .75; }
+  .cf-item:hover .meta, .bs-menu .it:hover small, .bs-pop .o:hover .c, .cb-menu div:hover .key, .cb-menu div:hover .sub { color: var(--b-icon); opacity: .75; }
   .cf-item.on { background: none; }
   .cf-item.on .nm { font-weight: 400; }
-  .cf-item .meta, .cb-menu .key, .bs-pop .o .c { margin-left: auto; color: var(--g-dim); font-size: 11px; }
-  /* The count stands on the name's baseline; the tick centres on the row. */
-  .bs-pop .o { align-items: baseline; }
-  .bs-pop .o .bs-cb { align-self: center; }
+  /* One row, one text size: a count, a key and a source take the name's 12px and keep their colour. */
+  .cf-item .meta, .cb-menu .key, .cb-menu .sub, .bs-pop .o .c { margin-left: auto; color: var(--g-dim); font-size: 12px; }
+  .cf-item .cf-tv { font-size: 12px; }
+  .cb-menu .sub { display: flex; }
+  .cf-new > span, .cb-menu .lb, .cb-menu .key, #cb-suggest .src, .bs-pop .o > span:not(.bs-cb) { text-box: trim-both cap alphabetic; }
   .cf-list { padding: 0; }
   .cf-new { border-top: 0; margin-top: 4px; position: relative; }
   /* The line runs to the menu's edges through its 4px padding. */
@@ -488,7 +494,7 @@
   .bs-menu small { margin: 0; color: var(--g-dim); font-size: 11px; font-weight: 400; }
   .bs-pop .top { gap: 6px; padding: 4px 8px 8px; border-bottom: 1px solid var(--g-line); margin: 0 -4px 4px; align-items: center; }
   .bs-pop .top button {
-    height: 28px; padding: 0 12px; border-radius: 6px; background: var(--g-field); color: var(--g-text); font: 500 12px/16px system-ui, sans-serif;
+    display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 6px; background: var(--g-field); color: var(--g-text); font: 500 12px/16px system-ui, sans-serif;
   }
   .bs-pop .top button:last-child { color: var(--g-text); }
   .bs-pop .top button:hover { background: var(--g-hover); }
@@ -496,7 +502,7 @@
   /* Reset is the tertiary text action with its icon, as in Map settings. */
   .bs-pop .top button[data-p="none"] { height: 24px; margin-left: auto; padding: 0 6px; display: inline-flex; align-items: center; gap: 6px;
     background: none; color: var(--g-dim); }
-  .bs-pop .top button[data-p="none"] > span { text-box: trim-both cap alphabetic; }
+  .bs-pop .top button > span { text-box: trim-both cap alphabetic; }
   .bs-pop .top button[data-p="none"]:hover { background: var(--g-field); color: var(--g-text); }
   .bs-pop .top button[data-p="none"]:active { background: var(--g-hover); color: var(--g-text); }
 
@@ -507,9 +513,8 @@
   #cb-fightslot { flex: none; display: flex; min-width: 0; }
   #cb-fightpick { max-width: 220px; min-width: 0; }
   #cb-fightpick.open { background: var(--g-hover); }
-  /* ⚠ Untrimmed: the button's cap-height trim would cut the descenders off inside the ellipsis's clip. A 16px line
-     box centres on the caps as closely as the trim did. */
-  #cb-fightpick .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-box: none; line-height: 16px; }
+  /* ⚠ Trimmed to its capitals with equal padding round them, so the ellipsis's clip keeps the descenders. */
+  #cb-fightpick .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-box: trim-both cap alphabetic; padding-block: 4px; }
   .cb-head .sm-field { width: 200px; flex: none; margin-left: 2px; box-sizing: border-box; }
   .cb-head .cb-sp { flex: 1; }
   .cb-head .sm-hbtn.ic { width: 28px; padding: 0; justify-content: center; gap: 4px; }
@@ -549,6 +554,9 @@
   .bs-acts { display: none; }
   #bs-panel.selecting .bs-fbtns { display: none; }
   .bs-picked { color: var(--g-dim); font-weight: 400; }
+  /* The counts and the text links of the list's toolbar trim to their capitals, as its buttons do. */
+  .bs-filters .bs-picked, .bs-filters .bs-shown, .bs-fbtns .bs-link > span { text-box: trim-both cap alphabetic; }
+  .bs-fbtns .bs-link { display: inline-flex; align-items: center; }
   #bs-panel.selecting .bs-acts { display: flex; }
   .bs-f { padding: 0 10px 0 12px; }
   .bs-f.on { background: var(--b-tint); color: var(--b-icon); }
@@ -575,8 +583,9 @@
   .bs-t tbody tr.open:hover td { background: var(--b-tint-h); }
   .bs-t tbody tr.sel:hover td { background: var(--g-hover); }
   .bs-tools { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; }
-  .bs-div { margin: 0 4px; background: var(--g-line); }
-  .bs-page-head { padding: 12px 10px 12px 28px; border-bottom: 1px solid var(--g-line); }
+  /* The divider runs the head's full height: its margins cancel the head's padding. */
+  .bs-div { margin: calc(-1 * var(--head-y)) 4px; background: var(--g-line); }
+  .bs-page-head { --head-y: 12px; padding: var(--head-y) 10px var(--head-y) 28px; border-bottom: 1px solid var(--g-line); }
   .bs-page-head.editing { background: var(--b-tint); border-bottom-color: var(--g-line); }
   .bs-mode { color: var(--b-icon); }
   #bs-page { border-left: 1px solid var(--g-line); }
@@ -627,6 +636,7 @@
   .cb-fold .sm-chev { transform: rotate(-90deg); transition: transform .12s; }
   .cb-fold.open .sm-chev { transform: none; }
   .cb-fold .n { color: var(--g-dim); }
+  .cb-fold > span:not(.sm-chev) { text-box: trim-both cap alphabetic; }
   /* HP: a line too long for the cell widens over AC and Attacks while it is typed in. */
   .cb-cell.hp.wide { z-index: 3; background: var(--g-bg); }
   .cb-cell.hp input.short { color: var(--g-dim); }
@@ -638,7 +648,9 @@
   .cb-pill .pb { background: var(--g-lay-raised); font-size: 11px; }
   /* to-hit is a number to read, not a state: white on the lighter grey */
   .cb-pill .ph { background: var(--g-lay-pick); color: var(--g-text); font-weight: 600; }
-  .cb-grp { align-items: baseline; border: 1px solid var(--g-pick); border-radius: 8px; }
+  .cb-grp { align-items: center; border: 1px solid var(--g-pick); border-radius: 8px; }
+  /* Every text in a pill trims to its capitals, so the words, numbers and glyphs of one pill share its centre. */
+  .cb-grp .gx, .cb-grp .gor, .cb-pill > span > span { text-box: trim-both cap alphabetic; }
   .cb-grp .gx { font: 500 12px/1 system-ui, sans-serif; }
   .cb-empty { color: var(--g-dim); border-bottom: 1px solid var(--g-line); }
 
@@ -664,10 +676,12 @@
   /* The page is read by its headings and its numbers: they keep their size and weight. Only the
      blue goes. */
   .bs-page-head h2 { font: 700 24px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.2px; color: var(--g-text); }
-  /* The tag centres on the name's lowercase, which most of a name is: raised by half the gap between the
-     name's x-height (24/11 of the tag's own ex) and the tag's cap-height. */
-  /* The source tag sits inside the name's line: its capitals centre on the name's, 1cap here being the tag's. */
-  .bs-page-head h2 .bs-src { margin-left: 8px; vertical-align: calc((24 * 1cap / 11 - 1cap) / 2); }
+  /* The name stands alone on its line and the source on its own under it: 12px from the name's baseline to the
+     source's capitals clears the name's tails. */
+  .bs-page-head h2 { text-box: trim-end cap alphabetic; }
+  /* A name with no source under it (a fight's copy) is one line: its tools centre on its capitals. */
+  .bs-page-head .t > h2:only-child { text-box: trim-both cap alphabetic; }
+  .bs-page-head .bs-src { display: block; margin: 12px 0 0; text-box: trim-both cap alphabetic; }
   .bp-read { padding: 16px 28px 40px; font-size: 13px; line-height: 1.6; color: var(--g-body); }
   .bp-meta { margin-bottom: 14px; font-style: normal; font-size: 13px; color: var(--g-dim); }
   .bp-hi { color: var(--g-text); font-weight: 700; }
@@ -677,8 +691,11 @@
   .bp-big .v { margin-top: 8px; font: 800 34px/1 system-ui, -apple-system, sans-serif; letter-spacing: -0.5px; color: var(--g-text); }
   .bp-big .sub { margin-top: 6px; font-size: 12px; color: var(--g-dim); }
   .bp-big .sub .bp-hi { color: var(--g-body); }
-  /* Label and value centre on one line; the value keeps its line's height around its trimmed capitals. */
-  .bp-minor { padding: 10px 16px; align-items: center; }
+  /* Label above the value, as on .bp-big, so each line holds one size; the value keeps its line's height round its capitals. */
+  .bp-minor { padding: 10px 16px; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; justify-content: flex-start; gap: 8px; }
+  .bp-minor b { text-align: left; }
+  /* Under a left-aligned label the sign stands in the line, not hung outside it. */
+  .bp-minor .bp-sn .sg { position: static; }
   .bp-minor .k { text-box: trim-both cap alphabetic; }
   .bp-minor b { text-box: trim-both cap alphabetic; padding-block: calc((1.2em - 1cap) / 2); }
   /* No speed reads as a drawn dash one cap tall, centred like the digits it stands for. */
@@ -688,7 +705,8 @@
   .bp-key .km { color: var(--g-text); }
   .bp-key .ks, .bp-key .kv { color: var(--g-dim); }
   /* The labels read in the cell's order, top to bottom, with a dot between. */
-  .bp-key > span + span::before { content: '·'; margin-right: 8px; color: var(--g-mute); }
+  .bp-key > span + span::before { content: ''; display: inline-block; width: 3px; height: 3px; margin-right: 8px; border-radius: 50%;
+    background: var(--g-mute); vertical-align: calc(0.5cap - 1.5px); }
   .bp-ab { gap: 4px; }
   .bp-ab-c .k { margin-top: 10px; }
   .bp-ab-c .m { margin: 9px 0 6px; font: 800 28px/1 system-ui, sans-serif; color: var(--g-text); }
@@ -781,12 +799,13 @@
   .w-medium .bs-t td { max-width: 180px; }
   /* Beside a page the name takes what is left and ends in an ellipsis, so the list never scrolls sideways. */
   .w-medium .bs-t td.nm { max-width: 0; width: 100%; }
-  .w-medium .bs-page-head, .w-narrow .bs-page-head { padding: 10px 10px 10px 20px; }
+  .w-medium .bs-page-head, .w-narrow .bs-page-head { --head-y: 10px; padding: var(--head-y) 10px var(--head-y) 20px; }
   .w-medium .bs-page-head h2, .w-narrow .bs-page-head h2 { font-size: 21px; }
-  .w-medium .bs-page-head h2 .bs-src, .w-narrow .bs-page-head h2 .bs-src { vertical-align: calc((21 * 1cap / 11 - 1cap) / 2); }
   .w-medium .bp-read, .w-narrow .bp-read { padding: 12px 20px 24px; }
   /* The copy's strip: whose copy this is, what differs from its entry, and Save to Bestiary. */
   .bc-strip { flex: none; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px 6px 20px; border-bottom: 1px solid var(--g-line); background: var(--g-raised); font-size: 12px; color: var(--g-body); }
-  .bc-strip .t { flex: 1; min-width: 0; }
+  .bc-strip .t { flex: 1; min-width: 0; text-box: trim-both cap alphabetic; }
   .bc-strip b { color: var(--g-text); font-weight: 600; }
-  .bs-t th .ar { white-space: pre; }
+  /* The sort arrow centres on the title's capitals. */
+  .bs-t th .ar svg { margin-left: 4px; vertical-align: calc(0.5cap - 6px); rotate: -90deg; }
+  .bs-t th .ar.dn svg { rotate: 90deg; }

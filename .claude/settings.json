@@ -49,6 +49,16 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-builder.js\""
           }
         ]
+      },
+      {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-board.js\"",
+            "timeout": 90
+          }
+        ]
       }
     ],
     "PostToolUse": [

@@ -48,10 +48,10 @@ async function findMapFiles(roots, opts) {
   return found.slice(0, limit);
 }
 
-// The files a path stands for: itself, or the maps directly inside a folder (never a zip, never deeper).
-// `files` carry their bytes; `skipped` say why a file did not come. `opts.only` 'image' leaves videos out and
-// `opts.maxMB` lowers the size cap, both before a byte is read: a folder's maps all cross IPC in one message.
-async function readMapFiles(p, opts) {
+// The files a path stands for: itself, or the maps directly inside a folder (never a zip, never deeper), each with
+// its full path and size but no bytes; `skipped` say why a file is left out. `opts.only` 'image' leaves videos out
+// and `opts.maxMB` lowers the size cap.
+async function listMapFolder(p, opts) {
   const o = opts || {};
   const imagesOnly = o.only === 'image';
   const maxBytes = Number(o.maxMB) > 0 ? Math.min(MAX_FILE_BYTES, Number(o.maxMB) * 1024 * 1024) : MAX_FILE_BYTES;
@@ -75,10 +75,22 @@ async function readMapFiles(p, opts) {
       const full = path.join(dir, name);
       const size = (await fs.promises.stat(full)).size;
       if (size > maxBytes) { out.skipped.push({ name, reason: 'is over ' + Math.round(maxBytes / 1048576) + ' MB.' }); continue; }
-      out.files.push({ name, type: mimeOf(name), bytes: await fs.promises.readFile(full) });
+      out.files.push({ name, path: full, type: mimeOf(name), size });
     } catch { out.skipped.push({ name, reason: 'could not be read.' }); }
   }
   return out;
 }
 
-module.exports = { findMapFiles, readMapFiles, MAX_RESULTS, MAX_FOLDER_FILES };
+// The same files with their bytes. ⚠ EVERY FILE CROSSES IPC IN ONE MESSAGE, so a folder of big maps is listed
+// with listMapFolder and read one path per call.
+async function readMapFiles(p, opts) {
+  const list = await listMapFolder(p, opts);
+  if (list.error) return list;
+  const out = { files: [], skipped: list.skipped };
+  for (const f of list.files) {
+    try { out.files.push({ name: f.name, type: f.type, bytes: await fs.promises.readFile(f.path) }); } catch { out.skipped.push({ name: f.name, reason: 'could not be read.' }); }
+  }
+  return out;
+}
+
+module.exports = { findMapFiles, listMapFolder, readMapFiles, MAX_RESULTS, MAX_FOLDER_FILES };

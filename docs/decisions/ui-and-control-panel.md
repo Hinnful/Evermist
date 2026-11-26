@@ -1624,3 +1624,9 @@ The splash used to leave at the DM window's first paint while start-up work stil
 
 ### Positioning fixes found alongside motion · `SETTLED` (2026-11-24, BACKLOG 310)
 Each existed before and was proven both ways in the rig. The bottom toast stack re-centres over the toolbar on a window resize (300px off). Popups placed by `_rpScreenToStyle` read the exact zoom (`currentCSSZoom`), so arming Door no longer nudges the room popup 0.4px. The submenu arrow is an icon and the Campaign's Open label is trimmed to its capitals, both on one centre line. A library drop is measured before the drag's empty groups vanish, so rows no longer jump and the dropped row glides from the pointer.
+
+### The TV keeps the started fight while others are edited · `SETTLED` (2026-11-26)
+Opening and editing other fights used to rewrite the TV's turn order. It now changes only on End fight (on that fight) or Start on another fight, which replaces it; deleting the started fight takes it off the TV, and Claude's refusals target it by id. The fight list marks it with a "На TV" status word, chosen over a bar above the list and a plate on the open fight's header.
+
+### Alignment: texts share a baseline, small ones get their own line · `SETTLED` (2026-11-26)
+**Replaces** "one text size per row". A text more than 1.5x smaller than the row's main text goes on its own line (Initiative and Speed labels above their numbers, a monster's source under its name). A capless glyph beside text is an icon, and "x" and a middle dot inside phrases became words. **Rejected:** centring a small tag on a big name's capitals, a tag pill without hover content, an icon font, CI ink checks. The rule is in `.claude/rules/design-system.md`.

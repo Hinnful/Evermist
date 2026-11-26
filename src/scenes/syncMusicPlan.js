@@ -4,7 +4,7 @@
 // keeps. No DOM, no network. Tested.
 //
 // A track is its content hash. Each computer sends one `music` record (and one `sounds` record, the same shape): its tracks { hash: { name, at, size } }, the
-// deletions { hash: { at, name, restoredAt?, purged? } } and the groups { of: { hash: group }, order, at }. ⚠ Track
+// deletions { hash: { at, name, restoredAt?, purged?, purgedAt? } } and the groups { of: { hash: group }, order, at }. ⚠ Track
 // files sit in the Drive's own `music` folder as `<machine>.<hash>`, never in `blobs`, which the previous release
 // tidies by the records it understands.
 
@@ -35,6 +35,10 @@ function syMuLocal(list) {
 
 const syMuEmpty = () => ({ init: false, tracks: {}, gone: {}, groups: null });
 
+// A purge stands until the DM adds the track again after it: a re-add later than the purge is a new track. A purge
+// with no time (the previous release's) always stands.
+const syMuPurged = g => !!g && g.purged === true && !(_symNum(g.purgedAt) && (g.restoredAt || 0) > g.purgedAt);
+
 // True when the deletion stands against a copy that landed at `at`: not undone since, and not older than the copy.
 function syMuGoneWins(g, at) {
   if (!g || !(_symNum(g.at) > 0)) return false;
@@ -44,7 +48,8 @@ function syMuGoneWins(g, at) {
 
 // The folder against the last tick: a track gone from it is deleted now, one new to it is noted. The first look
 // counts every track as old, so a deletion made elsewhere still reaches it. A track in Claude's undo window
-// (`stashed`) or still in the folder unhashed is neither. A track added again by hand undoes its deletion.
+// (`stashed`) or still in the folder unhashed is neither. A track added again by hand undoes its deletion, a purged
+// one included, so no computer purges it again.
 function syMuObserve(st, list, stashed, now) {
   const local = syMuLocal(list), hold = new Set(stashed || []), first = !st.init;
   const unhashed = new Set((list || []).filter(t => t && !_SYM_HASH.test(t.hash || '')).map(t => t.name));
@@ -60,7 +65,9 @@ function syMuObserve(st, list, stashed, now) {
     if (tracks[h]) continue;
     tracks[h] = { name: local[h].name, size: local[h].size, at: first ? 0 : now };
     const g = gone[h];
-    if (!first && g && !g.purged && (g.restoredAt || 0) < g.at) gone[h] = { ...g, restoredAt: now };
+    if (first || !g) continue;
+    if (syMuPurged(g)) { const p = Math.max(_symNum(g.purgedAt), g.at); gone[h] = { ...g, purgedAt: p, restoredAt: Math.max(now, p + 1) }; }
+    else if ((g.restoredAt || 0) < g.at) gone[h] = { ...g, restoredAt: now };
   }
   return { ...st, init: true, tracks, gone };
 }
@@ -75,6 +82,7 @@ function syMuGoneClean(gone) {
     out[h] = { at: g.at, name: syMuNameOk(g.name) ? g.name : '' };
     if (_symNum(g.restoredAt)) out[h].restoredAt = g.restoredAt;
     if (g.purged === true) out[h].purged = true;
+    if (_symNum(g.purgedAt)) out[h].purgedAt = g.purgedAt;
   }
   return out;
 }
@@ -89,12 +97,14 @@ function syMuGoneMerge(a, b) {
     const r = Math.max(x.restoredAt || 0, y.restoredAt || 0);
     if (r) e.restoredAt = r;
     if (x.purged || y.purged) e.purged = true;
+    const p = Math.max(_symNum(x.purgedAt), _symNum(y.purgedAt));
+    if (p) e.purgedAt = p;
     out[h] = e;
   }
   return out;
 }
 
-const _symInTrash = g => !g.purged && !((g.restoredAt || 0) >= (g.at || 0));
+const _symInTrash = g => !syMuPurged(g) && !((g.restoredAt || 0) >= (g.at || 0));
 
 // "Recently deleted": [{ hash, name, at }] of tracks not back in the folder here.
 function syMuTrash(gone, local) {
@@ -104,16 +114,16 @@ function syMuTrash(gone, local) {
 
 const syMuTrashDue = (gone, now) => Object.keys(gone || {}).filter(h => _symInTrash(gone[h]) && now - gone[h].at > _SYM.SY_TRASH_MS);
 
-function syMuPurge(gone, hashes) {
+function syMuPurge(gone, hashes, now) {
   const out = { ...gone };
-  for (const h of hashes) if (out[h]) out[h] = { ...out[h], purged: true };
+  for (const h of hashes) if (out[h]) out[h] = { ...out[h], purged: true, purgedAt: Math.max(now, out[h].at || 0) };
   return out;
 }
 
 // A restored track counts as added at `now` on every computer. A purged one cannot come back.
 function syMuRestore(gone, h, now) {
   const g = (gone || {})[h];
-  if (!g || g.purged) return gone;
+  if (!g || syMuPurged(g)) return gone;
   return { ...gone, [h]: { ...g, restoredAt: now } };
 }
 
@@ -123,7 +133,7 @@ function syMuFromTrash(gone, local, held, fetch) {
   const want = new Set(fetch || []);
   return [...new Set(held || [])].filter(h => {
     const g = (gone || {})[h];
-    if ((local || {})[h] || (g && g.purged)) return false;
+    if ((local || {})[h] || syMuPurged(g)) return false;
     return want.has(h) || (!!g && (g.restoredAt || 0) >= g.at);
   });
 }
@@ -301,11 +311,11 @@ function syMuPlan(o) {
   }
   for (const h of Object.keys(gone)) {
     const g = gone[h];
-    if (local[h] || hold.has(h) || want.has(h) || g.purged || !((g.restoredAt || 0) >= g.at) || !g.name) continue;
+    if (local[h] || hold.has(h) || want.has(h) || syMuPurged(g) || !((g.restoredAt || 0) >= g.at) || !g.name) continue;
     want.set(h, g.name);
   }
   for (const [h, name] of want) if (byHash[h]) out.download.push({ hash: h, name, fileId: byHash[h][0].id, fileName: byHash[h][0].name });
-  if (!o.first) for (const h of Object.keys(gone)) if (gone[h].purged && byHash[h]) out.purge.push(...byHash[h].map(f => f.id));
+  if (!o.first) for (const h of Object.keys(gone)) if (syMuPurged(gone[h]) && byHash[h]) out.purge.push(...byHash[h].map(f => f.id));
   return out;
 }
 
@@ -314,14 +324,14 @@ function syMuPlan(o) {
 function syMuLoose(files, records, gone) {
   const used = new Set();
   for (const r of records || []) for (const h of Object.keys(r.rec.tracks)) used.add(h);
-  for (const h of Object.keys(gone || {})) if (!gone[h].purged) used.add(h);
+  for (const h of Object.keys(gone || {})) if (!syMuPurged(gone[h])) used.add(h);
   const owners = new Set((records || []).map(r => r.machine));
   return (files || []).filter(f => _SYM.syBlobNameOk(f.name) && !used.has(_symHashOf(f.name)) && owners.has(_symOwnerOf(f.name))).map(f => f.name);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    syMuNameOk, syMuLocal, syMuEmpty, syMuGoneWins, syMuObserve, syMuGoneClean, syMuGoneMerge, syMuTrash, syMuTrashDue,
+    syMuNameOk, syMuLocal, syMuEmpty, syMuPurged, syMuGoneWins, syMuObserve, syMuGoneClean, syMuGoneMerge, syMuTrash, syMuTrashDue,
     syMuPurge, syMuRestore, syMuFromTrash, syMuGroupsClean, syMuGroupsFromLocal, syMuGroupsPick, syMuGroupsToLocal, syMuRecordText,
     syMuRecordParse, syMuPlan, syMuLoose, SY_HOLD, syLayoutMap, syLayoutOut, syLayoutIn, syLayoutResolve, syLayoutNames,
     syLayoutTakes, syHiddenChange,

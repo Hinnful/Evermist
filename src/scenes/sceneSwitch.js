@@ -10,6 +10,12 @@ function dmSwitchVeil(on) {
   if (el) el.classList.toggle('up', on);
 }
 
+// ⚠ THE MAP BEING OPENED, from its record read to its install: currentScene is null all that while, so a writer
+// that patches only currentScene would write the store alone, and the install would save the copy read before it back.
+// `{ id }` until the read lands, then the record itself; a change that needs the record waits in the stub's `patches`. Writers patch it as they patch currentScene; sync and Claude
+// treat it as open.
+let sceneOpening = null;
+
 async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Opening the scene the DM already has is how a held TV gets it after the open scene was deleted.
   if (currentScene && currentScene.id === id) { if (tvHeld && !keepTvClear) sendToPlayerNow(); return; }
@@ -55,10 +61,17 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     _sceneOutPostedAt = Date.now();
     outPosted = true;
   }
+  let opening = { id };
+  sceneOpening = opening;
   try {
   const scene = await sceneStore.loadScene(id);
   if (myGen !== switchGeneration) return;
   if (!scene) throw new Error('Scene not found.');
+  // What the DM changed while the record was being read.
+  const early = { ...opening }, patches = early.patches || [];
+  delete early.id; delete early.patches;
+  opening = sceneOpening = Object.assign(scene, early);
+  for (const patch of patches) patch(scene);
   searchRecentAdd('map:' + id);
 
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
@@ -234,10 +247,12 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Back on the TV's own map, the next push is fog only. Re-read: a Player asking mid-switch clears it.
   playerMapSent = backToTv && tvSceneId === id;
   currentScene = scene;
+  sceneOpening = null;
   loadSceneLights(scene);   // after currentScene: the plan's lights come from it
   // ⚠ A column must not write this: the parent restores from it at startup, so column B's map
   // would be the one that came back.
-  if (!isPane) localStorage.setItem('evermist-current-scene-id', id);
+  // ⚠ A full storage only costs which map comes back at start: thrown into the catch, it unloads the map installed above.
+  if (!isPane) { try { localStorage.setItem('evermist-current-scene-id', id); } catch (_) { /* full or blocked */ } }
   landing.style.display = 'none';
   if (!isPlayer) container.style.cursor = cursorFor('crosshair');
   fitToScreen();
@@ -263,6 +278,9 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
       ? Math.max(0, FOG_SCENE_COVER_MS - (Date.now() - _sceneOutPostedAt))
       : 0;
     scenePushTimer = setTimeout(() => { scenePushTimer = 0; sendToPlayer(false, true); }, Math.max(150, closedIn));
+  } else if (outPosted && !tvHeld) {
+    // Auto closed the TV's fog and the DM turned Manual since: the map waits for Send, marked.
+    tvWait.scene = true; playerUnsent = true;
   }
   if (deferLoad) requestAnimationFrame(() => requestAnimationFrame(() => { if (myGen === switchGeneration) dmSwitchVeil(false); }));
   hintsMapOpened();      // hintsCues.js
@@ -277,6 +295,8 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     cleanupVideo();
     dmSwitchVeil(false);
     onSwitchSceneError(prevId, _isRecovery, err); // scenes.js
+  } finally {
+    if (sceneOpening === opening) sceneOpening = null;
   }
 }
 

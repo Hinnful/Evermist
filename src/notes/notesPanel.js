@@ -20,6 +20,7 @@ let _npRoomKey = null;
 let _npMap = null;               // { key, notes }: the stored notes of a map nobody has open, read once per pick
 let _npMapLoading = null;        // the map id being read
 let _npForeign = null;           // { scene, id }: the room fields hold a room of a map that is not held
+let _npRefill = false;           // after a settle: the next repaint refills the title and a foreign room's fields, focused or not
 
 function _npEl(id) { return document.getElementById(id); }
 
@@ -228,7 +229,10 @@ function _npCommitMap(key, v) {
   if (!panesActive && currentScene && currentScene.id === key) { currentScene.notes = v; scheduleAutoSave(); return; }
   const col = panesActive ? paneColumnOf(key) : null;
   if (col) sendToPane({ type: 'pane-scene-notes', value: v }, col);
-  else sceneStore.updateScene(key, rec => { rec.notes = v; });
+  else {
+    if (sceneOpening && sceneOpening.id === key) sceneOpening.notes = v;
+    _npTrack(sceneStore.updateScene(key, rec => { rec.notes = v; }));
+  }
   if (_npMap && _npMap.key === key) _npMap.notes = v;
 }
 
@@ -251,13 +255,28 @@ function notesRoomPatch(sceneId, roomId, fields) {
   if (!panesActive && currentScene && currentScene.id === sceneId) { roomCardPatch(roomId, fields); return; }
   const col = panesActive ? paneColumnOf(sceneId) : null;
   if (col) { sendToPane({ type: 'pane-room-patch', id: roomId, fields }, col); return; }
-  sceneStore.updateScene(sceneId, rec => {
+  const patch = rec => {
     const p = (rec.polygons || []).find(x => x && x.id === roomId);
     if (!p) return false;
     if (fields.name !== undefined) p.name = sanitizeRoomName(fields.name, t('Room {n}', { n: p.id }));
     if (fields.desc !== undefined) p.desc = sanitizeRoomDesc(fields.desc);
-  }).then(refreshRoomPanel);
+  };
+  // A map being opened installs the rooms it read, so the patch goes on that copy too, or waits for it.
+  if (sceneOpening && sceneOpening.id === sceneId) {
+    if (sceneOpening.mapWidth == null) (sceneOpening.patches = sceneOpening.patches || []).push(patch);
+    else patch(sceneOpening);
+  }
+  _npTrack(sceneStore.updateScene(sceneId, patch).then(refreshRoomPanel));
 }
+
+// The store writes for maps nobody holds, until each lands: a close waits for them (scenes.js flushBeforeClose).
+const _npWrites = new Set();
+function _npTrack(p) {
+  _npWrites.add(p);
+  const done = () => _npWrites.delete(p);
+  p.then(done, done);
+}
+function notesPanelWritesSettled() { return Promise.allSettled([..._npWrites]); }
 
 // roomCard.js hands the fields' commits here while they hold another map's room. True when it took one.
 function notesForeignRoomEdit(op, payload) {
@@ -278,7 +297,7 @@ function notesForeignRoomEdit(op, payload) {
 // The room of a map that is not held, while the room level shows one: { scene, id }, else null.
 function notesForeignRoom() { return _npForeign; }
 
-function _npForeignFill(m) {
+function _npForeignFill(m, refill) {
   const nameEl = _npEl('rp-name'), descEl = _npEl('rp-desc');
   const name = m.room.name || t('Room {n}', { n: m.tg.id });
   if (!_npForeign || _npForeign.scene !== m.tg.scene || _npForeign.id !== m.tg.id) {
@@ -286,12 +305,12 @@ function _npForeignFill(m) {
     _npForeign = { scene: m.tg.scene, id: m.tg.id };
     _rpFieldPid = null;
     _rpTabKey = null;
-    nameEl.value = name; descEl.value = m.room.desc || '';
+    rpFill(nameEl, name); rpFill(descEl, m.room.desc || '');
     _rpFitNotes();
     return;
   }
-  if (nameEl !== document.activeElement) nameEl.value = name;
-  if (descEl !== document.activeElement) descEl.value = m.room.desc || '';
+  if (refill || nameEl !== document.activeElement) rpFill(nameEl, name);
+  if (refill || descEl !== document.activeElement) rpFill(descEl, m.room.desc || '');
 }
 
 function _npForeignLeave() {
@@ -325,6 +344,8 @@ function _npShowLevel(m) {
 
 function notesPanelSync(room) {
   if (!_npEl('nw-crumbs') || isPane) return;
+  const refill = _npRefill;
+  _npRefill = false;
   // ⚠ THE CAMPAIGN MAP COVERS THE SCENE, so its room is not shown.
   const scene = worldMapOpen ? null : _npScene();
   if (worldMapOpen) room = null;
@@ -348,7 +369,7 @@ function notesPanelSync(room) {
   if (m.kind === 'room') {
     if (_npAim) { _npCommit(); _npAim = null; }
     _npEl('rp-desc').dataset.neKey = m.key;
-    if (m.tg.own) _npForeignLeave(); else _npForeignFill(m);
+    if (m.tg.own) _npForeignLeave(); else _npForeignFill(m, refill);
     return;
   }
   _npForeignLeave();
@@ -374,7 +395,8 @@ function notesPanelSync(room) {
     _npFilled = notesSanitize(m.notes).text;
   }
   neRefreshLabels(field);
-  if (title !== document.activeElement && title.value !== m.name) title.value = m.name;
+  if ((refill || title !== document.activeElement) && title.value !== m.name) title.value = m.name;
+  if (title.value === m.name) title.rpFilled = m.name;
   title.dataset.noI18n = '';
 }
 
@@ -382,8 +404,11 @@ function notesPanelSync(room) {
 // the notes under it is not undone by the next repaint writing the old text back.
 function notesPanelSettle() {
   _npCommit();
+  if (_npEl('nw-title') === document.activeElement) _npTitleCommit();
+  roomCardSettle();
   _npAim = null;
   _npKey = null;
+  _npRefill = true;
 }
 
 // The field the cursor is still in, committed before a save that would otherwise miss it: those
@@ -414,7 +439,7 @@ function _npCalibrating() { return typeof gridCalArmed !== 'undefined' && gridCa
 // The title renames what is shown, through its owner's own rename path (notesTree.js).
 function _npTitleCommit() {
   const el = _npEl('nw-title'), aim = _npAim;
-  if (!el || !aim || el.readOnly) return;
+  if (!el || !aim || el.readOnly || el.value === el.rpFilled) return;
   const v = el.value.trim();
   if (!v) { el.value = ntNameOf(aim.key); return; }
   if (v !== ntNameOf(aim.key)) ntRenameKey(aim.key, v);

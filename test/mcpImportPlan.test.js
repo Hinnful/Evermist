@@ -64,6 +64,13 @@ describe('mcpLinkFill', () => {
     assert.deepEqual(P.mcpLinkFill(room, entries[1], 'Room 1', false), { name: 'K12. Chapel', desc: 'My notes.', kept: true });
     assert.equal(P.mcpLinkFill(room, entries[1], 'Room 1', true).desc, 'Pews and dust.');
   });
+
+  it('refuses an entry past 20,000 characters that would land, and lets the room keep its own notes', () => {
+    const long = { title: 'K1. Hall', body: 'a'.repeat(25000) };
+    assert.throws(() => P.mcpLinkFill({ name: 'Room 1' }, long, 'Room 1', false), /^Error: Nothing was linked: the notes of "K1\. Hall" would pass 20000 characters/);
+    assert.throws(() => P.mcpLinkFill({ name: 'Room 1', desc: 'Mine.' }, long, 'Room 1', true), err => err.mcpRefusal === true && /would pass 20000/.test(err.message));
+    assert.equal(P.mcpLinkFill({ name: 'Room 1', desc: 'Mine.' }, long, 'Room 1', false).desc, 'Mine.');
+  });
 });
 
 describe('the confirm replies', () => {

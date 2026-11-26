@@ -11,13 +11,14 @@ const _cfName = f => combatFightLabel(f.name, t);
 function _cfCount(f) {
   const rows = combatFightRows(cbState, f), en = rows.filter(r => r.side === 'enemy').length, al = rows.length - en;
   if (!rows.length) return t('empty');
-  return [en ? t.plural(en, '{n} enemy', '{n} enemies') : '', al ? t.plural(al, '{n} ally', '{n} allies') : ''].filter(Boolean).join(' · ');
+  return [en ? t.plural(en, '{n} enemy', '{n} enemies') : '', al ? t.plural(al, '{n} ally', '{n} allies') : ''].filter(Boolean).join(', ');
 }
 
 function cbFightsTitle() {
   const t = document.querySelector('#cb-fightpick .nm');
   if (t) t.textContent = _cfName(_cfOpen());
   if (_cfMenu) _cfDraw();
+  initiativeTvButton();
 }
 
 function _cfSwitch(id) {
@@ -33,9 +34,9 @@ function _cfSwitch(id) {
 function _cfDraw() {
   _cfMenu.innerHTML = `<div class="cf-list">${cbState.fights.map(f => `
     <div class="cf-item${f.id === cbState.openId ? ' on' : ''}" data-id="${_cbEsc(f.id)}">
-      <span class="nm" data-no-i18n>${_cbEsc(_cfName(f))}</span><span class="meta">${_cfCount(f)}</span>
+      <span class="ck">${f.id === cbState.openId ? uiIcon('check') : ''}</span><span class="nm" data-no-i18n>${_cbEsc(_cfName(f))}</span>${f.id === initiativeTvFight() ? '<span class="sm-chip cf-tv">On TV</span>' : ''}<span class="meta">${_cfCount(f)}</span>
     </div>`).join('')}</div>
-    <button class="cf-new" data-new>+ New fight</button>`;
+    <button class="cf-new" data-new>${uiIcon('plus')}<span>New fight</span></button>`;
 }
 
 function cbCloseFights() {
@@ -66,7 +67,7 @@ function _cfRename(el, f) {
     el.removeEventListener('blur', blur);
     el.contentEditable = 'false';
     el.classList.remove('editing');
-    if (keep) { combatRenameFight(cbState, f.id, el.textContent); cbSave(); }
+    if (keep) { combatRenameFight(cbState, f.id, el.textContent, t); cbSave(); }
     el.textContent = _cfName(f);
     cbFightsTitle();
   };
@@ -113,6 +114,7 @@ function _cfToggle() {
   _cfMenu.addEventListener('keydown', e => e.stopPropagation());
   _cfMenu.addEventListener('click', e => {
     if (e.target.closest('[data-new]')) {
+      bcClose();
       combatAddFight(cbState, combatFightId);
       cbSave();
       cbRender();

@@ -12,7 +12,7 @@ const TV_WAIT_MS    = 15000;                 // how long a switch to a second sc
 const TV_NOTE_MS    = 4000;
 
 const TV_ICON = {
-  tv:   '<svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="3" width="10.8" height="7.4" rx="1.2"/><line x1="7" y1="10.4" x2="7" y2="12"/><line x1="4.6" y1="12" x2="9.4" y2="12"/></svg>',
+  tv:   '<svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="2.5" width="10.8" height="7.4" rx="1.2"/><line x1="7" y1="9.9" x2="7" y2="11.5"/><line x1="4.6" y1="11.5" x2="9.4" y2="11.5"/></svg>',
   sync: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7a4.8 4.8 0 0 1 8.1-3.5L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7a4.8 4.8 0 0 1-8.1 3.5L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>',
   inch: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="1.3" y="4.3" width="11.4" height="5.4" rx="1"/><line x1="3.8" y1="4.3" x2="3.8" y2="6.4"/><line x1="6.1" y1="4.3" x2="6.1" y2="7.4"/><line x1="8.4" y1="4.3" x2="8.4" y2="6.4"/><line x1="10.6" y1="4.3" x2="10.6" y2="7.4"/></svg>',
   more: '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="3" cy="7" r="1.15"/><circle cx="7" cy="7" r="1.15"/><circle cx="11" cy="7" r="1.15"/></svg>',
@@ -438,10 +438,10 @@ function _tvSetupRender() {
   win.append(body);
 
   const foot = _tvMake('div', 'sm-wfoot');
-  if (live) foot.append(_tvBtn('sm-hbtn primary', '', [document.createTextNode(t('Done'))], () => _tvSetupClose(tvOneInchDone)));
+  if (live) foot.append(_tvBtn('sm-hbtn primary', '', [_tvText('', t('Done'))], () => _tvSetupClose(tvOneInchDone)));
   else {
-    foot.append(_tvBtn('sm-hbtn', '', [document.createTextNode(t('Cancel'))], () => _tvSetupClose()),
-      _tvBtn('sm-hbtn primary', '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvSetupGo));
+    foot.append(_tvBtn('sm-hbtn', '', [_tvText('', t('Cancel'))], () => _tvSetupClose()),
+      _tvBtn('sm-hbtn primary', '', [_tvIcon(TV_ICON.tv), _tvText('', t('Show on TV'))], _tvSetupGo));
   }
   win.append(foot);
 
@@ -482,7 +482,7 @@ function _tvCta(pick) {
   if (_tvSelected().kind === 'display') label.setAttribute('data-no-i18n', '');
   const sub = _tvBtn('tv-sub', cap, [label, _tvText('car', '▼')], _tvSetupOpen);
   const go = _tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : '') + (_tvGoFit >= 3 ? ' small' : ''), '',
-    (_tvGoFit >= 1 ? [] : [_tvIcon(TV_ICON.tv)]).concat(document.createTextNode(_tvGoFit >= 2 && I18N_LANG === 'ru' ? t('Show on TV short') : t('Show on TV'))), _tvShow);
+    (_tvGoFit >= 1 ? [] : [_tvIcon(TV_ICON.tv)]).concat(_tvText('tx', _tvGoFit >= 2 && I18N_LANG === 'ru' ? t('Show on TV short') : t('Show on TV'))), _tvShow);
   go.id = 'tv-go';   // the show-on-tv hint points at it
   cta.append(go, sub);
   return cta;

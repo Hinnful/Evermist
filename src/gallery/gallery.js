@@ -103,22 +103,46 @@ async function _gaAddOne(f) {
   return p;
 }
 
+// A file that will not read and one that will not save (a full disk) are listed apart, and the rest still go in.
 async function _gaAdd(files) {
-  const failed = [];
-  for (const f of files) if (!await _gaAddOne(f)) failed.push(f.name);
+  const failed = [], unsaved = [];
+  for (const f of files) {
+    try { if (!await _gaAddOne(f)) failed.push(f.name); }
+    catch (err) { console.error('Saving a picture failed:', err); unsaved.push(f.name); }
+  }
   _gaRender();
-  if (failed.length) messageDialog({
-    title: t.plural(failed.length, 'One picture was not added', '{n} pictures were not added'),
-    message: t('Evermist could not read these as pictures:') + '\n\n' + failed.join('\n'),
-  });
+  const n = failed.length + unsaved.length;
+  if (!n) return;
+  const parts = [];
+  if (failed.length) parts.push(t('Evermist could not read these as pictures:') + '\n\n' + failed.join('\n'));
+  if (unsaved.length) parts.push(t('Evermist could not save these. The disk may be full:') + '\n\n' + unsaved.join('\n'));
+  messageDialog({ title: t.plural(n, 'One picture was not added', '{n} pictures were not added'), message: parts.join('\n\n') });
 }
 
-function _gaRename(p, name) {
-  name = name.trim();
-  if (!name || name === p.name) return;
+// The name is shown only once it is saved: a failed write puts the old name back and rejects.
+async function _gaPutName(p, name) {
+  const was = { name: p.name, named: p.named };
   p.name = name;
   p.named = Date.now();   // an import takes the name edited later
-  galleryStore.put(p);
+  try { await galleryStore.put(p); }
+  catch (err) {
+    Object.assign(p, was);
+    if (was.named == null) delete p.named;
+    _gaRender();
+    throw err;
+  }
+}
+
+async function _gaRename(p, name) {
+  name = name.trim();
+  if (!name || name === p.name) return;
+  const was = p.name;
+  try { await _gaPutName(p, name); }
+  catch (err) {
+    console.error('Renaming a picture failed:', err);
+    messageDialog({ title: t('The picture was not renamed'),
+      message: t('Evermist could not save the new name, so the picture keeps its old name "{name}". The disk may be full.', { name: was }) });
+  }
 }
 
 // No question: the whole picture goes to the Trash first, then leaves Pictures, and keeps its place for a restore. A
@@ -152,13 +176,13 @@ async function galleryAddFile(f) {
   return p;
 }
 
-function galleryRenameTo(id, name) {
+// Rejects when the name could not be saved; the picture then keeps its old one.
+async function galleryRenameTo(id, name) {
   const p = _gaPics.find(x => x.id === id);
   if (!p) return;
-  p.name = name;
-  p.named = Date.now();
-  galleryStore.put(p);
+  const done = _gaPutName(p, name);
   _gaRender();
+  await done;
 }
 
 // A picture taken out, and the whole entry back for an undo.
@@ -205,7 +229,9 @@ async function galleryBackupPayload() {
     const p = pics.find(x => x.id === m.id);
     files.push({ name: pictureZipName(m.id, m.type), buffer: await p.blob.arrayBuffer() });
   }
-  return meta.length ? { meta: JSON.stringify(meta), files } : null;
+  // The order and groups of these pictures; the previous release never reads gallery-layout.json.
+  const layout = JSON.stringify(picturesLayoutFor(_gaL ? _gaLib() : null, meta.map(m => m.id)));
+  return meta.length ? { meta: JSON.stringify(meta), files, layout } : null;
 }
 
 // Adds the backup's pictures the gallery does not hold, and takes a name renamed later in the file. `goneFile` is the
@@ -222,11 +248,22 @@ async function galleryAdoptBackup(zipPath, goneFile) {
     if (buf && !plan.skip.includes(m.id)) list.push({ id: m.id, name: m.name, added: m.added || now, named: m.named, blob: new Blob([buf], { type: m.type }) });
   }
   const added = await galleryStore.addMissing(list);
+  _gaAdoptLayout(got && got.layout, added.map(p => p.id));
   const renamed = galleryRenames(have, meta, now).filter(r => !plan.remove.includes(r.id));
   for (const r of renamed) await galleryStore.put(Object.assign(have.find(p => p.id === r.id), { name: r.name, named: r.named }));
   await _gaDropGone(plan);
   if (added.length || renamed.length || plan.remove.length) await galleryReload();
   return added.length;
+}
+
+// The pictures new here take the file's group and place; the ones already here keep this library's.
+function _gaAdoptLayout(text, ids) {
+  const theirs = libParse(text, cleanPicturesLayout);
+  if (!theirs || !ids.length) return;
+  if (!_gaL) _gaL = libParse(localStorage.getItem(LIB_PICTURES_KEY), cleanPicturesLayout) || picturesSeed(_gaPics);
+  const L = picturesLayoutMerge(_gaL, theirs, ids);
+  Object.assign(_gaL, { order: L.order, groups: L.groups, groupOrder: L.groupOrder });
+  _gaSave(true);
 }
 
 // A picture deleted elsewhere moves into this computer's Trash, its time the deletion's.

@@ -39,7 +39,7 @@ const syncMerge = (() => {
 
   function context() {
     return {
-      openScene: currentScene ? currentScene.id : null,
+      openScene: currentScene ? currentScene.id : sceneOpening ? sceneOpening.id : null,
       tvScene: tvSceneId,
       paneScenes: panesActive ? livePanes().map(id => panes[id].sceneId).filter(Boolean) : [],
       // A page in the Bestiary being edited holds the bestiary back as the fight table does.
@@ -122,6 +122,7 @@ const syncMerge = (() => {
     const changed = slice('compare', () => syRecordBody(rec) !== syRecordBody(local)) || take.fog && fb || take.map && mb;
     if (!changed) { if (staged) await io.dropPart(id); return { applied: false, same: true }; }
     if (ctx.keep) await ctx.keep(r.key, local);
+    if (held(r.key)) { if (staged) await io.dropPart(id); return { skipped: 'file' }; }
     if (staged) {
       try { await io.place(id, _ext(e)); } catch (err) {
         console.error('[sync] a map file could not be put in place', err);
@@ -131,6 +132,8 @@ const syncMerge = (() => {
     }
     // The picture it replaces is kept 30 days; a video is kept by placeVideo.
     if (take.map && mb && local.mapBlob) await io.keepMap(id, local.mapBlob);
+    // ⚠ Again after every await: a map opened meanwhile would save its older copy over this one.
+    if (held(r.key)) return { skipped: 'file' };
     await sceneStore.putScene(rec);
     _cardUpdated(rec);
     return { applied: true };

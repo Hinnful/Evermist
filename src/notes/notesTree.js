@@ -425,7 +425,7 @@ function _ntKey(e) {
 
 // ─── The undo of the tree's drops ────────────────────────────────────────────
 // Ctrl+Z with the tree focused takes back the last drop: the lists it wrote, a faction's or lore's old place, and for a
-// map whose group changed, the Campaign as it was (cards, outlines, a group it made). No toast: those are the Trash's.
+// map whose group changed, its card and a group the drop made (`nmUndoCard`). No toast: those are the Trash's.
 
 function ntUndoPush(step) {
   _ntUndoSteps.push(step);
@@ -436,9 +436,10 @@ function _ntUndo() {
   const s = _ntUndoSteps.pop();
   if (!s) return;
   notesPanelFlush();
-  for (const l of (s.lists || []).slice().reverse()) notesOrderPut(l.key, l.was);
+  const now = Date.now();
+  for (const l of (s.lists || []).slice().reverse()) notesOrderPut(l.key, notesOrderUndone(l.was, now));
   if (s.entry && notesEntryGet(s.entry.id)) notesEntryMove(s.entry.id, s.entry.parent, s.entry.before);
-  if (s.world) { worldSnapshotPut(s.world); if (worldMapOpen) worldMapRefresh(); }
+  if (s.card) nmUndoCard(s.card);
   ntRefresh();
 }
 

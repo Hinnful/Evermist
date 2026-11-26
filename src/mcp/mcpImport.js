@@ -138,6 +138,22 @@ async function _mcpLinkRoom(args) {
     'Linked on "' + s.name + '": ' + done.join('; ') + '.' + keptSaid);
 }
 
+const _mcpModPrint = () => JSON.stringify({ entries: mtEntries, src: mtSourceName });
+const _MCP_WHOLE_MAP = mcpMapKeys(Object.keys(MCP_MAP_PARTS));
+
+// A map as an import leaves it, every part, its notes and name, to tell whether the DM changed it since.
+async function _mcpMapWhole(scene) {
+  const rec = await _mcpSceneRecord(scene.id);
+  return _mcpMapPrint(await _mcpMapRead(scene, _MCP_WHOLE_MAP), _MCP_WHOLE_MAP) + '|' + (rec.notes || '') + '|' + scene.name + '|' + (scene.group || '');
+}
+
+// The parts an undo puts back, as the import left them.
+async function _mcpZipLeft(updated) {
+  const maps = new Map();
+  for (const id of updated) { const sc = allScenes.find(x => x.id === id); if (sc) maps.set(id, await _mcpMapWhole(sc)); }
+  return { fights: JSON.parse(JSON.stringify(cbState)), note: notesCampaignGet(), mod: _mcpModPrint(), maps };
+}
+
 // What an import changes beyond maps, groups and roads, as it is before: the campaign note, module text, the fight
 // table, the gallery's picture ids and the backdrop.
 async function _mcpZipParts() {
@@ -153,6 +169,10 @@ async function _mcpZipPictures(before) {
 // ⚠ CHECKED BEFORE ANY MAP IS WRITTEN BACK. A refusal keeps the step as if nothing changed, so one after the
 // writes leaves the DM on a map with no currentScene, where nothing saves.
 function _mcpZipPartsRefusal(rest) {
+  const changed = mcpCombatChangedSince(cbState, rest.left.fights, rest.before.fights);
+  if (notesCampaignGet() !== rest.left.note) changed.push('the campaign notes');
+  if (_mcpModPrint() !== rest.left.mod) changed.push('the module text');
+  if (changed.length) throw Object.assign(new Error('Not undone: ' + changed.join(', ') + ' changed since the import, and undoing it would erase that too.'), { mcpKeep: true });
   const fights = mcpCombatUndoImport(cbState, rest.before.fights);
   if (fights.error) throw Object.assign(new Error(fights.error), { mcpKeep: true });
   const onTv = rest.pics.find(id => galleryOnTv(id));
@@ -179,6 +199,9 @@ async function _mcpUndoZip(run, done, snap, rest) {
     const sc = allScenes.find(x => x.id === rec.id);
     const why = sc && _mcpMapBlocked(sc, 'undoing the import');
     if (why) throw Object.assign(new Error(why), { mcpKeep: true });
+    if (sc && rest.left.maps.has(sc.id) && await _mcpMapWhole(sc) !== rest.left.maps.get(sc.id)) {
+      throw Object.assign(new Error('Not undone: "' + sc.name + '" has changed there since the import, and undoing it would erase that too.'), { mcpKeep: true });
+    }
   }
   if (panesActive && run.created.some(id => paneColumnOf(id))) throw Object.assign(new Error('A map the import made is open in a column. Ask the DM to close the column first.'), { mcpKeep: true });
   mcpRefuseRemovingOpen(run.created, 'undoing the import');
@@ -223,9 +246,10 @@ async function _mcpImportZip(args) {
   const snap = worldSnapshotTake(), before = await _mcpZipParts(), said = [];
   const got = await restoreFromZipPath(path, d => said.push(d.title + '. ' + d.message));
   if (!got) return _mcpNo('Nothing was imported: the DM stopped it, or it failed, and the maps are as they were. ' + said.join('\n\n'));
-  const pics = await _mcpZipPictures(before.pics);
-  return mcpDone('imported "' + _mcpFileName(path) + '"', async () => _mcpUndoZip(got.run, got.done, snap, { before, pics }),
-    'Imported "' + _mcpFileName(path) + '".\n\n' + said.join('\n\n') + '\n\nUndo puts back the maps, the Campaign, the campaign note, module text, fights, pictures and backdrop as they were.');
+  const pics = await _mcpZipPictures(before.pics), left = await _mcpZipLeft(got.done.updated);
+  return mcpDone('imported "' + _mcpFileName(path) + '"', async () => _mcpUndoZip(got.run, got.done, snap, { before, pics, left }),
+    'Imported "' + _mcpFileName(path) + '".\n\n' + said.join('\n\n') + '\n\nUndo puts back the maps, the Campaign, the campaign note, module text, fights, pictures and backdrop as they were.',
+    got.run.created.length ? 'The maps it made are in the Trash, where the DM can restore them for 30 days.' : undefined);
 }
 
 const MCP_IMPORT_TOOLS = { load_floor_plan: _mcpLoadFloorPlan, load_module_text: _mcpLoadModuleText,

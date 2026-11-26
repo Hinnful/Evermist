@@ -46,6 +46,7 @@
     background: var(--b-solid); color: #fff; white-space: nowrap; font: 600 13px/1 system-ui;
     display: inline-flex; align-items: center; gap: 8px; cursor: var(--cur-pointer); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
+  .tv-go > .tx { text-box: trim-both cap alphabetic; }
   .tv-go:hover { background: var(--b-solid-h); }
   .tv-go:active { background: var(--b-solid-p); }
   /* No TV found (.none) it stays solid blue: the line under it says so, and the press opens the help box. */

@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const { app, ipcMain } = require('electron');
-const { findMapFiles, readMapFiles } = require('./mapScan.js');
+const { findMapFiles, listMapFolder, readMapFiles } = require('./mapScan.js');
 
 const MAX_BESTIARY_BYTES = 20 * 1024 * 1024;
 const FOLDERS = ['downloads', 'desktop', 'documents', 'pictures'];
@@ -49,6 +49,7 @@ function register() {
   ipcMain.handle('read-prep-file', (_event, p, kind) => readPrepFile(p, kind));
   ipcMain.handle('find-map-files', (_event, query) => findMapFiles(roots(), { query: typeof query === 'string' ? query : '' }).catch(() => []));
   ipcMain.handle('read-bestiary-file', (_event, p) => readBestiaryFile(p));
+  ipcMain.handle('list-map-folder', (_event, p) => (typeof p === 'string' && p ? listMapFolder(p) : { files: [], skipped: [], error: 'A path is needed.' }));
   ipcMain.handle('read-map-files', (_event, p, opts) => (typeof p === 'string' && p ? readMapFiles(p, opts && typeof opts === 'object' ? opts : undefined) : { files: [], skipped: [], error: 'A path is needed.' }));
 }
 

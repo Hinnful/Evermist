@@ -49,6 +49,8 @@ function armGridCalibration(on) {
   gridCalArmed = on;
   dockHoldForCalibration(on);
   if (isPane && parent !== window) parent.postMessage({ type: 'pane-calibrate', pane: paneId, on }, '*');
+  // A drag that already moved the grid live and never committed goes back, or the DM keeps a grid the TV never got.
+  if (!on && gridCalDrag && gridCalDrag.before) applyGridConfig(gridCalDrag.before);
   gridCalDrag = null;
   gridCalRefine = null;
   if (on) {
@@ -244,9 +246,11 @@ function gridCalApplySpan() {
 
 // The count is GUESSED from the size already set, so a map whose size is far out guesses wrong and
 // the stepper is the way back.
+// ⚠ A hex guess never drops below 1, so a click (reach 0) only stops at gridCalCellFits.
 function gridCalCommitSpan(ax, ay, bx, by) {
-  const n = gridCalGuessCount(gridCalSpanReach({ ax, ay, bx, by }));
-  if (n < 1) return;
+  const reach = gridCalSpanReach({ ax, ay, bx, by });
+  const n = gridCalGuessCount(reach);
+  if (!gridCalCellFits(reach, n)) return;
   gridCalSpan = { ax, ay, bx, by, n };
   gridCalApplySpan();
   gridCalCommit();
@@ -339,6 +343,7 @@ function gridCalMouseDown(raw) {
   } else {
     gridCalDrag = { which: 'span', ax: raw.x, ay: raw.y, bx: raw.x, by: raw.y };
   }
+  if (part) gridCalDrag.before = captureGridConfig();   // every grab but a new square writes the grid live
   // The magnifier's dot is the aim for a drag setting one point; a move aims with the whole span.
   container.style.cursor = part === 'move' ? cursorFor('grabbing') : 'none';
   drawCursor(lastScreenX, lastScreenY);
@@ -414,13 +419,12 @@ function gridCalPlaceHud() {
   // toScreen is container-relative and the HUD is fixed, so the container's own origin goes back on.
   const box = container.getBoundingClientRect();
   const s = (gridCalDrag && gridCalDrag.which === 'span') ? gridCalDrag : gridCalSpan;
+  // A column's bottom lies under the DM window's bar, so the HUD stays above that bar there.
+  const floor = isPane ? Math.min(window.innerHeight, gridCalBarTop()) : window.innerHeight;
   let cx, top;
   if (!s) {
-    // The toolbar's own box is the measure, so a taller context row carries the prompt with it.
-    const bar = document.getElementById('tools-wrapper');
-    const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight - 60;
     cx = box.left + box.width / 2;
-    top = barTop - GRIDCAL_HUD_LIFT - r.height;
+    top = gridCalBarTop() - GRIDCAL_HUD_LIFT - r.height;
   } else {
     // ⚠ The magnifier sits on a corner of the shape during a drag, so the HUD clears its radius
     // as well as the shape, or it covers the view being aimed through.
@@ -428,17 +432,26 @@ function gridCalPlaceHud() {
     const cb = viewRectToClient(sb.x, sb.y, sb.w, sb.h);
     cx = (cb.left + cb.right) / 2;
     top = cb.bottom + gap;
-    if (top + r.height > window.innerHeight - GRIDCAL_HUD_MARGIN) {
+    if (top + r.height > floor - GRIDCAL_HUD_MARGIN) {
       top = cb.top - gap - r.height;
     }
   }
   const left = Math.max(GRIDCAL_HUD_MARGIN,
     Math.min(window.innerWidth - r.width - GRIDCAL_HUD_MARGIN, cx - r.width / 2));
   top = Math.max(GRIDCAL_HUD_MARGIN,
-    Math.min(window.innerHeight - r.height - GRIDCAL_HUD_MARGIN, top));
+    Math.min(floor - r.height - GRIDCAL_HUD_MARGIN, top));
   const st = _rpScreenToStyle(hud, left, top);
   hud.style.left = st.left + 'px';
   hud.style.top  = st.top  + 'px';
+}
+
+// The top of the bottom toolbar in this window's coordinates. The toolbar's own box is the measure, so a taller
+// context row carries the HUD with it; a column measures the DM window's, which it does not own.
+function gridCalBarTop() {
+  const frame = isPane ? window.frameElement : null;
+  const bar = (frame ? parent.document : document).getElementById('tools-wrapper');
+  if (!bar) return window.innerHeight - 60;
+  return bar.getBoundingClientRect().top - (frame ? frame.getBoundingClientRect().top : 0);
 }
 
 // ─── Drawing, from drawCursor ─────────────────────────────────────────────────

@@ -84,6 +84,8 @@ function tiAdoptWorld(raw, plans, shift, sceneMap, groupUids) {
   for (const r of worldPlaceRecords()) placeSet[r.name] = true;
   worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
   worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
+  // ⚠ The Campaign's Ctrl+Z holds snapshots from before this; one would wipe what just came in and stamp it deleted.
+  worldUndoClear();
 }
 
 // What the DM is told: counts first, then each edit the file overwrote, by scene and room.
@@ -227,6 +229,7 @@ async function _tiWrite(zipPath, plan, run, job) {
     if (job.stopped) return null;
     if (x.matched) {
       run.snapshots.set(x.id, x.local);
+      await importJournal.snapshot(x.local);
       const rec = _tiMatchedRecord(x, got, run);
       await sceneStore.putScene(rec);
       const meta = existing.find(s => s.id === x.id);
@@ -241,6 +244,7 @@ async function _tiWrite(zipPath, plan, run, job) {
       const name = resolveSceneName(x.entry.name || t('Imported Map'), usedNames);
       const scene = _tiNewRecord(x, got, name, order, plan.shift);
       if (x.entry.mapType === 'video' && got.mapWritten === false) out.noMap.push(name);
+      await importJournal.created(x.id);
       await sceneStore.putScene(scene);
       run.created.push(x.id);
       out.added.push(x.id);
@@ -307,7 +311,7 @@ async function restoreFromZipPath(zipPath, say) {
   if (!window.electronAPI || !zipPath) return;
   // ⚠ An import rewrites the library underneath whatever is open, and a column holds a scene record this
   // one is about to replace. Back to one map first.
-  if (typeof panesActive !== 'undefined' && panesActive) await exitPanes(panes[panesSelected].sceneId);
+  if (typeof panesActive !== 'undefined' && panesActive) await exitPanes(paneSceneToKeep(panesSelected));
   // ⚠ A pending delete is finished and the open scene saved first, so the plan reads what the store holds.
   await commitPendingDelete();
   await doAutoSave();
@@ -354,6 +358,7 @@ async function restoreFromZipPath(zipPath, say) {
     for (const x of plan.items) if (x.matched && x.entry.mapType === 'video' && x.plan.take.map) run.temps.push({ id: x.id, ext: x.entry.mapExt || '.webm' });
     // Before extraction writes them, so a stop or a failure partway deletes every new animated map's file.
     for (const x of plan.items) if (!x.matched && x.entry.mapType === 'video') run.createdVideos.push(x.id);
+    await importJournal.start(run);
     const done = await _tiWrite(zipPath, plan, run, job);
     if (!done || job.stopped) return undo();
     committed = true;
@@ -361,7 +366,7 @@ async function restoreFromZipPath(zipPath, say) {
     // and the rooms and fog stay with the map they were drawn on. The report then leaves it out.
     done.mapFailed = [];
     for (const x of run.toSettle) {
-      try { await window.electronAPI.settleImportVideo(x.id, x.ext, true); } catch (err) {
+      try { await window.electronAPI.settleImportVideo(x.id, x.ext, true); await importJournal.settled(x.id); } catch (err) {
         console.error('[import] settle', err);
         const old = run.snapshots.get(x.id), meta = allScenes.find(s => s.id === x.id);
         await sceneStore.putScene(old);
@@ -372,6 +377,7 @@ async function restoreFromZipPath(zipPath, say) {
         done.mapFailed.push(old.name);
       }
     }
+    await importJournal.clear();
     done.reopen = reopen;
     mapJobEnd(job);
     allScenes.push(...done.newMeta);
@@ -392,6 +398,8 @@ async function restoreFromZipPath(zipPath, say) {
                           : t('Evermist stopped partway through the file and put your maps back as they were.')) + '\n\n' + (err.message || err),
     });
   } finally {
+    // Ended either way: undone, failed or in. Only a close before this leaves the journal for the next start.
+    await importJournal.clear().catch(err => console.error('[import] journal', err));
     mapJobEnd(job);
     setMapProgressRun('');
   }
