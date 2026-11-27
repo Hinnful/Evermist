@@ -17,6 +17,7 @@
 //   1. Open a map from its card on the Campaign.
 //   2. Pan and zoom, then Show on TV. The TV follows the view and its fog stays aligned to the map. The TV's map is
 //      animated and actually plays: its video frames keep coming.
+//  2b. G turns the grid on, and the TV draws its lines on the map's own squares, at the DM's size and offset.
 //   3. Play a music track and it is playing (its time advances). Play one soundboard sound.
 //   4. Reveal a room. The TV shows ground there, and the neighbouring hidden room stays fogged.
 //   5. One brush stroke reveals the ground it crosses on the TV.
@@ -28,6 +29,8 @@
 //  11. Switch to the second map. The TV shows it, and the first map's reveals do not carry over. Switch the music track.
 //  12. A fight: open the fight table, add two monsters from the bestiary through its search, change an HP.
 //      (The fight table has no turn to advance, so "next turn" is left to the eye.)
+//  13. In Manual, a reveal stays off the TV until Send, and Send shows it.
+//  14. Two maps: the second map opens beside the first, and the TV shows both, each with its own fog.
 //
 // ⚠ NO TIMING CLAIMS AND NO PIXEL TOLERANCES. Every wait is a bounded state; the TV's fog is read as fogged
 // (above 200) or clear (below 128), and the view as "the same place" to within a quarter of what the DM sees.
@@ -74,6 +77,19 @@ globalThis.__srUp = () => document.body.classList.contains('searching') && getCo
 globalThis.__srRows = () => [...document.querySelectorAll('#sr-list .sr-row')].map(r => r.querySelector('.sr-nm').textContent);
 globalThis.__cbRow = name => [...document.querySelectorAll('#cb-list .cb-row')].find(r => r.querySelector('[data-f=name]').value === name);
 0`;
+
+// The TV's grid layer at the middle of its window: a line where the map's squares put one, nothing half a square on.
+// Read off the layer the TV puts under its fog, at the TV's own zoom and pan.
+const GRID_ON_TV = `(() => {
+  if (!gridEnabled || !playerGridCanvas) return { on: gridEnabled };
+  const c = playerGridCanvas, g = c.getContext('2d', { willReadFrequently: true });
+  const kx = c.width / container.clientWidth, ky = c.height / container.clientHeight;
+  const mx0 = (container.clientWidth / 2 - panX) / zoom, k = Math.round((mx0 - gridOffsetX) / gridSize), mx = gridOffsetX + k * gridSize;
+  const y = Math.round(container.clientHeight / 2 * ky);
+  const alpha = (x) => { let m = 0; for (let d = -2; d <= 2; d++) m = Math.max(m, g.getImageData(Math.round(x) + d, y, 1, 1).data[3]); return m; };
+  return { on: true, size: gridSize, ox: gridOffsetX, oy: gridOffsetY,
+           line: alpha((mx * zoom + panX) * kx), mid: alpha(((mx + gridSize / 2) * zoom + panX) * kx) };
+})()`;
 
 // What a window is looking at, as a region of the map.
 const REGION = `(() => { const s = getViewportSize(); return visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, s.w, s.h); })()`;
@@ -198,6 +214,18 @@ module.exports = async function tableSession(rig) {
   });
   await secrecy('2');
 
+  // ── 2b. The grid on the TV ────────────────────────────────────────────────
+  await lib.step(rig, '2b: the grid on the TV', async () => {
+    if (!await dm.evaluate('gridEnabled')) await u.press('g');
+    const mine = await dm.evaluate('({ on: gridEnabled, size: gridSize, ox: gridOffsetX, oy: gridOffsetY })');
+    rig.check(mine.on, '2b: G did not turn the grid on');
+    const read = () => player.evaluate(GRID_ON_TV);
+    const drawn = g => g.on && g.size === mine.size && g.ox === mine.ox && g.oy === mine.oy && g.line > 0 && g.mid === 0;
+    const tv = await lib.poll(async () => { const g = await read(); return drawn(g) ? g : null; }, 20000, 300) || await read();
+    rig.check(drawn(tv), '2b: the TV does not draw the grid on the map\'s squares: DM ' + JSON.stringify(mine) + ', TV ' + JSON.stringify(tv));
+  });
+  await secrecy('2b');
+
   // ── 3. Music and one soundboard sound ─────────────────────────────────────
   await lib.step(rig, '3: music and a sound', async () => {
     const musicDir = path.join(rig.profileDir, 'music');
@@ -206,9 +234,10 @@ module.exports = async function tableSession(rig) {
     await lib.openPane(dm, 'music');
     await lib.settle(dm, '_muTracks.length === 2', 30000);
     await dm.evaluate('_muEnsureDecks(); _muDecks.forEach(d => { d.el.muted = true; }); 0');
-    await u.click({ sel: '#mu-list .mu-row-name', text: TRACK_NAMES[0] });
+    const at = await u.click({ sel: '#mu-list .mu-row-name', text: TRACK_NAMES[0] });
     const playing = await lib.settle(dm, '_muPlaying === ' + JSON.stringify(TRACKS[0]), 30000);
-    rig.check(playing, '3: the clicked track did not become the playing one (' + await dm.evaluate('_muPlaying') + ')');
+    rig.check(playing, '3: the clicked track did not become the playing one (' + await dm.evaluate('_muPlaying') + '); under the click now: ' +
+      await dm.evaluate(`(() => { const e = document.elementFromPoint(${at.x}, ${at.y}); return e ? e.tagName + '.' + e.className : 'nothing'; })()`));
     const t0 = await dm.evaluate('_muDecks[_muActive].el.currentTime');
     // RED BY DESIGN: written against the feature, never re-proved
     const advanced = await lib.poll(async () => {
@@ -341,17 +370,23 @@ module.exports = async function tableSession(rig) {
   await secrecy('9');
 
   // ── 10. Search ────────────────────────────────────────────────────────────
+  // ⚠ EVERY KEY IS WAITED ON UNTIL THE APP ANSWERS IT, and a key it never answered fails here. On a slow runner a
+  // key the page had not handled yet let the next one land elsewhere, and a later check passed on stale state.
   const search = async q => {
+    const t0 = Date.now();
     await u.press('f', { ctrl: true });
-    await lib.settle(dm, '__srUp()', 8000);
+    const up = await lib.settle(dm, '__srUp()', 30000);
+    console.log('  (Ctrl+F answered in ' + (Date.now() - t0) + ' ms)');
+    rig.check(up, '10: Ctrl+F did not open the search: focus on ' + await dm.evaluate('(document.activeElement || {}).tagName + "#" + (document.activeElement || {}).id'));
     await lib.settle(dm, '_srProgress === null', 60000);
     await u.selectAll();
     await u.type(q);
+    await lib.settle(dm, '(document.getElementById("sr-input") || {}).value === ' + JSON.stringify(q), 15000);
   };
   await lib.step(rig, '10: search', async () => {
     await u.press('v');
     await u.press('Escape');
-    await lib.settle(dm, 'selectedPolygonId === null', 8000);
+    rig.check(await lib.settle(dm, 'selectedPolygonId === null', 30000), '10: precondition: Escape did not drop the picked room, so the jump below proves nothing');
     await search('Зал стражи');
     await u.press('Enter');
     // RED BY DESIGN: written against the feature, never re-proved
@@ -441,4 +476,55 @@ module.exports = async function tableSession(rig) {
     await lib.settle(dm, 'document.getElementById("cb-fight").style.display === "none"', 8000);
   });
   await secrecy('12');
+
+  // ── 13. Manual, then Send ─────────────────────────────────────────────────
+  // Updates is switched in TV setup, which Escape closes.
+  const updates = async manual => {
+    if (await dm.evaluate('autoSync') === !manual) return;
+    await u.click({ sel: '#tv-ui .tv-ov', text: 'Настройка ТВ' });
+    await u.click({ sel: '#tv-setup .cp-segtab', text: manual ? 'Вручную' : 'Сразу' });
+    await u.press('Escape');
+    await lib.settle(dm, 'autoSync === ' + !manual, 5000);
+    rig.check(await dm.evaluate('autoSync') === !manual, 'TV setup did not switch Updates to ' + (manual ? 'Manual' : 'Auto'));
+  };
+  await lib.step(rig, '13: Manual, then Send', async () => {
+    const r = rooms[0];
+    await updates(true);
+    await u.press('f');
+    await lib.settle(dm, '!viewportDirty', 8000);
+    await revealRoom(r);
+    rig.check(await dm.evaluate('polygons.find(p => p.id === ' + r.id + ').mode') === 'reveal', '13: the room was not revealed on the DM in Manual');
+    await lib.hold(3000, 'long enough for a reveal to reach the TV, had Manual let it through');
+    rig.check(await lib.tvFog(player, r.cx, r.cy) > 200, '13: in Manual, a reveal reached the TV before Send');
+    await u.click({ sel: '#tv-ui .sd', text: 'Отправить - Отправить изменения на телевизор' });
+    rig.check(!!(await tvClear(r.cx, r.cy)), '13: Send did not show the revealed room on the TV');
+    await updates(false);
+  });
+  await secrecy('13');
+
+  // ── 14. Two maps ──────────────────────────────────────────────────────────
+  await lib.step(rig, '14: two maps', async () => {
+    await lib.openPane(dm, 'scene');
+    await u.click('#btn-two-maps');
+    // The empty column picks the map once it is up: a pick made before it is ready is replaced by its saved one.
+    await lib.settle(dm, 'panesActive && worldMapOpen && !_wmAnim && livePanes().length === 2 && livePanes().every(id => panes[id].ready)', 60000);
+    await u.dblclick('.wm-card[data-id="' + ids.one + '"]');
+    const both = await lib.settle(dm, "panesActive && livePanes().length === 2 && livePanes().every(id => panes[id].ready && panes[id].frame.contentWindow.eval('!!currentScene && fogCoverT === 0'))", 120000);
+    rig.check(both, '14: picking the first map on the Campaign did not open it beside the second');
+    const cols = await dm.evaluate("livePanes().map(id => panes[id].frame.contentWindow.eval('currentScene.id'))");
+    rig.check(cols.slice().sort().join() === [ids.one, ids.two].sort().join(), '14: the two columns do not hold the two maps: ' + JSON.stringify(cols));
+    // A half of the TV knows no map by name: it is shown when its map is up, out of the cover, with its fog.
+    const halves = [];
+    for (const id of await dm.evaluate('livePanes()')) halves.push(await rig.stageHalf(id));
+    const up = [];
+    for (const h of halves) up.push(await lib.settle(h, '!!mapOffscreen && fogCoverT === 0', 120000));
+    rig.check(up.length === 2 && up.every(Boolean), '14: the TV does not show both maps: ' + JSON.stringify(up));
+    for (const h of halves) {
+      for (const r of hiddenRooms) {
+        rig.check(await lib.tvFog(h, r.cx, r.cy) > 200, '14: a half of the TV shows ground inside "' + r.name + '", a room that must stay hidden');
+      }
+    }
+    await u.click('#btn-two-maps');
+    await lib.settle(dm, '!panesActive', 60000);
+  });
 };

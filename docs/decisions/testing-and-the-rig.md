@@ -593,3 +593,12 @@ can use, and a misaligned row is no such fault; on a runner with no graphics car
 surfaces in 13 minutes. Running it at the end of every build was rejected too: it slows the variants the DM wants
 fast. `/commit` runs it once on a release that changes the app, about four minutes here, and a clean run stamps
 the app's files (`sweepStamp.js`); `ship.js` refuses a release whose files changed since.
+
+### The blockers are what stops a table, and time of day is not · `SETTLED` (2026-11-27)
+A review held the blocker set to one test: the app cannot be used at the table, or the DM's work is lost. The
+time-of-day blocker failed it; it had joined with the feature in 5.10.0 and took more than half of the Windows
+leg. Three things passed it and joined: the grid on the TV at the map's own squares (a fight cannot be run without
+it), and the grid surviving a restart; a reveal held off the TV in Manual until Send, since a leak cannot be taken
+back; and two maps on the TV, each with its own fog. Each joined the walk-through of a session rather than a new
+scenario, since every scenario boots the app again. Sync through Drive stays outside: it needs two apps and a fake
+Drive, and runs as a probe when sync changes.

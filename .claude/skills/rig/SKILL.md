@@ -30,7 +30,7 @@ belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig
 
 **THE BLOCKER SET IS THE RELEASE GATE, and the only set there is.** `.github/workflows/rig.yml`
 builds the packaged app and runs `blockers` on Windows and Mac (`scenarios/blockers/`: launch, prep,
-a table session, work kept, time of day) and `launch` alone on Linux. All three block: a red means no tag, no
+a table session, work kept) and `launch` alone on Linux. All three block: a red means no tag, no
 release and no installers. `/commit` runs none of it. **`design-sweep` runs at `/commit`**, once per release that changes the app: a clean
 run stamps the app's files, and `ship.js` refuses a release whose files changed since (`.claude/commit/sweepStamp.js`).
 

@@ -7,7 +7,7 @@
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
 //   A. After the app is closed and started again, it opens the same map at its size, with its three rooms and the
-//      room that was revealed still revealed, and the other two still fogged.
+//      room that was revealed still revealed, the other two still fogged, and the grid the DM turned on, at its size.
 //   B. A backup zip of the library, restored into an empty library, brings the map and its rooms back, with the
 //      map's video file on disk.
 //
@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const lib = require('../../lib');
+const { user } = require('../../user');
 
 const NAME = 'Тронный зал';
 
@@ -27,6 +28,10 @@ module.exports = async function keepsWork(rig) {
   const rooms = await lib.drawRooms(rig, 3);
   rig.check(rooms.length === 3, 'setup: the plan did not give three rooms: ' + rooms.length);
   const seen = rooms[0], hidden = rooms[2];
+  // The grid turned on as the DM does, with G; a fight cannot be run without it.
+  if (!await dm.evaluate('gridEnabled')) await user(dm).press('g');
+  const grid = await dm.evaluate('({ on: gridEnabled, size: gridSize })');
+  rig.check(grid.on, 'setup: G did not turn the grid on');
 
   // The first room revealed through the app's own mode change; the autosave then has to put it on disk.
   await dm.evaluate('setPolygonMode(' + seen.id + ', "reveal"); scheduleAutoSave(); 0');
@@ -35,7 +40,7 @@ module.exports = async function keepsWork(rig) {
   const onDisk = await lib.poll(async () => {
     const got = await dm.evaluate(`(async () => {
       const s = await sceneStore.loadScene(${JSON.stringify(sceneId)});
-      return s && s.baseFogBlob && (s.polygons || []).length === 3
+      return s && s.baseFogBlob && (s.polygons || []).length === 3 && s.gridConfig && s.gridConfig.enabled
         ? (s.polygons.find(p => p.id === ${seen.id}) || {}).mode : null;
     })()`, 30000);
     return got === 'reveal' ? { mode: got } : null;
@@ -53,6 +58,8 @@ module.exports = async function keepsWork(rig) {
   rig.check(back.w === lib.DM_MAP.w && back.h === lib.DM_MAP.h && back.type === 'video',
             'A: the map came back at the wrong size or no longer animated: ' + JSON.stringify(back));
   rig.check(back.rooms.length === 3, 'A: the rooms did not come back: ' + JSON.stringify(back.rooms));
+  const gridBack = await dm.evaluate('({ on: gridEnabled, size: gridSize })');
+  rig.check(gridBack.on && gridBack.size === grid.size, 'A: the grid did not come back as it was: ' + JSON.stringify({ before: grid, after: gridBack }));
   const sees = await lib.poll(async () => {
     const a = await dm.evaluate('__rigFog(' + Math.round(seen.cx) + ',' + Math.round(seen.cy) + ')');
     return a < 128 ? { a } : null;

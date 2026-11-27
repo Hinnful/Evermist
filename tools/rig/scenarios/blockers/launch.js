@@ -8,8 +8,6 @@
 //   B. The window's own page, renderer and scene library are up.
 //   (No console error is the run's own check: run.js fails any scenario that logs one.)
 
-const lib = require('../../lib');
-
 module.exports = async function launch(rig) {
   const dm = rig.dm;
 
@@ -33,5 +31,4 @@ module.exports = async function launch(rig) {
   rig.check(parts.renderer, 'the renderer did not start, so no map could be drawn');
   rig.check(parts.library, 'the scene library did not open, so no map could be kept');
   rig.check(parts.dock, 'the dock is not on the page');
-  await lib.settle(dm, '!viewportDirty', 10000);
 };
