@@ -79,15 +79,41 @@ function _bpSpells(e, r, spent) {
     r.tail ? `<p>${_bpMarked(r.tail)}</p>` : ''}</div>`;
 }
 
-// Editing, a caster's spells are its text again, so the rows come back from what was typed.
-function _bpEntry(e, spent, ed) {
+// ── Counters (BACKLOG 308): a limited ability's plate and crystals, spent where a spell's are ──
+const BP_USE_LABEL = { day: '{n}/day', shortRest: '{n}/short rest', longRest: '{n}/long rest', round: '{n}/round' };
+
+function _bpCtr(key, n, kind, printed, spent) {
+  return `<span class="sp-lv ctr" title="${_cbEsc(printed)}"><span class="tx">${_cbEsc(t(BP_USE_LABEL[kind], { n }))}</span>${_bpCells(key, n, spent)}</span>`;
+}
+
+// Every counter on the page with its key, so a repeated name keys the same on every render.
+function _bpCounters(b, secs) {
+  const found = [];
+  for (const s of secs) for (const e of b.secs[s]) {
+    const u = !spellcastingRead(e.n, e.t) && usesFromName(e.n);
+    if (u) found.push([e, u]);
+  }
+  const keys = usesKeys(found.map(([, u]) => u.name));
+  return new Map(found.map(([e, u], i) => [e, { u, key: keys[i] }]));
+}
+
+// The legendary pool's plate sits in its heading; the count is read from the section's opening sentence.
+function _bpPoolPlate(b, spent) {
+  const intro = (b.secs['Legendary actions'] || [])[0], n = intro && !intro.n && legendaryPool(intro.t);
+  return n ? _bpCtr(LU_POOL_KEY, n, 'round', String(intro.t).split(/(?<=\.)\s/)[0], spent) : '';
+}
+
+// Editing, a caster's spells are its text again, so the rows come back from what was typed. `ctr` is the entry's counter.
+function _bpEntry(e, spent, ed, ctr) {
   if (ed) {
     const p = `secs.${ed.sec}.${ed.i}`;
     return `<p class="bp-ent">${_cbEd(p + '.n', e.n, 'Entry name', 'n')}<span class="n bp-dot">.</span> ${_cbEd(p + '.t', e.t, 'What it does', 'bp-t')}`
       + `<button tabindex="-1" class="cb-iconbtn bp-x" data-delentry="${ed.i}" title="${_cbEsc(t('Remove'))}">${CB_ICON_X}</button></p>`;
   }
   const r = spellcastingRead(e.n, e.t);
-  return r ? _bpSpells(e, r, spent) : `<p>${e.n ? `<span class="n">${_cbEsc(e.n)}.</span> ` : ''}${_bpMarked(e.t)}</p>`;
+  if (r) return _bpSpells(e, r, spent);
+  const n = ctr ? ctr.u.name : e.n;
+  return `<p>${ctr ? _bpCtr(ctr.key, ctr.u.n, ctr.u.kind, ctr.u.printed, spent) : ''}${n ? `<span class="n">${_cbEsc(n)}.</span> ` : ''}${_bpMarked(e.t)}</p>`;
 }
 
 // One listener for both pages, so a click is counted once: the open page says whose crystals they are.
@@ -102,12 +128,39 @@ function bpWireSpells(el) {
     const s = spellSpent(spent, key, n);
     [...pp.children].forEach((c, i) => { c.className = _bpCellClass(i, n, s); });
     if (pp.parentElement.classList.contains('sp-sp')) pp.parentElement.classList.toggle('done', s >= n);
+    bpRestoreSync(el);
   });
 }
 
-function _bpSection(key, title, body, del) {
+// "Restore all" follows the page: the grey plate while a crystal is spent, resting and saying why while none is, and
+// gone from a page with no crystal at all. ⚠ aria-disabled, not disabled, so its tooltip shows.
+function bpRestoreSync(page) {
+  const btn = page.querySelector('.bs-tools .rs');
+  if (!btn) return;
+  if (!page.querySelector('.bs-page-body .sp-pp')) { btn.remove(); return; }
+  const spent = !!page.querySelector('.bs-page-body .sp-pp > i.off');
+  btn.setAttribute('aria-disabled', String(!spent));
+  btn.title = t(spent ? 'Restore all' : 'All crystals are full');
+}
+
+function bpRestoreHtml(attr) {
+  return `<button class="sm-hbtn rs" ${attr}="restore">${uiIcon('reset')}<span data-no-i18n>${_cbEsc(t('Restore all'))}</span></button>`;
+}
+
+// The words go only when the name would otherwise take a second line, or, a word too long to wrap, run under the buttons.
+function bpFitHead(page) {
+  const btn = page.querySelector('.bs-tools .rs'), h2 = page.querySelector('.bs-page-head h2');
+  if (!btn || !h2) return;
+  btn.classList.remove('ic');
+  const r = document.createRange();
+  r.selectNodeContents(h2);
+  const wraps = new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1;
+  if (wraps || h2.scrollWidth > h2.clientWidth + 0.5) btn.classList.add('ic');
+}
+
+function _bpSection(key, title, body, del, plate) {
   return `<div class="bp-sec ${_bpShut.has(key) ? 'shut' : ''}" data-fold="${key}"${del ? ` data-sec="${key}"` : ''}>
-    <div class="bp-sec-h"><span class="car">▼</span>${t(title)}${del
+    <div class="bp-sec-h"><span class="car">▼</span><span class="tl">${t(title)}</span>${plate || ''}${del
   ? `<button tabindex="-1" class="cb-iconbtn bp-sx" data-delsec title="${_cbEsc(t('Remove section'))}">${CB_ICON_X}</button>` : ''}</div><div class="bp-sec-b">${body}</div></div>`;
 }
 
@@ -175,6 +228,7 @@ function _bpRead(b, noNotes, spent, ed) {
   const line = (label, v) => v ? `<div class="bp-kv"><b>${t(label)}:</b> ${_cbEsc(v)}</div>` : '';
   const secs = CB_SECTIONS.filter(s => b.secs[s] && b.secs[s].length);
   const lore = String(b.lore || '').split(/\n{2,}/).filter(Boolean);
+  const ctrs = ed ? null : _bpCounters(b, secs);
   const meta = ed ? `<div class="bp-meta">${_cbEd('meta', b.meta, 'Size, type, alignment')}</div>` : b.meta ? `<div class="bp-meta">${_cbEsc(b.meta)}</div>` : '';
   return `<div class="bp-read${ed ? ' bp-ed' : ''}" data-no-i18n>
     ${meta}
@@ -184,7 +238,8 @@ function _bpRead(b, noNotes, spent, ed) {
     ${_bpAbilities(b, ed)}
     <div class="bp-lines">${ed ? _bpEditLines(b, ed.lines) : BP_LINES.map(([k, label]) => line(label, b[k])).join('')
       + `<div class="bp-kv"><b>${t('Challenge')}:</b> <span class="bp-hi">${_cbEsc(b.cr || '—')}</span></div>`}</div>
-    ${ed ? _bpEditSecs(b) : secs.map(s => _bpSection(s, s, b.secs[s].map(e => _bpEntry(e, spent)).join(''))).join('')}
+    ${ed ? _bpEditSecs(b) : secs.map(s => _bpSection(s, s, b.secs[s].map(e => _bpEntry(e, spent, null, ctrs.get(e))).join(''), false,
+      s === 'Legendary actions' && _bpPoolPlate(b, spent))).join('')}
     ${_bpSection('lore', 'Lore', ed ? `<p class="bp-lore-ed">${_cbEd('lore', b.lore, 'What the monster is, where it lives, how it fights', 'bp-t')}</p>`
     : lore.length ? lore.map(p => `<p>${_cbEsc(p)}</p>`).join('')
       : '<p class="bp-none">' + t('No lore yet. An import keeps the page\'s own description here; Edit to write your own.') + '</p>')}
@@ -247,7 +302,7 @@ function bpWire(el, ed) {
     if (b && e.target.dataset && e.target.dataset.notes !== undefined && e.target.value !== (b.notes || '')) e.target.value = b.notes || '';
   });
   el.addEventListener('click', e => {
-    const h = !e.target.closest('button') && e.target.closest('.bp-sec-h');
+    const h = !e.target.closest('button, .ctr') && e.target.closest('.bp-sec-h');
     const sec = h && h.closest('[data-fold]');
     if (!sec) return;
     const k = sec.dataset.fold;

@@ -37,6 +37,7 @@ function bswdApply() {
   btn.disabled = !paged;
   btn.title = t(shown ? 'Hide the list' : 'Show the list');
   _bsEl('bs-fold').classList.toggle('on', bsFiltered(Object.assign({}, bs.f, { q: '' })));
+  bpFitHead(_bsEl('bs-page'));
   return changed;
 }
 

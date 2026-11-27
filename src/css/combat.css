@@ -379,6 +379,12 @@
   .sp-pp > i svg { display: block; width: 9px; height: 13px; }
   .sp-pp > i .f { fill: var(--crystal); } .sp-pp > i .t { fill: var(--crystal-top); } .sp-pp > i .o { fill: none; stroke: none; }
   .sp-pp > i.off .f, .sp-pp > i.off .t { fill: transparent; } .sp-pp > i.off .o { stroke: var(--crystal-off); stroke-width: 1.3; }
+  /* Counters (BACKLOG 308): the spell chip's plate leads its paragraph, and the legendary pool's sits in its heading. */
+  /* ⚠ The reading text's capitals are 13/12 of the plate's label: lifting by that difference puts the plate on them. */
+  p > .ctr { margin-right: 6px; vertical-align: calc(1cap / 24); }
+  .bp-sec-h .ctr { margin-left: 10px; }
+  /* The title trimmed to its capitals and padded back to its line, so the chevron and a plate centre on them. */
+  .bp-sec-h .tl { text-box: trim-both cap alphabetic; padding-block: calc((1.2em - 1cap) / 2); }
   .bp-notes {
     width: 100%; min-height: 80px; resize: vertical; padding: 10px 12px; border-radius: 8px; outline: none;
     border: 1.5px solid var(--g-line); background: var(--g-raised); color: var(--g-text); font: 500 14px/1.55 system-ui, sans-serif;
@@ -583,6 +589,14 @@
   .bs-t tbody tr.open:hover td { background: var(--b-tint-h); }
   .bs-t tbody tr.sel:hover td { background: var(--g-hover); }
   .bs-tools { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; }
+  /* Restore all (BACKLOG 309): tertiary and resting while every crystal is full, with no hover change; the words go
+     (`.ic`) only when the name would wrap beside them. */
+  .bs-tools .rs { margin-right: 4px; }
+  .bs-tools .rs[aria-disabled="true"] { background: none; color: var(--g-dim); }
+  .bs-tools .rs.ic { width: 28px; padding: 0; justify-content: center; }
+  .bs-tools .rs.ic > span { display: none; }
+  /* The -2px nudge is for an icon beside a label; alone, the icon sits in the middle. */
+  .bs-tools .rs.ic > svg:first-child { margin: 0; }
   /* The divider runs the head's full height: its margins cancel the head's padding. */
   .bs-div { margin: calc(-1 * var(--head-y)) 4px; background: var(--g-line); }
   .bs-page-head { --head-y: 12px; padding: var(--head-y) 10px var(--head-y) 28px; border-bottom: 1px solid var(--g-line); }

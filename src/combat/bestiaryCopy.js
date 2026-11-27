@@ -71,7 +71,7 @@ function bcHtml(row) {
   const head = bs.editing
     ? `<div class="bs-page-head editing"><div class="t">${bpEditHead(cbRowBlock(row))}</div>
         <button class="sm-hbtn primary bs-done" data-c="edit">${BS_ICONS.done}<span>Done</span></button></div>`
-    : `<div class="bs-page-head"><div class="t">${name}</div><div class="bs-tools">
+    : `<div class="bs-page-head"><div class="t">${name}</div><div class="bs-tools">${bpRestoreHtml('data-c')}
         <button class="bs-ib" data-c="edit" title="Edit">${BS_ICONS.edit}</button>${
   e ? `<button class="bs-ib" data-c="book" title="Open the Bestiary entry">${uiIcon('book')}</button>` : ''}</div></div>`;
   return `${head}<div class="bc-strip">${_bcStripHtml(row, e)}</div><div class="bs-page-body">${bpHtml(cbRowBlock(row), bs.editing, !e, row.spent)}</div>`;
@@ -90,6 +90,7 @@ function _bcHeadSync(row) {
   const page = _bsEl('bs-page'), h = !bs.editing && page.querySelector('.bs-page-head h2');
   if (h) h.textContent = row.name;
   page.querySelector('.bc-strip').innerHTML = _bcStripHtml(row, _bcEntry(row));
+  bpFitHead(page);
   bswCrumbs(bcCrumbs(row));
 }
 
@@ -139,6 +140,10 @@ function bcInit(page) {
     const r = bcRow(), c = e.target.closest('[data-c]');
     if (!r) return;
     if (c && c.dataset.c === 'edit') { bs.editing = !bs.editing; _bsRenderPage(); return; }
+    if (c && c.dataset.c === 'restore') {
+      if (c.getAttribute('aria-disabled') !== 'true') { delete r.spent; cbSave(); _bsRenderPage(); }
+      return;
+    }
     const en = c && c.dataset.c === 'book' && _bcEntry(r);
     if (en) { _bsShow(en.id); return; }
     if (e.target.closest('[data-save]')) _bcSave(r);

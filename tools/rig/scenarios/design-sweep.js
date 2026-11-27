@@ -13,14 +13,16 @@
 //   capitals of the row's main (largest) text, and within 1.5px at any one position; in a row with no text, its boxes
 //   within 0.25px of each other as laid out, or by their painted edges. A row's item that holds text on
 //   several lines and is no box (a heading over its source, a label column) stands in the row as laid out, by the
-//   middle of its first line box's top and its last one's bottom.
+//   middle of its first line box's top and its last one's bottom. An item a scroll edge cuts shows only part of itself
+//   and is not read; the entry's note names its row.
 // - A vertical divider (1px of the line token) runs its container's full height.
 // - A plate inside anything the pointer lights never merges with what it lies on, and stands off it under the
 //   pointer at least as well as at rest.
 // - No control is the browser's own, and text in a filled control keeps 6px from its sides.
 // - Nothing but the toggled box moves when an entry's state changes.
 // - Every right-click menu has the same row height on screen, and none is narrower than the skin.
-// - Every entry opens by a real click on its trigger where it has one, and moves by its kind's values
+// - Every entry opens by a real click on its trigger where it has one (scrolled to first when it sits past its pane's
+//   fold, as the DM scrolls to it), and moves by its kind's values
 //   (design-system.md, "Motion"): its duration, curve, scale and shift; its origin on its trigger's side (a pane's
 //   shift from the rail, a toast's from below, a dialog's about its centre); it ends at rest, at opacity 1 with
 //   nothing running; it leaves faster than it came, on its kind's exit, taking no clicks. A `still` entry does not move.
@@ -218,7 +220,9 @@ module.exports = async function (rig) {
       return { x: c.x, y: c.y }; }
     if (t.x != null) return { x: t.x, y: t.y };
     const e = document.querySelector(t.sel || t); if (!e) return null;
-    const r = e.getClientRects()[0]; if (!r || !r.width) return null;
+    // A trigger below its pane's fold is scrolled to first, as the DM scrolls to it.
+    let r = e.getClientRects()[0]; if (!r || !r.width) return null;
+    if (r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth) { e.scrollIntoView({ block: 'nearest', inline: 'nearest' }); r = e.getClientRects()[0]; }
     const x = r.left + r.width / 2, y = r.top + r.height / 2, h = document.elementFromPoint(x, y);
     return { x, y, covered: e.contains(h) ? '' : h ? h.tagName.toLowerCase() + '#' + h.id + '.' + h.classList[0] : 'nothing' }; })()`);
   const click = async (p, button) => {
@@ -270,13 +274,13 @@ module.exports = async function (rig) {
         await lib.settle(dm, 'false', 250);
         await still();
         await unlisted(where);
-        let { rows, faults, ink } = await lib.alignSweep(dm, e.root);
+        let { rows, faults, ink, cut } = await lib.alignSweep(dm, e.root);
         const t0 = Date.now();
         let inked = await lib.inkSweep(dm, ink);
         // An entry a late answer grew (a footer shown once a check returns) is found again where it now stands.
         for (let k = 0; inked.relaid && k < 2; k++) {
           await still();
-          ({ rows, faults, ink } = await lib.alignSweep(dm, e.root));
+          ({ rows, faults, ink, cut } = await lib.alignSweep(dm, e.root));
           inked = await lib.inkSweep(dm, ink);
         }
         inkMs += Date.now() - t0;
@@ -286,7 +290,8 @@ module.exports = async function (rig) {
         const hover = await lib.hoverSweep(dm, e.root);
         const surface = await lib.surfaceSweep(dm, e.root);
         rig.note(where + ': ' + rows + ' rows, ' + faults.length + ' mixed or capless; ' + inked.measured.length + ' inked, ' + inked.faults.length + ' off; ' +
-          hover.hosts + ' lit, ' + hover.faults.length + ' swallowed; ' + surface.length + ' controls off');
+          hover.hosts + ' lit, ' + hover.faults.length + ' swallowed; ' + surface.length + ' controls off' +
+          (cut.length ? '; ' + cut.length + ' rows a scroll edge cuts, their cut items not read: ' + cut.join(', ') : ''));
         faults.concat(inked.faults, hover.faults, surface).forEach(f => fault(where, f));
         if (shots) {
           const r = await dm.evaluate(`(() => { const b = document.querySelector(${JSON.stringify(e.root)}).getBoundingClientRect();

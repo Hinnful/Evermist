@@ -64,8 +64,9 @@ function _bsTableHtml(list) {
       <td class="cbc"><span class="bs-cb ${bs.picked.has(b.id) ? 'on' : ''}" data-tick></span></td>${cols.map(([k]) => _bsCell(b, k)).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
+// The pencil's ink, stroke included, spans 3.8 to 20.2 of its 24 box: centred, so it stands on a name's capitals by its box.
 const BS_ICONS = {
-  edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>',
+  edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.31h4L19 8.31a2.1 2.1 0 00-3-3L5 16.31z"/></svg>',
   done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.25l4.5 4.5L19 7.25"/></svg>',
 };
 
@@ -76,7 +77,7 @@ function _bsPageHtml(b) {
     ? `<div class="bs-page-head editing"><div class="t">${bpEditHead(b)}</div>
         <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done}<span>Done</span></button></div>`
     : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}</h2><div class="bs-src" data-no-i18n>${_cbEsc(b.source || t('no source'))}</div></div>
-        <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
+        <div class="bs-tools">${bpRestoreHtml('data-a')}<button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
           <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${uiIcon('dup')}</button>
           <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${uiIcon('trash')}</button></div>
         <span class="bs-div"></span><button class="bs-ib" data-a="unpage" title="Close the page (Esc)">${uiIcon('collapse')}</button></div>`;
@@ -119,6 +120,7 @@ function _bsRenderPage() {
   const top = key && key === page.dataset.key && body ? body.scrollTop : 0;
   if (row) bcMount(page, row);
   else { page.innerHTML = b ? _bsPageHtml(b) : ''; if (b) bpMount(page, b); }
+  bpRestoreSync(page);
   page.dataset.key = key;
   if (top) page.querySelector('.bs-page-body').scrollTop = top;
   page.style.display = b || row ? '' : 'none';
@@ -360,6 +362,10 @@ function _bsClick(e) {
   if (act === 'del' || act === 'del-open') return _bsDelete(act === 'del' ? [...bs.picked] : [bs.open]);
   if (act === 'export') return _bsExport();
   if (act === 'edit') { bs.editing = !bs.editing; return _bsRenderPage(); }
+  if (act === 'restore') {
+    if (a.getAttribute('aria-disabled') !== 'true') { _bpSetEntrySpent(cbState.blocks[bs.open], {}); _bsRenderPage(); }
+    return;
+  }
   if (act === 'unpage') { bs.open = null; bs.editing = false; return _bsRenderPage(); }
   if (act === 'more') { bs.more = !bs.more; return bestiaryRender(); }
   if (act === 'clear') { bs.f = bsNoFilter(); _bsEl('bs-search').value = ''; return bestiaryRender(); }

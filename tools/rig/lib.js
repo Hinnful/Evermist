@@ -177,6 +177,7 @@ globalThis.__rigAlignSweep = (rootSel, boxSel) => {
   const faults = [], ink = [], mixed = new Map(), glyphs = new Set();
   globalThis.__rigInkEls = []; globalThis.__rigInkRoots = roots;
   let rows = 0;
+  const cut = [];
   for (const root of roots) {
     // A lettered text on the same line as a glyph, within four boxes of it: the text the glyph stands beside.
     const besideText = (host, top, bottom) => {
@@ -291,7 +292,10 @@ globalThis.__rigAlignSweep = (rootSel, boxSel) => {
             const q = rangeRect(n, i, i + 1);
             if (q && q.right > x0 && q.left < x1 && Math.abs(q.bottom - r.bottom) < 1) chars.push([Math.max(q.left, x0), Math.min(q.right, x1), t[i]]);
           }
-          return { kind: 'text', what, x0, x1, y0, y1, chars, capH: m.capH, size: parseFloat(getComputedStyle(n.parentElement).fontSize), el: n.parentElement };
+          const cs = getComputedStyle(n.parentElement), rgb = cs.color.match(/[\\d.]+/g);
+          // Its own colour, which its ink steps toward from the surface (ink.js); color(srgb …) runs 0 to 1.
+          const color = /^rgba?\\(/.test(cs.color) ? rgb.slice(0, 3).map(Number) : /^color\\(srgb /.test(cs.color) ? rgb.slice(0, 3).map((v) => v * 255) : undefined;
+          return { kind: 'text', what, x0, x1, y0, y1, chars, capH: m.capH, size: parseFloat(cs.fontSize), color, el: n.parentElement };
         };
         // A box item's text (\`box\`, the box) also carries the middle of that box as laid out.
         const inkText = (n, c, m, what, box) => {
@@ -391,13 +395,19 @@ globalThis.__rigAlignSweep = (rootSel, boxSel) => {
           }
         }
         if (inkItems.some((i) => i.kind === 'text' || i.kind === 'block' || i.lettered) && inkItems.length >= 2) {
-          // An item another box covers (a sticky header, a scroll edge) shows nothing of its own to measure.
-          const own = inkItems.filter((i) => { const x = (i.x0 + i.x1) / 2, y = (i.y0 + i.y1) / 2, h = document.elementFromPoint(x, y);
+          // An item another box covers (a sticky header, a scroll edge) shows nothing of its own to measure, and one a
+          // scroll edge cuts shows only part: its ink and edges end at the cut, not where it stands.
+          let cutHere = false;
+          const own = inkItems.filter((i) => { const x = (i.x0 + i.x1) / 2, y = (i.y0 + i.y1) / 2, h = document.elementFromPoint(x, y), e = i.el.getBoundingClientRect();
+            let whole = true;
             for (let a = i.el.parentElement; a && a !== document.body; a = a.parentElement) {
               if (/visible/.test(getComputedStyle(a).overflow)) continue;
               const b = a.getBoundingClientRect(); if (x < b.left || x > b.right || y < b.top || y > b.bottom) return false;
+              if (e.left < b.left - 0.05 || e.right > b.right + 0.05 || e.top < b.top - 0.05 || e.bottom > b.bottom + 0.05) whole = false;
             }
+            if (!whole) { cutHere = true; return false; }
             return h && (i.el.contains(h) || h.contains(i.el)); });
+          if (cutHere) cut.push(name(row));
           if (own.length >= 2) {
             rows++;
             globalThis.__rigInkEls.push(own.map((i) => [i.el, i.el.getBoundingClientRect().top]));
@@ -408,7 +418,7 @@ globalThis.__rigAlignSweep = (rootSel, boxSel) => {
     }
   }
   faults.push(...mixed.values(), ...glyphs);
-  return { rows, faults, ink };
+  return { rows, faults, ink, cut };
 };
 // The swept roots moved down by d CSS px on screen by layout (a top offset, never a transform), or put back with null.
 // Resolves with how far each root and each inked item moved, so a reading can be taken back to where it stood.

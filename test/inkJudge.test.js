@@ -126,6 +126,34 @@ describe('the design sweep reads a text\'s cap line from flat capitals only', ()
   it('still reads a flat capital that stands off the cap line', () => {
     assert.ok(Math.abs(centre([['Н', 10, 40], ['ш', 20, 40]]).c - flat) >= 0.25);
   });
+
+  it('stands "Огр" on its г\'s flat foot, not its О dipping under the baseline', () => {
+    const it2 = centre([['О', 11, 41], ['г', 20, 40], ['р', 20, 46]]);
+    assert.ok(Math.abs(it2.c - flat) < 0.01, 'read at ' + it2.c + ', flat at ' + flat);
+  });
+
+  it('still reads a flat foot that stands off the baseline', () => {
+    assert.ok(Math.abs(centre([['О', 11, 41], ['г', 20, 42], ['р', 20, 46]]).c - flat) >= 0.25);
+  });
+});
+
+describe('the design sweep reads a text\'s ink as the step toward its own colour', () => {
+  // A "7" in a pill's last segment, CSS 2..18 (device 8..72): the pill's rounded end leaves the darker cell showing in
+  // the top right of the text's region. The 7 stands from device 20 to its baseline at 48.
+  const cell = [30, 30, 33], pill = [40, 50, 70], COLD = [120, 170, 255];
+  const seven = (top, color) => {
+    const { img, clip } = shot(60, 80, cell, [[0, 60, 8, 72, pill], [24, 60, 8, 11, cell], [20, 28, top, 48, COLD]]);
+    return measureRow(img, clip, { items: [{ kind: 'text', what: '"7"', x0: 5, x1: 7, y0: 2, y1: 18, chars: [[5, 7, '7']], capH: 7, size: 11, color }] }).items[0];
+  };
+
+  it('reads the 7\'s capitals, not the cell showing past the pill\'s end', () => {
+    const it = seven(20, COLD);
+    assert.ok(Math.abs(it.c - 8.5) < 0.01, 'read at ' + it.c);
+  });
+
+  it('still reads a 7 standing half a pixel high', () => {
+    assert.ok(Math.abs(seven(18, COLD).c - 8.25) < 0.01);
+  });
 });
 
 describe('the design sweep judges a box against texts on one baseline by their shared caps middle', () => {

@@ -41,8 +41,10 @@ function decodePng(buf) {
 }
 
 // Per column of a region: the top and bottom edge of its ink to a fraction of a pixel, and how solid it gets. Ink is
-// anything off the region's commonest colour, in proportion to the strongest such pixel.
-function columns(img, X0, X1, Y0, Y1) {
+// anything off the region's commonest colour, in proportion to the strongest such pixel; with `toward`, a text's own
+// colour, only the step from that surface toward it, so another surface showing in the region (the rounded end of the
+// pill a text sits in) is no ink of the text's.
+function columns(img, X0, X1, Y0, Y1, toward) {
   const hist = new Map();
   for (let y = Y0; y < Y1; y++) for (let x = X0; x < X1; x++) {
     const o = (y * img.w + x) * 4, k = (img.px[o] >> 3) << 10 | (img.px[o + 1] >> 3) << 5 | img.px[o + 2] >> 3;
@@ -51,10 +53,15 @@ function columns(img, X0, X1, Y0, Y1) {
   let bg = null;
   for (const e of hist.values()) if (!bg || e.n > bg.n) bg = e;
   const br = bg.r / bg.n, bgG = bg.g / bg.n, bb = bg.b / bg.n;
+  // A blend of the surface and the text's colour reads the same either way: its largest channel step.
+  const w = toward && [toward[0] - br, toward[1] - bgG, toward[2] - bb], wMax = w && Math.max(...w.map(Math.abs)), w2 = w && w[0] ** 2 + w[1] ** 2 + w[2] ** 2;
+  const along = wMax >= PLATE_STEP;
   const d = new Float32Array((X1 - X0) * (Y1 - Y0));
   let max = 0;
   for (let y = Y0; y < Y1; y++) for (let x = X0; x < X1; x++) {
-    const o = (y * img.w + x) * 4, v = Math.max(Math.abs(img.px[o] - br), Math.abs(img.px[o + 1] - bgG), Math.abs(img.px[o + 2] - bb));
+    const o = (y * img.w + x) * 4, v = along
+      ? Math.max(0, ((img.px[o] - br) * w[0] + (img.px[o + 1] - bgG) * w[1] + (img.px[o + 2] - bb) * w[2]) * wMax / w2)
+      : Math.max(Math.abs(img.px[o] - br), Math.abs(img.px[o + 1] - bgG), Math.abs(img.px[o + 2] - bb));
     d[(y - Y0) * (X1 - X0) + x - X0] = v; if (v > max) max = v;
   }
   // Too faint to be anything drawn: a spacer, or a box of the surface's own colour.
@@ -127,6 +134,9 @@ const FLAT_CAPS = /[A-BD-FH-NPRT-ZАБВГДЕЖИК-НПРТУХ-ЬЯ]/;
 const FLAT_DIGITS = /[1457]/;
 // Letters whose ink hangs below the baseline.
 const TAILS = /[QДЦЩgjpqyдруфцщ]/;
+// Letters whose foot is a curve, which dips below the baseline as a round top overshoots the cap line; a text read by
+// them stands lower than one read by flat feet, so they give its baseline only when it has no other.
+const ROUND_FEET = /[035689CGJOSUabcdeostuЗОСЭЮЄабеёзосэю]/;
 
 // One reading of a row: each item's centre in CSS px from the viewport's top, less `dy[j]`, how far the shift under
 // way moved that item. A text by the middle of its capitals, with its baseline beside it; a block of several lines by
@@ -148,19 +158,19 @@ function measureRow(img, clip, row, dy) {
   // its flat capitals' tops, or the font's cap height when it has none. Null when its ink cannot be read.
   const readText = (it, j) => {
     const [X0, X1, Y0, Y1] = region(it, j, 0);
-    const cols = X1 - X0 >= 2 && Y1 - Y0 >= 2 ? columns(img, X0, X1, Y0, Y1) : [];
+    const cols = X1 - X0 >= 2 && Y1 - Y0 >= 2 ? columns(img, X0, X1, Y0, Y1, it.color) : [];
     if (!cols.length) return null;
     // Per letter: its lowest solid ink (a letter with no tail stands on the baseline) and, for a capital, its highest. The
     // half-lit columns at a stroke's sides carry no edge.
-    const solid = cols.filter((k) => k.solid >= 0.9), bottoms = [], tops = [];
+    const solid = cols.filter((k) => k.solid >= 0.9), bottoms = [], round = [], tops = [];
     const flat = it.chars.length && it.chars.every((c) => /\d/.test(c[2])) ? FLAT_DIGITS : FLAT_CAPS;
     for (const [a, b, ch] of it.chars) {
       const mine = solid.filter((k) => k.x + 0.5 >= (a - clip.x) * S && k.x + 0.5 <= (b - clip.x) * S);
       if (!mine.length) continue;
-      if (!TAILS.test(ch)) bottoms.push(Math.max(...mine.map((k) => k.bottom)));
+      if (!TAILS.test(ch)) (ROUND_FEET.test(ch) ? round : bottoms).push(Math.max(...mine.map((k) => k.bottom)));
       if (flat.test(ch)) tops.push(Math.min(...mine.map((k) => k.top)));
     }
-    const base = shared(bottoms);
+    const base = shared(bottoms.length ? bottoms : round);
     if (base === null) return null;
     const capTop = shared(tops);
     return { base, top: capTop === null ? base - it.capH * S : capTop, capsFrom: capTop === null ? 'font' : 'ink' };
