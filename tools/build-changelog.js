@@ -50,7 +50,9 @@ for (const record of git(['log', '--pretty=format:%ad' + UNIT + '%s' + UNIT + '%
 if (!process.env.CI && !entries.some(e => e.version === version)) {
   // Any session's run folder may hold the pending notes, and so may the shared file it replaced.
   const dir = path.join(ROOT, '.claude', 'commit');
-  const runs = fs.existsSync(path.join(dir, 'runs')) ? fs.readdirSync(path.join(dir, 'runs')).map(r => path.join(dir, 'runs', r, 'notes.txt')) : [];
+  // Run folders live in the main checkout, whichever worktree this runs in.
+  const runsDir = path.join(require('../.claude/commit/runRoot').runRoot(ROOT) || ROOT, '.claude', 'commit', 'runs');
+  const runs = fs.existsSync(runsDir) ? fs.readdirSync(runsDir).map(r => path.join(runsDir, r, 'notes.txt')) : [];
   const read = f => fs.existsSync(f) ? fs.readFileSync(f, 'utf8').replace(/\r/g, '').trim().split('\n') : [];
   const lines = runs.concat(path.join(dir, 'notes.txt')).map(read)
     .find(l => { const m = (l[0] || '').match(RELEASE); return m && m[1] === version; }) || [];

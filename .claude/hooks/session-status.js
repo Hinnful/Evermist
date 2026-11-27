@@ -2,9 +2,9 @@
 'use strict';
 
 /*
- * Session-start status - names any work that sits outside main's history, so nothing is
- * forgotten between sessions: uncommitted edits, local branches, worktrees, stashes, and
- * commits on main that origin has not landed. Silent when everything is clean.
+ * Session-start status - names any work that has not landed on origin/main, so nothing is
+ * forgotten between sessions: uncommitted edits, branches and worktrees holding commits
+ * origin/main lacks, stashes, and unpushed run folders. Silent when everything is clean.
  *
  * SessionStart; stdout reaches the model as context. Fail-open on any internal error.
  */
@@ -22,23 +22,6 @@ function main() {
   git(['update-index', '--skip-worktree', 'src/ui/changelogData.js']);
 
   const found = [];
-  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
-  if (branch !== 'main') found.push('This checkout is on ' + branch + ', not main.');
-
-  const dirty = lines(git(['status', '--porcelain']));
-  if (dirty.length) found.push('Uncommitted: ' + dirty.map((l) => l.replace(/^\s*\S+\s+/, '')).join(', '));
-
-  for (const b of lines(git(['branch', '--format=%(refname:short)'])).filter((b) => b !== 'main')) {
-    const ahead = git(['rev-list', '--count', 'main..' + b]);
-    found.push('Local branch ' + b + ' holds ' + ahead + ' commit(s) main lacks.');
-  }
-
-  const trees = lines(git(['worktree', 'list', '--porcelain'])).filter((l) => l.startsWith('worktree '));
-  if (trees.length > 1) found.push('Extra worktrees: ' + trees.slice(1).map((l) => l.slice(9)).join(', '));
-
-  const stashes = lines(git(['stash', 'list']));
-  if (stashes.length) found.push(stashes.length + ' stash(es): ' + stashes.join('; '));
-
   // CI's land job moves origin's main after /commit pushes, so the local origin/main is stale until a fetch.
   let fetched = true;
   try {
@@ -46,12 +29,31 @@ function main() {
       cwd: ROOT, stdio: 'ignore', timeout: 10000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     });
   } catch { fetched = false; }
-  let unlanded = '0';
-  try { unlanded = git(['rev-list', '--count', 'origin/main..main']); } catch { /* no origin yet */ }
-  if (unlanded !== '0') found.push('main holds ' + unlanded + ' commit(s) origin/main has not landed' + (fetched ? '.' : ' (could not fetch origin; the count may be stale).'));
+  const stale = fetched ? '' : ' (could not fetch origin; the count may be stale)';
+
+  const dirty = lines(git(['status', '--porcelain']));
+  if (dirty.length) found.push('Uncommitted: ' + dirty.map((l) => l.replace(/^\s*\S+\s+/, '')).join(', '));
+
+  // A branch whose commits all landed is spent, not work; main with one unlanded commit is a release in CI.
+  for (const b of lines(git(['branch', '--format=%(refname:short)']))) {
+    let ahead = '0';
+    try { ahead = git(['rev-list', '--count', 'origin/main..' + b]); } catch { /* no origin yet */ }
+    if (ahead !== '0') found.push('Branch ' + b + ' holds ' + ahead + ' commit(s) origin/main lacks' + stale + '.');
+  }
+
+  const trees = lines(git(['worktree', 'list', '--porcelain'])).filter((l) => l.startsWith('worktree '));
+  for (const t of trees.slice(1).map((l) => l.slice(9))) {
+    let dirty = [];
+    try { dirty = lines(execFileSync('git', ['-C', t, 'status', '--porcelain'], { encoding: 'utf8' })); } catch { /* gone */ }
+    if (dirty.length) found.push('Worktree ' + t + ' has ' + dirty.length + ' uncommitted edit(s).');
+  }
+
+  const stashes = lines(git(['stash', 'list']));
+  if (stashes.length) found.push(stashes.length + ' stash(es): ' + stashes.join('; '));
+
 
   // A run folder still holding notes.txt is a release that stopped before its push finished.
-  const runs = path.join(ROOT, '.claude', 'commit', 'runs');
+  const runs = path.join(require('../commit/runRoot').runRoot(ROOT) || ROOT, '.claude', 'commit', 'runs');
   for (const id of fs.existsSync(runs) ? fs.readdirSync(runs) : []) {
     // A locked notes.txt can outlive a finished push; pushed.json newer than it says the release went out.
     const mtime = (f) => { try { return fs.statSync(path.join(runs, id, f)).mtimeMs; } catch { return 0; } };
@@ -64,8 +66,8 @@ function main() {
 
   if (!found.length) return;
   process.stdout.write(
-    'WORK OUTSIDE MAIN - all work lives on main and goes out through /commit. Tell the DM about each\n' +
-      'item below in your first reply, one line each, and ask what to do with it:\n- ' +
+    'UNLANDED WORK - every edit goes out through /commit, from main or a branch. Tell the DM about\n' +
+      'each item below in your first reply, one line each, and ask what to do with any no session is working on:\n- ' +
       found.join('\n- ') + '\n'
   );
 }

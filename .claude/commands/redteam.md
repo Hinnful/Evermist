@@ -26,7 +26,7 @@ Agent({
 
 Target to critique: TARGET
 
-Read CLAUDE.md first for the project's rules, then docs/DECISIONS.md for what has already been tried, rejected, reverted or parked, and docs/PRODUCT.md for what the app deliberately will never do. Then read the target. Verify every claim against the actual codebase with Read/Grep/Glob/Bash, and run the project's own test command if one exists.
+Read CLAUDE.md first for the project's rules, then the topic files in docs/decisions/ (listed in docs/DECISIONS.md) for what has already been tried, rejected, reverted or parked, and docs/PRODUCT.md for what the app deliberately will never do. Then read the target. Verify every claim against the actual codebase with Read/Grep/Glob/Bash, and run the project's own test command if one exists.
 
 CRITERIA_BLOCK
 
@@ -44,7 +44,7 @@ Confirm you can actually judge this: have you read the target and the files it n
 
 ## Step 2 - Read the standards, then steel-man
 
-1. Read `CLAUDE.md` (the rules), `docs/DECISIONS.md` (what is already settled, rejected or parked) and `docs/PRODUCT.md` (what is out of scope by design). In another repo, substitute its equivalents.
+1. Read `CLAUDE.md` (the rules), the matching topic files in `docs/decisions/`, listed in `docs/DECISIONS.md` (what is already settled, rejected or parked) and `docs/PRODUCT.md` (what is out of scope by design). In another repo, substitute its equivalents.
 2. Grep for the dominant pattern around what's being changed. If several places do it one way and this work bypasses that, it fails even if no document says so.
 3. **State the strongest version of the plan in one or two sentences before attacking it.** This is not politeness. It stops you critiquing a weaker plan than the one on the page, which is the most common way a critique wastes everyone's time.
 
@@ -66,7 +66,7 @@ Fit:            boundaries-respected · no-overengineering · ordering-correct
 
 **Premise** - the part a plan critic is uniquely for.
 - `problem-real` - does this solve the problem that was actually reported, or a restatement of it? A plan that solves an adjacent, tidier problem fails here. If the report was terse, the honest finding is "the problem statement is thin, ask before building", not a guess dressed as a diagnosis.
-- `no-reopened-decision` - does this resurrect anything marked REJECTED, REVERTED or PARKED in `docs/DECISIONS.md`, or cross a line drawn in `docs/PRODUCT.md`? If it revives a *variant*, say which variant died and why, so the call is made with that in hand.
+- `no-reopened-decision` - does this resurrect anything marked REJECTED, REVERTED or PARKED in a topic file in `docs/decisions/`, or cross a line drawn in `docs/PRODUCT.md`? If it revives a *variant*, say which variant died and why, so the call is made with that in hand.
 - `assumption-named` - is each assumption the plan depends on stated as an assumption, or smuggled in as fact? An assumption named is cheap; one buried in a step costs the session when it's wrong.
 
 **Coverage**

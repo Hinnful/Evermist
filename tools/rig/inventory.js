@@ -1,6 +1,6 @@
 // The interface's inventory: every window, pop-up, menu, dialog and toast of the DM window, and the states each
-// can be in. The `design-sweep` scenario opens every entry in every state and checks it (docs/PROCESS.md,
-// "Building"). A new surface gets its entry in the same change; an entry that does not open fails the sweep, and so
+// can be in. The `design-sweep` scenario opens every entry in every state and checks it (.claude/rules/process.md,
+// "Proving it works"). A new surface gets its entry in the same change; an entry that does not open fails the sweep, and so
 // does a surface with a pop or window shadow that shows without one.
 //
 // An entry: id; root, the selector that wraps it once open; motion, its kind in design-system.md's Motion table

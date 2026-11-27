@@ -1,6 +1,6 @@
 ---
 name: filer
-description: Runs /commit's Step 4 - files the calls a change settled into the decision ledgers, PRODUCT.md, PROCESS.md and ARCHITECTURE.md, following .claude/commit/docs.md. The main session hands it the list of settled calls and changed behaviour; it finds each destination and writes the entries.
+description: Runs /commit's Step 4 - files the calls a change settled into the decision ledgers, PRODUCT.md, the process rules and the architecture files, following .claude/commit/docs.md. The main session hands it the list of settled calls and changed behaviour; it finds each destination and writes the entries.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 effort: low

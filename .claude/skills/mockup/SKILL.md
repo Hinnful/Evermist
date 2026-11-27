@@ -28,7 +28,7 @@ for the DM's "build it" (CLAUDE.md).
 - **Differences go in captions under each option.** No dashed outlines, arrows or highlight
   marks on the mockup itself; they hide the look being judged.
 - **A window that already exists is mocked with the app's own stylesheets and code**, the
-  proposal as overrides. PROCESS.md, "Building", carries the rule.
+  proposal as overrides. `.claude/rules/process.md`, "Showing the DM", carries the rule.
 - **The TV view is shown as real Player frames**, never a drawing of one. The rig may capture
   real Player and DM frames for a board; a capture is a look, so it follows the rig skill's rules.
 - **A board is checked on publish**: `guard-board.js` runs the alignment sweep on any page linking `src/css/` and
@@ -42,4 +42,4 @@ for the DM's "build it" (CLAUDE.md).
 
 - **Update the memory pointer** with the board link, the pick and what was rejected, so the
   rejected options are not offered again.
-- **The pick goes to a spec or a builder brief**, through the normal loop in PROCESS.md.
+- **The pick goes to a spec or a builder brief**, through the normal loop in `.claude/rules/process.md`.

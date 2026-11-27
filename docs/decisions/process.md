@@ -2,8 +2,8 @@
 
 The public, past-tense ledger of decisions about **how work on Evermist runs**: the slash commands
 (/brief, /spec, /commit, /rollback, /redteam), the order they run in, and what CI took over from
-them. What was tried, what was rejected, and why. [PROCESS.md](../PROCESS.md) says how the process
-runs now; this file says why it has that shape. Decisions about the repo's docs, rules and guard
+them. What was tried, what was rejected, and why. [.claude/rules/process.md](../../.claude/rules/process.md) says how the
+process runs now; this file says why it has that shape. Decisions about the repo's docs, rules and guard
 hooks are in [docs-and-guards.md](docs-and-guards.md), what the product is in
 [PRODUCT.md](../PRODUCT.md), and open work in [BACKLOG.md](../BACKLOG.md).
 
@@ -558,3 +558,45 @@ does → what the DM sees, from the item's words; a builder brief carries them a
 one without); the rig performs each with CDP mouse and keys; the main session re-checks each line and marks how it was
 proven; `ship.js --accept` refuses a release with an unmarked line. A memory note alone had not held: the same rule was
 already there and was skipped for a small item.
+
+### Branches and worktrees are allowed; only a stash is refused · `SETTLED` (2026-11-27)
+One checkout on main blocked parallel sessions: the guard refused a worktree session six times in three weeks, and
+sessions sharing one checkout saw each other's edits. `guard-stash.js` replaces `guard-main.js` and refuses only a
+stash, which hides edits where nothing finds them. `session-status.js` names every branch holding commits
+origin/main lacks and every worktree with uncommitted edits, and `ship.js` ships from any branch that holds
+origin/main. **Reverses** "All work happens in the one checkout, on main" (2026-10-25). Two branches releasing at
+once can still take one version number; that is open.
+
+### A restructure needs no yes and no commit of its own · `SETTLED` (2026-11-27)
+The DM cannot judge a file split, and a separate commit served a diff nobody reads; the gate proves behaviour
+whatever the commit holds. The rule left `CLAUDE.md`. "Finish the whole task" left it too: the user-level
+instructions every session loads carry it.
+
+### A change to a picked look is shown as a picture · `SETTLED` (2026-11-27)
+A description of the new look was rejected: a change to a look the DM picked is shown as "I propose this" and a
+board or a screenshot, then kept on the DM's yes. A defect the DM named is fixed first and shown the same way.
+This rule, the quiet rounds while the DM sends findings, and fixing a found bug in the same release moved from
+memory notes into the process rules, where every session reads them.
+
+### The design sweep runs in CI as a trial · `SETTLED` (2026-11-27)
+Running it locally on every interface edit cost time on each round. `design-sweep.yml` runs it on Linux when a
+change touches the interface, on a larger virtual screen than the gate's, keeps its close-ups, and warns without
+blocking. Whether it stays, blocks, or goes is decided after its first runs.
+
+### `/brief` drops its Spec column · `SETTLED` (2026-11-27)
+Every item gets `/spec` before it is built, so a column saying which items need one said nothing.
+
+### `ship.js` waits for a release in CI, then catches up and renumbers · `SETTLED` (2026-11-27)
+Closes the open half of "Branches and worktrees are allowed". While another release or change branch is on
+origin, `ship.js` stops with `WAIT` and a loop for the Monitor tool. Then it moves the work onto the new main,
+replays the bump's size on main's version and renumbers the Summary; `notesHash` leaves the version prefix out, so
+the DM's yes stands. Numbering in CI at land time, as changesets and release-please do, was rejected: it rewrites
+the commit the DM approved and runs the gate twice. Not one of 45 releases overlapped another in CI.
+
+### `/commit`'s script faults fixed, and a red job that ran is never rerun · `SETTLED` (2026-11-27)
+An audit of 46 runs found ten retries from `ship.js` itself: a path removed by `git rm` broke `git add`, and an
+amend without `package.json` was refused. The yes record and `ship.js` now share the main checkout's run folder
+(`runRoot.js`), and `check-notes.js` keeps a pass's time when the notes are unchanged; both had refused a correct
+yes. The monitor is armed right after the pull request opens. `guard-ship.js` refuses `gh run rerun` unless every
+red job never got a machine, at most twice per run: a rerun of a job that ran shipped an autosave bug in 5.17.0.
+The six step files stay apart: each is read at its step, and merging them saves seconds per run.

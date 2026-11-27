@@ -15,8 +15,12 @@ already done before acting, so a re-run after a stop finishes the tail and repea
   edit it leaves behind. Name each one to the DM: another session's work in progress, or yours to ship.
 - **Commit** with the Summary as subject and the Description below it, read from `notes.txt`. No
   `Co-Authored-By` trailer.
-- **Refuse a HEAD that does not contain `origin/main`**, and **check the branch, the version and
-  the files agree** with the same rules CI applies.
+- **Catch up with `origin/main` first.** While another session's release or change is in CI, the script
+  stops with `WAIT` and prints a wait loop: run it with the Monitor tool, then run the script again.
+  It then moves this work onto the new main, replays the bump on main's version and renumbers the
+  Summary. The DM's yes stands, since it covers the text; say the new number in the report. A
+  conflict stops it with the files named. Then it **checks the branch, the version and the files
+  agree** with the same rules CI applies.
 - **Push a BRANCH by refspec, never `main`, and never create the branch locally.** The script
   picks `release/<version>` for an untagged version and `change/<slug>` otherwise.
 - **Open a pull request yourself** (the DM's yes to push covers it and the CI monitor), so the run and every failed attempt before it keep a permanent page.
@@ -44,11 +48,12 @@ broke. CI writes the in-app What's new list when it builds, so nothing is amende
 - **Never merge the pull request yourself.** The `land` job fast-forwards `main` once the gate is
   green and the PR closes as merged; `cleanup` then deletes the branch. A merge, rebase or squash
   would put a tree on `main` that no gate drove.
+- **Arm the CI monitor right after `gh pr create`**: `mcp__ccd_pr__set_monitor` with `auto_fix: true`,
+  before anything else. If it reports no pull request, bind it by URL with `mcp__ccd_pr__bind_pr` and
+  set it again. Reading `get_status` first and ending the turn left the monitor off in 35 of 39
+  releases. **It wakes this session on failure only.** A green run notifies nobody here, which is why the backlog is closed
+  before the push rather than after the gate.
 - **Rename the chat to the Summary line** with `mcp__ccd_session_mgmt__set_session_title` (load it
   with ToolSearch), so the session list names each release.
-- **Arm the CI monitor.** Read `mcp__ccd_pr__get_status` to confirm the app picked the PR up, bind
-  it by URL if it did not, then `mcp__ccd_pr__set_monitor` with `auto_fix: true`. **It wakes this
-  session on failure only.** A green run notifies nobody here, which is why the backlog is closed
-  before the push rather than after the gate.
 - Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`. The Stop
   hook (`stop-checklist.js`) holds the turn open until the monitor is armed and the chat renamed.

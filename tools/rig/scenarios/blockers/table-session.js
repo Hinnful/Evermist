@@ -36,6 +36,7 @@ const fs = require('fs');
 const path = require('path');
 
 const lib = require('../../lib');
+const { user } = require('../../user');
 
 const MAP_1 = 'Склеп вампира', MAP_2 = 'Тронный зал';
 const BRUSH = { x: 1500, y: 2090 };      // below every room, where only a brush reaches
@@ -63,32 +64,15 @@ globalThis.__gaFile = (name, w, h) => new Promise(r => {
 globalThis.__gaPick = files => {
   const inp = document.getElementById('ga-input'), dt = new DataTransfer();
   files.forEach(f => dt.items.add(f));
-  inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
+  inp.files = dt.files; // setup: the native file picker hands these over, and nothing drives it
+  inp.dispatchEvent(new Event('change', { bubbles: true })); // setup: as the picker does when it closes
   return 0;
 };
 globalThis.__gaTile = name => Array.from(document.querySelectorAll('#ga-grid .ga-tile'))
   .find(t => t.querySelector('.ga-name').textContent === name);
-globalThis.__srType = q => { const i = document.getElementById('sr-input'); i.value = q; i.dispatchEvent(new Event('input', { bubbles: true })); return 0; };
-globalThis.__srKey = c => { document.getElementById('sr-input').dispatchEvent(new KeyboardEvent('keydown', { code: c, key: c, bubbles: true, cancelable: true })); return 0; };
 globalThis.__srUp = () => document.body.classList.contains('searching') && getComputedStyle(document.getElementById('sr-veil')).display !== 'none';
 globalThis.__srRows = () => [...document.querySelectorAll('#sr-list .sr-row')].map(r => r.querySelector('.sr-nm').textContent);
 globalThis.__cbRow = name => [...document.querySelectorAll('#cb-list .cb-row')].find(r => r.querySelector('[data-f=name]').value === name);
-globalThis.__cbType = (name, f, v) => {
-  const inp = __cbRow(name).querySelector('[data-f=' + f + ']');
-  inp.focus(); inp.value = v;
-  inp.dispatchEvent(new Event('input', { bubbles: true }));
-  inp.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-  return 0;
-};
-globalThis.__cbPickTyped = typed => {
-  const inp = document.getElementById('cb-search');
-  inp.focus(); inp.value = typed;
-  inp.dispatchEvent(new Event('input', { bubbles: true }));
-  const offered = [...document.querySelectorAll('#cb-suggest [data-i]:not(.new)')].map(d => d.firstChild.textContent);
-  const first = document.querySelector('#cb-suggest [data-i]');
-  if (first) first.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
-  return offered;
-};
 0`;
 
 // What a window is looking at, as a region of the map.
@@ -128,26 +112,35 @@ module.exports = async function tableSession(rig) {
   };
   const tvClear = (x, y) => lib.poll(async () => { const a = await lib.tvFog(player, x, y); return a < 128 ? { a } : null; }, 30000);
   const tvFogged = (x, y) => lib.poll(async () => { const a = await lib.tvFog(player, x, y); return a > 200 ? { a } : null; }, 30000);
-  const typeInto = (id, value) => dm.evaluate(`(() => {
-    const el = document.getElementById(${JSON.stringify(id)});
-    el.dispatchEvent(new FocusEvent('focus')); el.value = ${JSON.stringify(value)};
-    el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new FocusEvent('blur'));
-    return 0; })()`);
-  const pickRoom = r => dm.evaluate('setPlaceMode("rooms"); setShape("select"); __rigClick(' + Math.round(r.cx + 150) + ',' + Math.round(r.cy + 300) + '); 0');
+  const u = user(dm);
+  // A field typed into as the DM does: clicked, its text replaced, and left with Tab, which commits it.
+  const typeInto = async (id, value) => {
+    await u.click('#' + id);
+    await u.selectAll();
+    await u.type(value);
+    await u.press('Tab');
+  };
+  // Rooms in hand, Select (V), and a click on the map inside the room.
+  const pickRoom = async r => {
+    if (await dm.evaluate('placeMode') !== 'rooms') await u.press('e');
+    await u.press('v');
+    await u.click(await u.map(Math.round(r.cx + 150), Math.round(r.cy + 300)));
+  };
+  // The picked room's own Reveal cloud.
   const revealRoom = async r => {
     await pickRoom(r);
     await lib.settle(dm, 'selectedPolygonId === ' + r.id, 8000);
-    await dm.evaluate('document.getElementById("btn-reveal").click(); 0');
+    await u.click('#room-fog .fx-dir[data-dir="reveal"]');
   };
 
   // ── 1. Open a map from its card on the Campaign ───────────────────────────
   await lib.step(rig, '1: open a map from the Campaign', async () => {
-    await dm.evaluate('worldMapShow(); 0');
+    await u.click('#btn-world');
     await lib.settle(dm, 'worldMapOpen && !_wmAnim', 30000);
     const card = '.wm-card[data-id="' + ids.one + '"]';
     await lib.settle(dm, '!!document.querySelector(' + JSON.stringify(card) + ')', 20000);
     // RED BY DESIGN: written against the feature, never re-proved
-    await dm.evaluate('document.querySelector(' + JSON.stringify(card) + ').firstChild.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true })); 0');
+    await u.dblclick(card);
     const opened = await lib.settle(dm, 'currentScene && currentScene.id === ' + JSON.stringify(ids.one) + ' && !worldMapOpen && fogCoverT === 0', 120000);
     rig.check(opened, '1: a double-click on the map\'s card on the Campaign did not open it');
     if (!opened) {
@@ -165,17 +158,12 @@ module.exports = async function tableSession(rig) {
     const z0 = await dm.evaluate('zoom');
     // The wheel zooms about the pointer, one notch at a time, until the map is well past its fit.
     for (let i = 0; i < 14 && await dm.evaluate('zoom') < z0 * 2; i++) {
-      await dm.evaluate(`(() => { const r = container.getBoundingClientRect();
-        container.dispatchEvent(new WheelEvent('wheel', { clientX: r.left + ${mid.x} * zoom + panX, clientY: r.top + ${mid.y} * zoom + panY,
-          deltaY: -120, bubbles: true, cancelable: true })); return 0; })()`);
+      await u.wheel(await u.map(mid.x, mid.y), -120);
       await lib.settle(dm, '!viewportDirty', 8000);
     }
     // A middle-button drag brings the point between rooms 1 and 2 to the middle of the window.
-    await dm.evaluate(`(() => { const r = container.getBoundingClientRect();
-      const x0 = r.left + ${mid.x} * zoom + panX, y0 = r.top + ${mid.y} * zoom + panY, x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
-      const ev = (type, x, y, to) => to.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, button: 1, buttons: 4, bubbles: true, cancelable: true }));
-      ev('mousedown', x0, y0, container); ev('mousemove', (x0 + x1) / 2, (y0 + y1) / 2, container); ev('mousemove', x1, y1, container); ev('mouseup', x1, y1, window);
-      return 0; })()`);
+    const centre = await dm.evaluate('(() => { const r = container.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()');
+    await u.drag(await u.map(mid.x, mid.y), centre, { button: 'middle' });
     await lib.settle(dm, '!viewportDirty', 8000);
     const zoomed = await dm.evaluate('zoom');
     rig.check(zoomed > z0, '2: the wheel did not zoom the map: ' + z0 + ' → ' + zoomed);
@@ -195,9 +183,9 @@ module.exports = async function tableSession(rig) {
     rig.check(first.ok, '2: the TV is not looking where the DM is looking: DM ' + JSON.stringify(first.a) + ', TV ' + JSON.stringify(first.b));
 
     // The DM moves again and presses Sync View: the TV goes along.
-    await dm.evaluate('panX -= 170; panY -= 110; viewportDirty = true; scheduleRender(); 0');
+    await u.drag(centre, { x: centre.x - 170, y: centre.y - 110 }, { button: 'middle' });
     await lib.settle(dm, '!viewportDirty', 8000);
-    await dm.evaluate('document.getElementById("btn-sync-view").click(); 0');
+    await u.click({ sel: '#tv-ui .tv-ov', text: 'Подогнать телевизор под мой вид' });
     const again = await lib.poll(async () => { const f = await follows(); return f.ok ? f : null; }, 20000, 500) || await follows();
     rig.check(again.ok, '2: Sync View did not take the TV to where the DM moved: DM ' + JSON.stringify(again.a) + ', TV ' + JSON.stringify(again.b));
 
@@ -215,12 +203,10 @@ module.exports = async function tableSession(rig) {
     const musicDir = path.join(rig.profileDir, 'music');
     fs.mkdirSync(musicDir, { recursive: true });
     for (const t of TRACKS) fs.writeFileSync(path.join(musicDir, t), wav(60));
-    await dm.evaluate('dockOpen(null); document.getElementById("dock-tab-music").click(); 0');
+    await lib.openPane(dm, 'music');
     await lib.settle(dm, '_muTracks.length === 2', 30000);
     await dm.evaluate('_muEnsureDecks(); _muDecks.forEach(d => { d.el.muted = true; }); 0');
-    const click = name => dm.evaluate(`[...document.querySelectorAll('#mu-list .mu-row')]
-      .find(r => r.querySelector('.mu-row-name').textContent === ${JSON.stringify(name)}).click(); 0`);
-    await click(TRACK_NAMES[0]);
+    await u.click({ sel: '#mu-list .mu-row-name', text: TRACK_NAMES[0] });
     const playing = await lib.settle(dm, '_muPlaying === ' + JSON.stringify(TRACKS[0]), 30000);
     rig.check(playing, '3: the clicked track did not become the playing one (' + await dm.evaluate('_muPlaying') + ')');
     const t0 = await dm.evaluate('_muDecks[_muActive].el.currentTime');
@@ -231,21 +217,24 @@ module.exports = async function tableSession(rig) {
     }, 30000, 200);
     rig.check(!!advanced, '3: the track is named as playing but its time never advanced');
 
-    await dm.evaluate('dockOpen(null); document.getElementById("dock-tab-sounds").click(); 0');
+    await lib.openPane(dm, 'sounds');
     await lib.settle(dm, 'typeof _sbMaster !== "undefined" && !!_sbMaster', 30000);
     // Silent twice over: the run is muted, and the sounds go through a zero gain as well.
-    await dm.evaluate(`(() => { _sbMaster.disconnect(); const z = _sbCtx.createGain(); z.gain.value = 0;
+    await dm.evaluate(`(() => { _sbMaster.disconnect(); const z = _sbCtx.createGain(); z.gain.value = 0; // setup: a silent run
       _sbMaster.connect(z); z.connect(_sbCtx.destination); return 0; })()`);
-    await dm.evaluate('document.querySelector("#sb-cols [data-file=\\"bell.mp3\\"]").click(); 0');
+    await u.click('#sb-cols [data-file="bell.mp3"]');
     // RED BY DESIGN: written against the feature, never re-proved
     const sounding = await lib.settle(dm, '(_sbPlaying["bell.mp3"] || []).length >= 1', 30000);
     rig.check(sounding, '3: a click on a soundboard sound started nothing');
-    await dm.evaluate('dockOpen(null); 0');
+    await lib.closePane(dm);
   });
   await secrecy('3');
 
   // ── 4. Reveal a room ──────────────────────────────────────────────────────
   await lib.step(rig, '4: reveal a room', async () => {
+    // The whole map in the window (F), so every room and the ground below them are on screen.
+    await u.press('f');
+    await lib.settle(dm, '!viewportDirty', 8000);
     const r = rooms[0];
     await revealRoom(r);
     rig.check(await dm.evaluate('polygons.find(p => p.id === ' + r.id + ').mode') === 'reveal', '4: the Reveal button did not reveal the picked room on the DM');
@@ -269,24 +258,33 @@ module.exports = async function tableSession(rig) {
 
   // ── 5. One brush stroke ───────────────────────────────────────────────────
   await lib.step(rig, '5: a brush stroke', async () => {
-    await dm.evaluate('setShape("select"); __rigClick(' + BRUSH.x + ',' + BRUSH.y + '); 0');
-    await dm.evaluate('document.getElementById("btn-reveal").click(); setShape("brush"); __rigDrag(' + (BRUSH.x - 200) + ',' + BRUSH.y + ',' + (BRUSH.x + 200) + ',' + BRUSH.y + '); setShape("select"); 0');
+    // The strip below the rooms sits under the tool bar at a fit, so the map is dragged up clear of it.
+    const centre = await dm.evaluate('(() => { const r = container.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()');
+    await u.drag(centre, { x: centre.x, y: centre.y - 120 }, { button: 'middle' });
+    await lib.settle(dm, '!viewportDirty', 8000);
+    await u.press('v');
+    await u.click(await u.map(BRUSH.x, BRUSH.y));
+    await u.press('b');
+    await u.click('#fx-switch .fx-dir[data-dir="reveal"]');
+    await u.drag(await u.map(BRUSH.x - 200, BRUSH.y), await u.map(BRUSH.x + 200, BRUSH.y));
+    await u.press('v');
     await dm.evaluate('scheduleRender(); 0');
     await lib.settle(dm, 'pendingBrushOps.length === 0', 30000);
     rig.check(await dm.evaluate('__rigFog(' + BRUSH.x + ',' + BRUSH.y + ')') < 128, '5: the brush stroke did not clear the ground it crossed on the DM');
     // RED BY DESIGN: written against the feature, never re-proved
     rig.check(!!(await tvClear(BRUSH.x, BRUSH.y)), '5: the ground the brush crossed is still fogged on the TV');
+    await u.drag({ x: centre.x, y: centre.y - 120 }, centre, { button: 'middle' });
+    await lib.settle(dm, '!viewportDirty', 8000);
   });
   await secrecy('5');
 
   // ── 6. Ctrl+Z ─────────────────────────────────────────────────────────────
   await lib.step(rig, '6: Ctrl+Z', async () => {
-    await dm.evaluate('document.activeElement && document.activeElement.blur && document.activeElement.blur(); 0');
-    await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); 0');
+    await u.press('z', { ctrl: true });
     // RED BY DESIGN: written against the feature, never re-proved
     rig.check(!!(await tvFogged(BRUSH.x, BRUSH.y)), '6: Ctrl+Z took the brush stroke back on the DM but the TV still shows the ground');
     rig.check(await lib.tvFog(player, rooms[0].cx, rooms[0].cy) < 128, '6: Ctrl+Z after the brush stroke fogged the revealed room too');
-    await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); 0');
+    await u.press('z', { ctrl: true });
     rig.check(!!(await tvFogged(rooms[0].cx, rooms[0].cy)), '6: Ctrl+Z after revealing a room did not bring its fog back on the TV');
     await revealRoom(rooms[0]);
     rig.check(!!(await tvClear(rooms[0].cx, rooms[0].cy)), '6: the room could not be revealed again after the undo');
@@ -296,9 +294,12 @@ module.exports = async function tableSession(rig) {
   // ── 7. An effect ──────────────────────────────────────────────────────────
   await lib.step(rig, '7: an effect', async () => {
     const r = rooms[0];
-    await dm.evaluate('setPlaceMode("effects"); setShape("rect"); __rigDrag(' + Math.round(r.cx - 250) + ',' + Math.round(r.cy - 450) + ',' + Math.round(r.cx + 50) + ',' + Math.round(r.cy - 150) + '); 0');
+    await u.press('e');
+    await u.press('r');
+    await u.drag(await u.map(Math.round(r.cx - 250), Math.round(r.cy - 450)), await u.map(Math.round(r.cx + 50), Math.round(r.cy - 150)));
     rig.check(await dm.evaluate('effects.length') === 1, '7: the effect was not placed on the DM');
-    await dm.evaluate('setPlaceMode("rooms"); setShape("select"); 0');
+    await u.press('e');
+    await u.press('v');
     // RED BY DESIGN: written against the feature, never re-proved
     const arrived = await lib.settle(player, 'effects.length === 1 && !!effects[0].vertices', 30000);
     rig.check(arrived, '7: the effect never reached the TV: it holds ' + await player.evaluate('effects.length'));
@@ -307,18 +308,18 @@ module.exports = async function tableSession(rig) {
 
   // ── 8. A gallery picture on the TV, then off ──────────────────────────────
   await lib.step(rig, '8: a picture', async () => {
-    await dm.evaluate('dockOpen("gallery"); 0');
+    await lib.openPane(dm, 'gallery');
     await dm.evaluate(`(async () => { __gaPick([await __gaFile('Письмо барона.png', 600, 800)]); return 0; })()`);
     const added = await lib.settle(dm, '_gaPics.length === 1', 30000);
     rig.check(added, '8: the picture was not added to the gallery');
     const up = () => player.evaluate(`(() => { const el = document.getElementById('tv-picture'); return !!el && el.classList.contains('up'); })()`);
-    await dm.evaluate('__gaTile("Письмо барона").querySelector(".ga-th").click(); 0');
+    await u.click('#ga-grid .ga-tile .ga-th');
     // RED BY DESIGN: written against the feature, never re-proved
     rig.check(!!(await lib.poll(async () => (await up()) ? { up: true } : null, 30000)), '8: a click on a picture did not put it on the TV');
     await secrecy('8, picture up');
-    await dm.evaluate('__gaTile("Письмо барона").querySelector(".ga-th").click(); 0');
+    await u.click('#ga-grid .ga-tile .ga-th');
     rig.check(!!(await lib.poll(async () => (await up()) ? null : { down: true }, 30000)), '8: a second click did not take the picture off the TV');
-    await dm.evaluate('dockOpen(null); 0');
+    await lib.closePane(dm);
   });
   await secrecy('8');
 
@@ -326,7 +327,7 @@ module.exports = async function tableSession(rig) {
   await lib.step(rig, '9: a room\'s notes', async () => {
     await pickRoom(rooms[0]);
     await lib.settle(dm, 'selectedPolygonId === ' + rooms[0].id, 8000);
-    await dm.evaluate('if (!nwIsOpen()) document.getElementById("dock-tab-notes").click(); 0');
+    if (!await dm.evaluate('nwIsOpen()')) await u.click('#dock-tab-notes');
     // RED BY DESIGN: written against the feature, never re-proved
     const shown = await lib.settle(dm, 'nwIsOpen() && !!document.getElementById("rp-name") && document.getElementById("rp-name").offsetParent !== null', 15000);
     rig.check(shown, '9: the Notes window did not open on the picked room');
@@ -334,30 +335,34 @@ module.exports = async function tableSession(rig) {
     await typeInto('rp-desc', 'Двое стражников у фонтана.');
     const kept = await lib.settle(dm, 'polygons.find(p => p.id === ' + rooms[0].id + ').name === "Зал стражи" && polygons.find(p => p.id === ' + rooms[0].id + ').desc === "Двое стражников у фонтана."', 8000);
     rig.check(kept, '9: a name and a note typed in the Notes window did not reach the room');
-    await dm.evaluate('nwHide(); 0');
+    await u.click('#dock-tab-notes');
+    await lib.settle(dm, '!nwIsOpen()', 8000);
   });
   await secrecy('9');
 
   // ── 10. Search ────────────────────────────────────────────────────────────
   const search = async q => {
-    await dm.evaluate('__rigKey("KeyF", { ctrlKey: true }); 0');
+    await u.press('f', { ctrl: true });
     await lib.settle(dm, '__srUp()', 8000);
     await lib.settle(dm, '_srProgress === null', 60000);
-    await dm.evaluate('__srType(' + JSON.stringify(q) + '); 0');
+    await u.selectAll();
+    await u.type(q);
   };
   await lib.step(rig, '10: search', async () => {
-    await dm.evaluate('setShape("select"); __rigClick(' + BRUSH.x + ',' + BRUSH.y + '); 0');
+    await u.press('v');
+    await u.press('Escape');
     await lib.settle(dm, 'selectedPolygonId === null', 8000);
     await search('Зал стражи');
-    await dm.evaluate('__srKey("Enter"); 0');
+    await u.press('Enter');
     // RED BY DESIGN: written against the feature, never re-proved
     const jumped = await lib.settle(dm, 'selectedPolygonId === ' + rooms[0].id, 20000);
     rig.check(jumped, '10: searching for a room by its name did not pick it');
-    await dm.evaluate('document.getElementById("sr-input") && document.getElementById("sr-input").dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true })); 0');
-    await lib.settle(dm, '!__srUp()', 8000);
+    await u.press('Escape');
+    // Gone from the screen, not only closing: the field keeps the keys until its exit ends.
+    await lib.settle(dm, "getComputedStyle(document.getElementById('sr-veil')).display === 'none'", 8000);
     await search(MAP_2);
     const listed = await lib.settle(dm, '__srRows()[0] === ' + JSON.stringify(MAP_2), 20000);
-    rig.check(listed, '10: searching for the other map by its name did not list it first: ' + JSON.stringify(await dm.evaluate('__srRows()')));
+    rig.check(listed, '10: searching for the other map by its name did not list it first: ' + JSON.stringify(await dm.evaluate(`({ rows: __srRows(), typed: (document.getElementById('sr-input') || {}).value, focus: document.activeElement && document.activeElement.id, up: __srUp() })`)));
   });
   await secrecy('10');
 
@@ -365,9 +370,9 @@ module.exports = async function tableSession(rig) {
   await lib.step(rig, '11: switch the map and the music', async () => {
     await player.evaluate('globalThis.__rigWas = mapVideo; 0');
     // The search is still open on the second map: Enter opens it, and Auto asks before it does.
-    await dm.evaluate('__srKey("Enter"); 0');
+    await u.press('Enter');
     const asked = await lib.settle(dm, '_cdOpen', 10000);
-    if (asked) await dm.evaluate('document.getElementById("cd-ok").click(); 0');
+    if (asked) await u.click('#cd-ok');
     // RED BY DESIGN: written against the feature, never re-proved
     let on = await lib.settle(dm, 'currentScene && currentScene.id === ' + JSON.stringify(ids.two) + ' && fogCoverT === 0', 120000);
     rig.check(on, '11: picking the other map in the search did not open it');
@@ -384,10 +389,9 @@ module.exports = async function tableSession(rig) {
     rig.check(await dm.evaluate('__rigFog(' + Math.round(rooms[0].cx) + ',' + Math.round(rooms[0].cy) + ')') > 200 &&
               await dm.evaluate('polygons.every(p => p.mode === "shroud")'), '11: the first map\'s reveal carried over to the second map on the DM');
 
-    await dm.evaluate('dockOpen(null); document.getElementById("dock-tab-music").click(); 0');
+    await lib.openPane(dm, 'music');
     await lib.settle(dm, '_muTracks.length === 2', 30000);
-    await dm.evaluate(`[...document.querySelectorAll('#mu-list .mu-row')]
-      .find(r => r.querySelector('.mu-row-name').textContent === ${JSON.stringify(TRACK_NAMES[1])}).click(); 0`);
+    await u.click({ sel: '#mu-list .mu-row-name', text: TRACK_NAMES[1] });
     const swapped = await lib.settle(dm, '_muPlaying === ' + JSON.stringify(TRACKS[1]), 30000);
     rig.check(swapped, '11: picking the second track did not switch the music (' + await dm.evaluate('_muPlaying') + ')');
     const t0 = await dm.evaluate('_muDecks[_muActive].el.currentTime');
@@ -396,7 +400,7 @@ module.exports = async function tableSession(rig) {
       return Math.abs(t - t0) > 0.05 ? { t } : null;
     }, 30000, 200);
     rig.check(!!advanced, '11: the second track is named as playing but its time never advanced');
-    await dm.evaluate('dockOpen(null); 0');
+    await lib.closePane(dm);
   });
   await secrecy('11');
 
@@ -407,20 +411,34 @@ module.exports = async function tableSession(rig) {
         combatAddEntry(cbState.blocks, Object.assign(combatBlankBlock('', n), { meta: 'Small humanoid', ac, hp, cr: '1/4' }));
       }
       cbSave(); return 0; })()`);
-    await dm.evaluate('document.getElementById("btn-combat").click(); 0');
+    await u.click('#btn-combat');
     const open = await lib.settle(dm, 'document.getElementById("cb-fight").style.display !== "none"', 15000);
     rig.check(open, '12: the Combat button did not open the fight table');
-    const offered = await dm.evaluate('__cbPickTyped("Гоб")');
-    await dm.evaluate('__cbPickTyped("Вол"); 0');
+    // The bestiary search: typed, what it offers read, its first offer clicked.
+    const pickTyped = async typed => {
+      await u.click('#cb-search');
+      await u.type(typed);
+      await lib.settle(dm, '!!document.querySelector("#cb-suggest [data-i]")', 8000);
+      const offer = await dm.evaluate(`[...document.querySelectorAll('#cb-suggest [data-i]:not(.new)')].map(d => d.firstChild.textContent)`);
+      await u.click('#cb-suggest [data-i]');
+      return offer;
+    };
+    const offered = await pickTyped('Гоб');
+    await pickTyped('Вол');
     const rows = await dm.evaluate('cbState.rows.map(r => r.name)'), left = await dm.evaluate('document.getElementById("cb-search").value');
     rig.check(JSON.stringify(offered) === '["Гоблин"]' && rows.join() === 'Гоблин,Волк' && left === '',
               '12: two monsters picked in the search did not become two rows: offered ' + JSON.stringify(offered) + ', rows ' + JSON.stringify(rows) + ', search left ' + JSON.stringify(left));
-    await dm.evaluate('__cbType("Гоблин", "hp", "-3"); 0');
+    const row = await dm.evaluate(`[...document.querySelectorAll('#cb-list .cb-row')].indexOf(__cbRow('Гоблин'))`);
+    await u.click({ sel: '#cb-list .cb-row [data-f=hp]', nth: row });
+    await u.selectAll();
+    await u.type('-3');
+    await u.press('Tab');
     const readHp = () => dm.evaluate('({ typed: cbState.rows.find(r => r.name === "Гоблин").hp, sum: __cbRow("Гоблин").querySelector(".sum").textContent })');
     const hp = (await lib.poll(async () => { const h = await readHp(); return h.typed === '-3' && /^4$/.test(h.sum) ? h : null; }, 15000)) || await readHp();
     rig.check(hp.typed === '-3' && /^4$/.test(hp.sum), '12: an HP typed into a row was not kept and summed: ' + JSON.stringify(hp));
     rig.byEye('12: next turn - the fight table has no turn to advance, so there is nothing to automate');
-    await dm.evaluate('cbSetOpen(false); 0');
+    await u.click('#btn-combat');
+    await lib.settle(dm, 'document.getElementById("cb-fight").style.display === "none"', 8000);
   });
   await secrecy('12');
 };

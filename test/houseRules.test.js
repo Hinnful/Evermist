@@ -198,6 +198,14 @@ describe('house rules: docs and maps', () => {
       'docs/BACKLOG.md is ' + bytes + ' bytes. It holds open items only; closed work goes to the decisions ledger or nowhere.');
   });
 
+  // Both load into every session and every agent; past 200 lines a memory file is followed less reliably.
+  it('keeps CLAUDE.md and the process rules under 200 lines each', () => {
+    for (const rel of ['CLAUDE.md', '.claude/rules/process.md']) {
+      const lines = read(rel).split('\n').length;
+      assert.ok(lines <= 200, rel + ' runs ' + lines + ' lines. Tighten a rule, or move one to the skill or doc that owns it.');
+    }
+  });
+
   it('keeps every ledger entry tagged and short', () => {
     const ledgers = ['docs/DECISIONS.md', 'docs/PRODUCT.md',
       ...fs.readdirSync(path.join(ROOT, 'docs/decisions')).map((f) => 'docs/decisions/' + f)];
@@ -234,7 +242,7 @@ describe('house rules: docs and maps', () => {
   });
 
   it('names nobody in the public docs', () => {
-    const prose = ['CLAUDE.md', 'README.md', 'docs/ARCHITECTURE.md', 'docs/PROCESS.md', 'docs/BACKLOG.md',
+    const prose = ['CLAUDE.md', 'README.md', 'docs/ARCHITECTURE.md', '.claude/rules/process.md', 'docs/BACKLOG.md',
       ...fs.readdirSync(path.join(ROOT, 'docs/architecture')).map((f) => 'docs/architecture/' + f)];
     // A ledger's preamble quotes the banned phrasing to rule it out, so only its entries are read.
     const ledgers = ['docs/DECISIONS.md', 'docs/PRODUCT.md',
@@ -246,7 +254,7 @@ describe('house rules: docs and maps', () => {
     for (const rel of ledgers) {
       for (const h of lib.findPersonRefs(lib.analyze(read(rel)).entries)) faults.push(rel + ':' + h.line + ' ' + h.text);
     }
-    for (const h of lib.findNarrative(read('docs/PROCESS.md'), [])) faults.push('docs/PROCESS.md:' + h.line + ' tells a story: ' + h.text);
+    for (const h of lib.findNarrative(read('.claude/rules/process.md'), [])) faults.push('.claude/rules/process.md:' + h.line + ' tells a story: ' + h.text);
     assert.deepEqual(faults, [], 'these files are public. Call the person "the DM" and state the step, not who said it');
   });
 });

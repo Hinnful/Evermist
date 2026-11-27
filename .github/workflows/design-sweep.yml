@@ -1,0 +1,74 @@
+name: Design sweep
+
+# The interface audit (tools/rig/scenarios/design-sweep.js) on a Linux runner, against the packaged app, for a change that
+# touches the interface. A TRIAL: a red sweep warns and keeps its close-ups, and never stops a release.
+# release.yml calls it, so it shows as "Design sweep / Linux".
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The whole history: build-changelog.js reads the release commits, and a shallow clone has none.
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node tools/build-changelog.js
+
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits at launch.
+      - name: Let Chromium sandbox itself
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # ⚠ THE PACKAGED APP, never the repo's: Electron 45 fetches its binary on first launch, and inside the rig that
+      # fetch hung the job for its whole time limit. electron-builder brings its own, as the gate's Linux leg does.
+      - name: Build the packaged app
+        run: npx electron-builder --linux dir --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # The sweep needs a 1280x1500 window, so the virtual screen is larger than the gate's 1024x768.
+      - name: Run the design sweep
+        id: sweep
+        continue-on-error: true
+        env:
+          DS_SHOTS: ${{ github.workspace }}/sweep
+        run: |
+          set -o pipefail
+          mkdir -p sweep
+          xvfb-run -a -s "-screen 0 1600x1700x24" npm run rig -- --dm-size 1280x1500 design-sweep --exe dist/linux-unpacked/evermist 2>&1 | tee sweep/run.log
+
+      - name: Say how it went
+        if: always()
+        run: |
+          {
+            echo "### Design sweep: ${{ steps.sweep.outcome }}"
+            for f in faults unchecked times; do
+              if [ -s "sweep/$f.txt" ]; then echo "**$f.txt**: $(wc -l < "sweep/$f.txt") line(s)"; fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.sweep.outcome }}" != success ]; then
+            echo "::warning::the design sweep did not pass; its close-ups and faults are in the design-sweep artifact"
+          fi
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: design-sweep
+          path: sweep/
+          retention-days: 14
+          if-no-files-found: warn

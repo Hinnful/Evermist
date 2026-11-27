@@ -33,11 +33,11 @@
         ]
       },
       {
-        "matcher": "Bash|PowerShell|Agent|EnterWorktree|mcp__ccd_session__start_session",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-main.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-stash.js\""
           }
         ]
       },

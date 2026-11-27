@@ -16,11 +16,14 @@
 
 // The jobs that run after this check, itself first. A test holds these to release.yml's names.
 const TAIL = ['Move main to this commit', 'Publish the release', 'Delete the release branch'];
+// A trial call warns and never blocks: it must finish, and how it ended is only reported.
+const TRIAL = ['Design sweep'];
 
 function gateProblems(jobs, need = []) {
   const problems = [];
   for (const job of jobs) {
     if (TAIL.includes(job.name)) continue;
+    if (TRIAL.some((t) => job.name.startsWith(t + ' / ')) && job.status === 'completed') continue;
     const leg = job.name.includes(' / ');
     if (job.status !== 'completed') {
       problems.push(job.name + ' is ' + job.status + ', not finished.');
@@ -54,4 +57,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { gateProblems, TAIL };
+module.exports = { gateProblems, TAIL, TRIAL };

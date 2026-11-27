@@ -31,6 +31,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const cdp = require('./cdp');
+const { fakeVerdict } = require('./fakeInput');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -995,6 +996,10 @@ async function main() {
   fs.mkdirSync(fixtureDir, { recursive: true });
 
   const files = (args.shot && !args.scenarios.length) ? [] : resolveScenarios(args.scenarios);
+  // A scenario that fakes the DM's actions proves nothing about them, so it does not run (fakeInput.js).
+  const allow = JSON.parse(fs.readFileSync(path.join(__dirname, 'fakeInput.allow.json'), 'utf8'));
+  const faked = files.map(f => fakeVerdict(path.relative(__dirname, f).replace(/\\/g, '/'), fs.readFileSync(f, 'utf8'), allow)).filter(Boolean);
+  if (faked.length) throw new Error(faked.join('\n'));
   const tally = { checked: 0, fails: [], byEye: [], notes: [], consoleErrors: [] };
 
   // --shot with no scenario named still needs an app to photograph.

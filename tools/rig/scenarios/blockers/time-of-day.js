@@ -25,6 +25,7 @@ const path = require('path');
 const zlib = require('zlib');
 
 const lib = require('../../lib');
+const { user } = require('../../user');
 
 const PIC = 'Ночная площадь', ANIM = 'Ночной склеп';
 const PIC_W = 2000, PIC_H = 1400;
@@ -90,13 +91,30 @@ module.exports = async function timeOfDay(rig) {
   const dm = rig.dm;
   let player = null;
   const ids = {};
-  const pick = id => dm.evaluate(`document.querySelector('#cp-tod-row [data-tod="${id}"]').click(); 0`);
+  const u = user(dm);
+  // The DM's own hands: the Map settings pane opened from its rail button, then the icon in it.
+  const pick = async id => { await lib.openPane(dm, 'scene'); await u.click(`#cp-tod-row [data-tod="${id}"]`); };
+  const weather = async id => { await lib.openPane(dm, 'scene'); await u.click(`#cp-wx-row [data-wx="${id}"]`); };
+  // Updates is switched in TV setup, which Escape closes.
+  const updates = async manual => {
+    if (await dm.evaluate('autoSync') === !manual) return;
+    await u.click({ text: 'TV setup' });
+    await u.click({ sel: '#tv-setup .cp-segtab', text: manual ? 'Manual' : 'Auto' });
+    await u.press('Escape');
+    await lib.settle(dm, 'autoSync === ' + !manual, 5000);
+    rig.check(await dm.evaluate('autoSync') === !manual, 'TV setup did not switch Updates to ' + (manual ? 'Manual' : 'Auto'));
+  };
   const since = t0 => lib.poll(async () => (Date.now() >= t0 ? { t: Date.now() } : null), 30000, 50);
-  // The DM's own Reveal all, which asks first; the grid off and the dock shut so nothing sits over the samples.
+  // The DM's own Reveal all, which asks first while Updates is Auto; the grid off and the dock shut so nothing sits
+  // over the samples.
   const revealAll = async () => {
-    await dm.evaluate('if (gridEnabled) document.getElementById("btn-grid").click(); dockOpen(null); document.getElementById("btn-clear-fog").click(); 0');
+    if (await dm.evaluate('gridEnabled')) await u.press('g');
+    await lib.closePane(dm);
+    const asks = await dm.evaluate('autoSync');
+    await u.click('#tb-reveal-all');
+    if (!asks) return;
     await lib.settle(dm, "!!document.getElementById('cd-ok') && document.getElementById('cd-ok').offsetParent !== null", 8000);
-    await dm.evaluate('document.getElementById("cd-ok").click(); 0');
+    await u.click('#cd-ok');
     await lib.settle(dm, "!document.getElementById('cd-ok') || document.getElementById('cd-ok').offsetParent === null", 8000);
   };
 
@@ -148,8 +166,8 @@ module.exports = async function timeOfDay(rig) {
   await lib.step(rig, '2-4: Night on the picture map', async () => {
     tv.A0 = await pixel(rig, player, A); tv.B0 = await pixel(rig, player, B); tv.C0 = await pixel(rig, player, C);
     dmv.A0 = await pixel(rig, dm, A);
-    await dm.evaluate('if (autoSync) document.getElementById("btn-auto-sync").click(); 0');
-    rig.check(await dm.evaluate('autoSync === false'), '4: precondition: Updates did not go to Manual');
+    await updates(true);
+    rig.check(await dm.evaluate('autoSync === false'), '4: precondition: Updates did not go to Manual: ' + JSON.stringify(await dm.evaluate(`({ auto: autoSync, setup: !!_tvSetup, tabs: [...document.querySelectorAll('#tv-setup .cp-segtab')].map(b => b.textContent + (b.classList.contains('active') ? '*' : '')) })`)));
     const t0 = Date.now();
     await pick('night');
     await since(t0 + 4000);
@@ -183,10 +201,10 @@ module.exports = async function timeOfDay(rig) {
     const third = (lum(dmv.A0) - lum(dmv.A1)) / (lum(tv.A0) - lum(tv.A1));
     rig.note('3: the DM moved ' + (third * 100).toFixed(0) + '% as far as the TV: ' + fmt(dmv.A0) + ' → ' + fmt(dmv.A1));
     rig.check(third > 0.22 && third < 0.45, '3: the DM screen did not move about a third as far as the TV: ' + (third * 100).toFixed(0) + '%');
-    await dm.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyH', key: 'h', bubbles: true })); 0");
+    await u.keyDown('h');
     await lib.settle(dm, 'playersViewOn && !viewportDirty', 8000);
     const held = await pixel(rig, dm, A);
-    await dm.evaluate("document.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyH', key: 'h', bubbles: true })); 0");
+    await u.keyUp('h');
     const full = (lum(dmv.A0) - lum(held)) / (lum(tv.A0) - lum(tv.A1));
     rig.check(full > 0.8 && full < 1.2, '3: holding H did not show the full strength: ' + (full * 100).toFixed(0) + '% (' + fmt(held) + ')');
   });
@@ -194,7 +212,7 @@ module.exports = async function timeOfDay(rig) {
   // ── 5. Rain over Night ────────────────────────────────────────────────────
   await lib.step(rig, '5: weather on top', async () => {
     const t0 = Date.now();
-    await dm.evaluate(`document.querySelector('#cp-wx-row [data-wx="rain"]').click(); 0`);
+    await weather('rain');
     await since(t0 + 1000);
     await lib.settle(player, "weatherId === 'rain' && !_wxPrev", 15000);
     const rain = await pixel(rig, player, A, 30);
@@ -206,7 +224,7 @@ module.exports = async function timeOfDay(rig) {
   // ── 6. Day lifts the dark ─────────────────────────────────────────────────
   await lib.step(rig, '6: Day', async () => {
     const t0 = Date.now();
-    await dm.evaluate(`document.querySelector('#cp-wx-row [data-wx="none"]').click(); 0`);
+    await weather('none');
     await pick('day');
     await since(t0 + 1000);
     await lib.settle(player, "timeOfDayId === 'day' && !_todFading && !_wxPrev", 15000);
@@ -214,7 +232,7 @@ module.exports = async function timeOfDay(rig) {
     rig.note('6: dark ground ' + fmt(tv.C0) + ' → ' + fmt(c) + '; dark room ' + fmt(tv.B0) + ' → ' + fmt(b));
     rig.check(lum(c) > lum(tv.C0) + 8, '6: Day did not lift the dark ground on the TV: ' + fmt(tv.C0) + ' → ' + fmt(c));
     rig.check(lum(b) > lum(tv.B0) + 8, '6: Day did not lift the dark room on the TV: ' + fmt(tv.B0) + ' → ' + fmt(b));
-    await dm.evaluate('if (!autoSync) document.getElementById("btn-auto-sync").click(); 0');
+    await updates(false);
   });
 
   // ── 7. Saved with the map ─────────────────────────────────────────────────

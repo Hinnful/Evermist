@@ -8,7 +8,8 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { notesHash } = require('./shipRules.js');
+const { notesHash, runDir } = require('./shipRules.js');
+const { runRoot } = require('./runRoot.js');
 
 const RULES = path.join(__dirname, 'notes.md');
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -109,7 +110,7 @@ function notesFaults(text, { filler, privateWords = [], names = [], allowed = []
 async function main() {
   const session = !process.argv[2];
   const id = process.env.CLAUDE_CODE_SESSION_ID || 'local';
-  const file = process.argv[2] || path.join(__dirname, 'runs', id, 'notes.txt');
+  const file = process.argv[2] || path.join(runDir(runRoot() || path.join(__dirname, '..', '..'), id), 'notes.txt');
   const rulesText = fs.readFileSync(RULES, 'utf8');
   const filler = wordList(rulesText, 'filler-words');
   const privateWords = wordList(rulesText, 'private-words');
@@ -126,7 +127,11 @@ async function main() {
     process.exit(1);
   }
   if (!session) return;
-  fs.writeFileSync(path.join(path.dirname(file), 'notes-passed.json'), JSON.stringify({ time: new Date().toISOString(), hash: notesHash(text) }) + '\n');
+  // A re-run on unchanged notes keeps the first pass's time: a fresh time voided a yes the DM had already given.
+  const stampFile = path.join(path.dirname(file), 'notes-passed.json');
+  let old = null;
+  try { old = JSON.parse(fs.readFileSync(stampFile, 'utf8')); } catch { /* first pass */ }
+  if (!old || old.hash !== notesHash(text)) fs.writeFileSync(stampFile, JSON.stringify({ time: new Date().toISOString(), hash: notesHash(text) }) + '\n');
   console.log('check-notes: pass');
 }
 

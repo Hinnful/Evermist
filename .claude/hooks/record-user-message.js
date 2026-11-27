@@ -12,14 +12,15 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin, ROOT } = require('./guard-lib');
 const { runDir, sessionIds, isFromDm } = require('../commit/shipRules');
+const { runRoot } = require('../commit/runRoot');
 
 function main() {
   const p = readStdin();
   if (!isFromDm(p.prompt)) return;
   const now = new Date().toISOString();
   for (const id of sessionIds(p, process.env)) {
-    fs.mkdirSync(runDir(ROOT, id), { recursive: true });
-    fs.writeFileSync(path.join(runDir(ROOT, id), 'last-user-message'), now + '\n');
+    fs.mkdirSync(runDir(runRoot(p.cwd) || ROOT, id), { recursive: true });
+    fs.writeFileSync(path.join(runDir(runRoot(p.cwd) || ROOT, id), 'last-user-message'), now + '\n');
   }
 }
 

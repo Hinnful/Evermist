@@ -575,3 +575,14 @@ The Windows runner failed `keeps-work`; the check was sound. On a slow machine a
 
 ### The ink reader misread four rows the app draws aligned · `SETTLED` (2026-11-27)
 `design-sweep` failed on released 5.21.2 too, from four reader faults, each proven both ways; the sweep still catches a 1px nudge in the same rows. (a) A row cut by a scroll edge is no longer read but named in the entry's note (it read the cut pixels; the legend's last row at 1008x681). (b) Letters with curved feet (О, С, digits 0 3 5 6 8 9, `ROUND_FEET`) give the baseline only when no flat-footed letter is present ("Огр" read 0.25px low). (c) A text's ink is the step from its surface toward its own colour, so a pill's rounded end showing another cell colour in the text's region is not ink (damage pills read up to 3.7px off). (d) The sweep scrolls an off-screen trigger into view before clicking it (the sync Trash pop-out was unchecked). Result: 0 faults, 0 unchecked.
+
+### The rig acts through the DM's hands, and refuses a faked action · `SETTLED` (2026-11-27)
+An audit of the releases 5.17.0 to 5.20.0 found about three checks in four after a JS click, a synthetic event or
+a value set by script; a search "typed" that way passed 44 checks while the real field never took focus. The
+release gate was worse: the table-session and time-of-day blockers faked 46 actions, and clicked a fog button the
+DM never sees. `tools/rig/user.js` is now the only way a scenario acts: real CDP mouse, keys and text, aimed at
+what is on screen, waiting for it, and refused when something covers it. `run.js` refuses a scenario that fakes
+an action unless `fakeInput.allow.json` grants it, and only `record.js`, which records the README clips, keeps a
+grant. Rewritten, the blockers pass at 88 and 29 checks; the rewrite moved clicks off points that lay under the
+tool bar, the minimap and the window's edge. A video of each run for the DM was rejected: the rig exists so the
+DM never checks by hand.

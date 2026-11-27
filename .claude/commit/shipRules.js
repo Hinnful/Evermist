@@ -8,8 +8,23 @@ const path = require('path');
 
 const norm = (p) => String(p).replace(/\\/g, '/');
 
-// The notes as ship.js will commit them, so a CRLF save or a trailing newline is not an edit.
-const notesHash = (text) => crypto.createHash('sha256').update(String(text).replace(/\r/g, '').trim()).digest('hex');
+// The notes as ship.js will commit them, so a CRLF save or a trailing newline is not an edit. The Summary's
+// version prefix is left out: ship.js renumbers it when another release took the number, and the yes stands.
+const VERSION_PREFIX = /^\d+\.\d+\.\d+(?= - )/;
+const notesHash = (text) => crypto.createHash('sha256').update(String(text).replace(/\r/g, '').trim().replace(VERSION_PREFIX, '')).digest('hex');
+const renumber = (text, version) => String(text).replace(VERSION_PREFIX, version);
+
+// The size of the bump from one version to another, and that bump replayed on a newer base.
+function bumpKind(from, to) {
+  const [a, b] = [from, to].map((v) => String(v).split('.').map(Number));
+  if (b[0] !== a[0]) return 'major';
+  if (b[1] !== a[1]) return 'minor';
+  return b[2] !== a[2] ? 'patch' : null;
+}
+function bump(version, kind) {
+  const [M, m, p] = String(version).split('.').map(Number);
+  return kind === 'major' ? `${M + 1}.0.0` : kind === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`;
+}
 
 // The folder a session keeps its run state in; ids reach it from a hook's stdin and from the env.
 const runDir = (root, id) => path.join(root, '.claude', 'commit', 'runs', String(id || 'local'));
@@ -117,4 +132,4 @@ function prStep({ open, ownBranch, branch, title, bodyFile }) {
   return { run: 'gh pr close ' + open.number + ' --comment ' + shq('Superseded by a pull request this session opens, so its CI monitor can be armed.') + ' && ' + create };
 }
 
-module.exports = { dodLines, acceptCheck, updatesElectron, withLock, lockedElectron, prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };
+module.exports = { renumber, bumpKind, bump, dodLines, acceptCheck, updatesElectron, withLock, lockedElectron, prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };

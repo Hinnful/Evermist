@@ -45,6 +45,29 @@ function refusal(seg) {
   return null;
 }
 
+// ⚠ A RERUN HIDES A RED. Only a job GitHub never gave a machine may be rerun, at most twice per run: a job that
+// ran and failed was once called flaky, rerun green, and shipped an autosave bug.
+const rerunOf = (seg) => { const m = seg.match(GH); const r = m && seg.slice(m[0].length).match(/^run\s+rerun\s+(\d+)/); return r ? r[1] : null; };
+const FAILED = ['failure', 'cancelled', 'timed_out'];
+function rerunVerdict(jobs, attempt) {
+  const ran = jobs.filter((j) => FAILED.includes(j.conclusion) && ((j.steps && j.steps.length) || j.runner_name));
+  if (ran.length) return 'a rerun of a job that ran and failed (' + ran.map((j) => j.name).join(', ') + '). It is a red: diagnose and fix it';
+  if (attempt >= 3) return 'a third attempt of a run whose jobs never got a machine. Tell the DM GitHub has no runners';
+  return null;
+}
+function rerunRefusal(command) {
+  const ids = commandsIn(command).map((seg) => seg && rerunOf(seg)).filter(Boolean);
+  for (const id of ids) {
+    const { execFileSync } = require('child_process');
+    const api = (route) => JSON.parse(execFileSync('gh', ['api', route], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }));
+    const run = api('repos/{owner}/{repo}/actions/runs/' + id);
+    const jobs = api('repos/{owner}/{repo}/actions/runs/' + id + '/attempts/' + run.run_attempt + '/jobs?per_page=100').jobs || [];
+    const why = rerunVerdict(jobs, run.run_attempt);
+    if (why) return why;
+  }
+  return null;
+}
+
 function verdict(p) {
   const command = p && p.tool_input && p.tool_input.command;
   if (typeof command !== 'string') return null;
@@ -56,7 +79,13 @@ function verdict(p) {
 }
 
 function main() {
-  const what = verdict(readStdin());
+  const p = readStdin();
+  const rerun = typeof (p.tool_input && p.tool_input.command) === 'string' ? (() => { try { return rerunRefusal(p.tool_input.command); } catch { return null; } })() : null;
+  if (rerun) {
+    process.stderr.write('SHIP GUARD - refused: ' + rerun + '.\n\nOnly a job GitHub never started (no steps, no runner) is rerun, and at most twice per run\n(.claude/commit/red-gate.md).\n');
+    process.exit(2);
+  }
+  const what = verdict(p);
   if (!what) process.exit(0);
   process.stderr.write(
     'SHIP GUARD - refused: ' + what + '.\n\n' +
@@ -76,4 +105,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { verdict, makesTag };
+module.exports = { verdict, makesTag, rerunOf, rerunVerdict };

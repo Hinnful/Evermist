@@ -10,7 +10,7 @@ The user wants to look at the backlog and decide what to do next. Your job: read
 
 **This command STOPS at the recommendation.** It does NOT drill the pick or write a spec. `/spec` is a separate step the user runs manually - do not auto-run it, do not treat it as "the next step," do not nudge toward it beyond a single closing line.
 
-**No questions here either.** Triage answers *what is worth a session*, and drilling an idea makes picking slow. The one thing this command owes the user about readiness is the `Spec` column in the table below: whether an item is settled enough to build, or needs `/spec` first.
+**No questions here either.** Triage answers *what is worth a session*, and drilling an idea makes picking slow. Every item gets `/spec` before it is built, so readiness is not a column.
 
 You do NOT write code or change anything in this mode. Planning only, read-mostly.
 
@@ -36,7 +36,7 @@ The canonical backlog is `docs/BACKLOG.md` in this repo. Read it in full. Then c
 - **`CLAUDE.md` is no longer the whole rulebook.** Conditional rules live in `.claude/skills/*/SKILL.md` and in child `CLAUDE.md` files under subfolders, and they carry the same kind of "still open" and "don't do this yet" lines. Read them too, or an item looks unconstrained when it isn't.
 - Repo planning docs (e.g. a `*_approaches.md`) - research-heavy items often sit there.
 
-**Read the two ledgers as a filter, not as a source of items.** `docs/DECISIONS.md` records what was already tried, rejected or reverted. `docs/PRODUCT.md` records what the app deliberately will never do, and a scope call kills a candidate just as hard as a failed attempt. Recommending something already killed is the single most expensive mistake this command can make, because it looks like a fresh idea and burns a session before anyone remembers why it was dropped.
+**Read the two ledgers as a filter, not as a source of items.** The topic files in `docs/decisions/`, listed in `docs/DECISIONS.md`, record what was already tried, rejected or reverted. `docs/PRODUCT.md` records what the app deliberately will never do, and a scope call kills a candidate just as hard as a failed attempt. Recommending something already killed is the single most expensive mistake this command can make, because it looks like a fresh idea and burns a session before anyone remembers why it was dropped.
 
 A third ledger, `docs/decisions/process.md`, covers the slash commands themselves. Read it only when the pick is about the workflow rather than the app.
 
@@ -66,20 +66,14 @@ every time. Never let the user infer backlog size from an ID.
 
 Then one table, every open item, one row each, no omissions:
 
-| # | Item | Category | Spec | State |
-|---|------|----------|------|-------|
+| # | Item | Category | State |
+|---|------|----------|-------|
 
 - **#** - the backlog's own ID.
 - **Item** - a short phrase in plain language, not the backlog's heading verbatim if that heading
   is jargon.
 - **Category** - the item's own tag from `docs/BACKLOG.md`: First use, Prep, Play, Campaign, Polish,
   Upkeep or Bug, at most two. Upkeep means nothing the DM sees ships.
-- **Spec** - whether the idea is settled enough to hand to a build session. `ready` when the
-  item already says what to build and every open call in it has an answer, or when it is small
-  or the DM already talked it through. `needed` when a
-  choice is still open - a shape to settle, a scope question, a look-and-feel call. `needed`
-  means run `/spec` on it before building, and it is the normal answer for anything larger
-  than a small fix.
 - **State** - blank when ready to pick up. Otherwise the one word that stops it: `blocked`,
   `needs-a-call`, `parked`, `discussion`, `lead-only`.
 
@@ -117,4 +111,4 @@ Give a **primary recommendation** with a one-line why, plus a **backup pick for 
 
 ## Then stop
 
-Present it as a readable list and let the user pick freely in their own words - do NOT force a structured selector (they prefer choosing conversationally). One closing line may note that `/spec` is available for any item marked `needed`, then end.
+Present it as a readable list and let the user pick freely in their own words - do NOT force a structured selector (they prefer choosing conversationally). One closing line may note that `/spec` drills the pick, then end.

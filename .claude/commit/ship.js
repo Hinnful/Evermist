@@ -10,15 +10,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const rules = require('./shipRules.js');
+const { runRoot } = require('./runRoot.js');
 const { isPackaged } = require('../../tools/build-files.js');
 
 // The repo is the one this is run in, never the one this file sits in: a test copy of the
 // script run from its real path would otherwise commit and push in the real repo.
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const DIR = path.join(ROOT, '.claude', 'commit');
-// Each session keeps its own run folder: two sessions share this checkout, and one shared
-// notes.txt let the second overwrite or resume the first's release.
-const RUN = path.join(DIR, 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local');
+// Each session keeps its own run folder, in the main checkout whatever worktree this runs in: one shared
+// notes.txt let a second session overwrite or resume the first's release.
+const RUN = rules.runDir(runRoot(ROOT) || ROOT, process.env.CLAUDE_CODE_SESSION_ID);
 const STAMP = path.join(RUN, 'notes-passed.json');
 const PUSHED = path.join(RUN, 'pushed.json');
 const LEGACY_NOTES = path.join(DIR, 'notes.txt');
@@ -40,9 +41,15 @@ function parseArgs(argv) {
 }
 
 // The version on disk may be another session's uncommitted bump; it counts only when this commit carries it.
-function branchFor(slug, paths) {
-  const own = paths.some((p) => p.replace(/\\/g, '/') === 'package.json');
-  const version = JSON.parse(own ? fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8') : git(['show', 'HEAD:package.json'])).version;
+// An amend folds a fix into the version commit, which carries the bump already.
+const namesPackage = (paths) => paths.some((p) => p.replace(/\\/g, '/') === 'package.json');
+function headBumps() {
+  try { return git(['diff', '--name-only', 'HEAD~1', 'HEAD', '--', 'package.json']) !== ''; } catch { return false; }
+}
+function branchFor(slug, paths, amend) {
+  const named = namesPackage(paths);
+  const own = named || (amend && headBumps());
+  const version = JSON.parse(named ? fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8') : git(['show', 'HEAD:package.json'])).version;
   if (!git(['tag', '-l', `v${version}`])) {
     // A change pushed over an unreleased bump would release that version with this commit's notes.
     if (!own) throw new Error(`${version} is committed but not released yet; ship this once release/${version} lands`);
@@ -98,7 +105,11 @@ function stageCommit({ branch, paths, amend }, notes) {
   if (!dirty(paths) && headMessage() === notes.message.trim()) return 'already committed';
   // A second commit on a pushed branch puts two commits under one version.
   if (!amend && remoteSha(branch)) throw new Error(`${branch} is already on origin; a fix to it re-runs with --amend`);
-  if (paths.length) git(['add', '--', ...paths]);
+  // A path already removed by git rm or git mv is in neither the tree nor the index, and git add refuses it.
+  const present = paths.filter((p) => fs.existsSync(path.join(ROOT, p)));
+  const gone = paths.filter((p) => !present.includes(p));
+  if (present.length) git(['add', '--', ...present]);
+  if (gone.length) git(['rm', '--cached', '--ignore-unmatch', '-q', '--', ...gone]);
   const msg = tmpFile('msg', notes.message);
   // Commit the named paths only: another session's staged edits share this index.
   const only = paths.length ? ['--', ...paths] : [];
@@ -111,14 +122,62 @@ function stageCommit({ branch, paths, amend }, notes) {
   return 'committed';
 }
 
-// The land job refuses a branch that does not contain main, but only after the whole gate ran.
-function stageBase() {
-  try {
-    git(['merge-base', '--is-ancestor', 'origin/main', 'HEAD']);
-  } catch {
-    throw new Error('HEAD does not contain origin/main; merge it in first');
+// ⚠ PARALLEL RELEASES. Another session's release or change in CI moves main when it lands, and a push in that
+// window can neither land nor keep its version. So this waits for it, then catches up with main, replaying this
+// commit's bump on main's version and renumbering the Summary to match. The DM's yes stands: it covers the text.
+const isAncestor = (a, b) => { try { git(['merge-base', '--is-ancestor', a, b]); return true; } catch { return false; } };
+
+function inFlight() {
+  let own = '';
+  try { own = JSON.parse(readText(PUSHED)).branch; } catch { /* this session never pushed */ }
+  return git(['ls-remote', '--heads', 'origin', 'refs/heads/release/*', 'refs/heads/change/*']).split('\n').filter(Boolean)
+    .map((l) => l.split(/\s+/)[1].replace('refs/heads/', '')).filter((b) => b !== own);
+}
+
+function stageBase(opts, notes) {
+  const busy = inFlight();
+  if (busy.length) {
+    const refs = busy.map((b) => 'refs/heads/' + b).join(' ');
+    throw new Error(`WAIT: ${busy.join(', ')} is in CI and moves main when it lands. Wait for it with the Monitor tool, then run ship.js again:\n  until [ -z "$(git ls-remote --heads origin ${refs})" ]; do sleep 30; done`);
   }
-  return 'contains origin/main';
+  if (isAncestor('origin/main', 'HEAD')) return 'contains origin/main';
+  if (!isAncestor('HEAD', 'origin/main')) {
+    if (git(['status', '--porcelain', '--untracked-files=no']) !== '') {
+      throw new Error('main moved, HEAD holds commits origin/main lacks, and the tree has edits: commit or drop the edits, then run ship.js again to rebase');
+    }
+    try { git(['rebase', 'origin/main'], { stdio: 'pipe' }); } catch (e) {
+      const files = (() => { try { return git(['diff', '--name-only', '--diff-filter=U']); } catch { return ''; } })();
+      try { git(['rebase', '--abort'], { stdio: 'pipe' }); } catch { /* nothing to abort */ }
+      throw new Error('main moved, and rebasing onto it conflicts in: ' + (files.split('\n').join(', ') || 'unknown files') + '. Resolve by hand, then run ship.js again');
+    }
+    return 'rebased onto origin/main';
+  }
+  // HEAD is behind main. A bumped package.json would block the fast-forward, so the bump is set aside and replayed.
+  const pkg = path.join(ROOT, 'package.json');
+  const bumped = namesPackage(opts.paths) && dirty(['package.json']);
+  let raw = null;
+  let kind = null;
+  if (bumped) {
+    raw = fs.readFileSync(pkg, 'utf8');
+    const { version: was, ...headRest } = JSON.parse(git(['show', 'HEAD:package.json']));
+    const { version: mine, ...myRest } = JSON.parse(raw);
+    if (JSON.stringify(headRest) !== JSON.stringify(myRest)) throw new Error('main moved, and package.json changes more than the version: catch up with origin/main by hand');
+    kind = rules.bumpKind(was, mine);
+    git(['checkout', 'HEAD', '--', 'package.json']);
+  }
+  try {
+    git(['merge', '--ff-only', 'origin/main'], { stdio: 'pipe' });
+  } catch (e) {
+    if (raw !== null) fs.writeFileSync(pkg, raw);
+    throw new Error('main moved, and edits here overlap its changes: ' + (e.stderr || e.message).toString().trim().split('\n').slice(0, 6).join(' '));
+  }
+  if (!kind) return 'caught up with origin/main';
+  const next = rules.bump(JSON.parse(fs.readFileSync(pkg, 'utf8')).version, kind);
+  fs.writeFileSync(pkg, fs.readFileSync(pkg, 'utf8').replace(/("version"\s*:\s*")[^"]+(")/, `$1${next}$2`));
+  const text = rules.renumber(readText(NOTES), next);
+  fs.writeFileSync(NOTES, text);
+  Object.assign(notes, readNotes());
+  return `caught up with origin/main; this release is now ${next}`;
 }
 
 // CI's guards job runs the same script; a red one there costs a whole gate and an amend.
@@ -141,9 +200,8 @@ function stageGuardInputs({ paths }) {
 
 // A second session may be mid-edit in this checkout, so what is left is reported, not refused.
 // The report names it to the DM: a left-behind edit nobody mentions is work that gets forgotten.
+// Any local branch may ship: stageBase checks it holds origin/main, and the push goes by refspec.
 function stageClean() {
-  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
-  if (branch !== 'main') throw new Error(`HEAD is on ${branch}; all work ships from main`);
   const left = git(['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.replace(/^\s*\S+\s+/, ''));
   return left.length ? 'LEFT BEHIND, name each to the DM: ' + left.join(', ') : 'nothing left behind';
 }
@@ -214,15 +272,16 @@ function stagePr({ branch }, notes) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   git(['fetch', '--prune', '--tags', 'origin'], { stdio: 'pipe' });
-  opts.branch = branchFor(opts.slug, opts.paths);
   if (alreadyShipped()) { console.log('already shipped: ' + PUSHED); return; }
   const notes = readNotes();
+  // Catching up comes first: until it does, the version on disk may be one another release already took.
   const stages = [
+    ['base', () => stageBase(opts, notes)],
+    ['branch', () => { opts.branch = branchFor(opts.slug, opts.paths, opts.amend); return opts.branch; }],
     ['yes', () => stageYes(opts, notes)],
     ['backlog', () => must(rules.backlogCheck(opts), 'carried')],
     ['acceptance', () => must(rules.acceptCheck({ ...opts, accept: opts.accept.map((f) => ({ file: f, text: readText(path.resolve(ROOT, f)) })) }), 'every DoD line proven')],
     ['disclosure', () => must(rules.disclosureCheck({ ...opts, disclosure: readText(path.join(RUN, 'disclosure.txt')) }), 'none needed')],
-    ['base', stageBase],
     ['guards', stageGuards],
     ['guard inputs', () => stageGuardInputs(opts)],
     ['electron', () => stageElectron(opts, notes)],

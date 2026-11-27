@@ -56,5 +56,5 @@ stops; building waits for the DM's "build it" (CLAUDE.md).
   links and screenshots where they help; then what holds across them; then the gaps.
 - **It ends in one recommendation and stops there.** Name what to adopt, what to skip and why,
   in terms the DM sees at the table. No tests, rig runs, specs or code follow from a study alone.
-- **Describe options by what the DM sees**, never by the file that would change (PROCESS.md,
-  "Talking with the DM").
+- **Describe options by what the DM sees**, never by the file that would change (`.claude/rules/process.md`,
+  "Showing the DM").

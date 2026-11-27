@@ -14,7 +14,7 @@ most: once when the release lands, and once if the red was a real app bug.**
 - **A job GitHub never gave a machine is yours to rerun, in the same run.** It ends cancelled or
   failed with no steps and no runner, annotated "The job was not acquired by Runner of type hosted".
   When every red job is like that, wait five minutes and run `gh run rerun <id> --failed`, at most
-  twice per run. The rerun is a new attempt of the same row, so the Actions list keeps one row per
+  twice per run. `guard-ship.js` refuses any other rerun. The rerun is a new attempt of the same row, so the Actions list keeps one row per
   version. One red job that ran means no rerun: the run stays red and gets a fix. No workflow does
   this rerun, because every workflow run is a row of its own in the Actions list.
 - **A test edited to make a run green is disclosed**, and `ship.js --amend` refuses without the line. When the fix changes a scenario's or a unit

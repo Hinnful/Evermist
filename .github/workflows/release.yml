@@ -43,6 +43,7 @@ jobs:
       version: ${{ steps.check.outputs.version }}
       release: ${{ steps.check.outputs.release }}
       rig: ${{ steps.rig.outputs.rig }}
+      ui: ${{ steps.ui.outputs.ui }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -79,6 +80,16 @@ jobs:
             echo "tools/rig/ changed. Gating it whether or not anything ships."
           else
             echo "rig=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The design sweep runs on a change to the interface, or to the sweep itself.
+      - name: Did this change touch the interface?
+        id: ui
+        run: |
+          if git diff --name-only origin/main...HEAD | grep -qE '^(src/css/|src/ui/|index\.html|stage\.html|tools/rig/inventory\.js|tools/rig/scenarios/design-sweep\.js|\.github/workflows/design-sweep\.yml)'; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"
           fi
 
       # The branch, the bump and the files touched must agree before anything is built. The rules
@@ -163,6 +174,13 @@ jobs:
     if: needs.decide.outputs.release == 'true'
     uses: ./.github/workflows/update-proofs.yml
 
+  # A trial: the sweep warns and never blocks. land waits for it only so the job list is finished when checked.
+  sweep:
+    name: Design sweep
+    needs: [decide, verify]
+    if: needs.decide.outputs.ui == 'true'
+    uses: ./.github/workflows/design-sweep.yml
+
   # THE ONLY THING THAT WRITES TO MAIN, and it runs after the gate rather than before it. A change
   # that fails never reaches main, so main holds nothing but commits that passed.
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
@@ -172,7 +190,7 @@ jobs:
   # installer builds; a leg that did not pass, for any reason, stops everything below.
   land:
     name: Move main to this commit
-    needs: [decide, verify, guards, gate, gate-rig, update]
+    needs: [decide, verify, guards, gate, gate-rig, update, sweep]
     # ⚠ POSITIVE CHECKS ONLY. A call the run needed must say `success`; `skipped` passes only when
     # decide said the gate was not needed. Never "not failure and not cancelled" - see the step below.
     if: >-

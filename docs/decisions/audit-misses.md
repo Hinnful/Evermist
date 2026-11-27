@@ -1,7 +1,7 @@
 # Audit misses
 
 What the DM found after an audit said the interface was done, and which step of the audit now catches it
-(docs/PROCESS.md, "Building"). A step that shows up here twice is not working.
+(`.claude/rules/process.md`, "Proving it works"). A step that shows up here twice is not working.
 
 ## 2026-11-23, after the design-system audit
 

@@ -48,14 +48,16 @@ Write so they can make decisions, not so they can review your code.
 
 ## Decisions
 
-- Before changing the look of something the user already picked, say what the
-  fixed version should look like and get agreement. New UI goes to a mockup
-  board for the user to pick from.
+- Before changing the look of something the user already picked, show it:
+  "I propose this" and a picture, a mockup or a screenshot of the built change,
+  then get agreement. A defect the user named is fixed first, then shown the
+  same way. New UI goes to a mockup board for the user to pick from.
 - Fix a bug with one approach at a time, so each result can be told apart.
 - For a design question, offer several distinct options for the user to pick
   from, with your recommendation.
 - Show UI as a picture: a mockup or a screenshot. A description alone does not
-  count. Send screenshots to the user only when they ask for them.
+  count. Screenshots taken only to check your own work go to the user when they
+  ask for them.
 - Judge each change by whether it improved the experience. Moving UI around
   without that is not progress.
 - Build it fast so it can be judged and changed. A rough version in five minutes beats

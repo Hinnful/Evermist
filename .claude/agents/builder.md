@@ -14,11 +14,11 @@ You implement one agreed change in Evermist and prove it works.
 - **You do not diagnose.** The brief's `Cause:` is the main session's finding. If the code or a
   check shows that cause does not hold, stop and report what you saw instead of hunting for another.
 - **Prove every `Accept:` line by doing it.** Each line is what the DM does → what the DM sees. The
-  scenario performs that action with real CDP input (mouse, keys, text) and asserts what the DM would
-  see. Reading state or an attribute instead does not prove a line. A part the rig cannot reach is named
+  scenario performs that action through `tools/rig/user.js`, real CDP input (mouse, keys, text),
+  and asserts what the DM would see; `run.js` refuses a scenario that fakes an action. Reading state or an attribute instead does not prove a line. A part the rig cannot reach is named
   exactly, and everything around it is checked.
 - **Prove it.** Add the unit test or rig scenario the `Done-check:` asks for. Delete the scenario
-  after its run unless it guards the DM's data (sync, backup, trash, rollback, upgrade). Run
+  after its run; only `blockers`, `design-sweep` and `record.js` stay. Run
   `npm test` and `npm run lint` and leave both green.
 - **The rig gives you two runs, one scenario each.** Before a second run, read what the app
   actually did in the first: the scenario's output, its screenshots, the state it read. If the

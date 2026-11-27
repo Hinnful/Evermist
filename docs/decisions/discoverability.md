@@ -1,8 +1,7 @@
 # Decisions - discoverability
 
 The public, past-tense ledger of decisions about **how people and AI search find Evermist**: which
-sites list it, what each listing carries, and what was ruled out. [PROCESS.md](../PROCESS.md),
-"Where Evermist is listed", says what each listing needs now; this file says why it has that shape.
+sites list it, what each listing carries, and what was ruled out. [architecture/listings.md](../architecture/listings.md) says what each listing needs now; this file says why it has that shape.
 
 **One heading, a status, and at most a short paragraph.**
 

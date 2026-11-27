@@ -1,13 +1,13 @@
 'use strict';
 
-// The command guards: screen, rig, main, ship and builder. Each refusal is asserted both ways, the spellings
+// The command guards: screen, rig, stash, ship and builder. Each refusal is asserted both ways, the spellings
 // that must be refused and the nearest commands that must pass.
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const screen = require('../.claude/hooks/guard-screen.js');
 const rig = require('../.claude/hooks/guard-rig.js');
-const main = require('../.claude/hooks/guard-main.js');
+const stash = require('../.claude/hooks/guard-stash.js');
 const builder = require('../.claude/hooks/guard-builder.js');
 const ship = require('../.claude/hooks/guard-ship.js');
 
@@ -126,24 +126,22 @@ describe('builder guard', () => {
   });
 });
 
-describe('main guard', () => {
-  const away = [
-    'git checkout feature-x', 'git checkout HEAD~3', 'git checkout 85b4c67', 'git checkout -', 'git checkout --detach',
-    'git checkout -b foo', 'git -C . checkout -b foo', 'git -C "C:\\a b" checkout feature-x',
-    'git -C . worktree add ../x', 'git switch foo', 'git -c core.x=1 switch foo', 'git branch foo', 'git stash',
-    'git checkout .', 'echo a; git checkout -b x', 'true | git stash', 'bash -c "echo a; git stash"',
-  ];
-  for (const cmd of away) {
-    it('refuses ' + cmd, () => assert.ok(run(main, cmd), cmd));
+describe('stash guard', () => {
+  const refused = ['git stash', 'git stash push -m x', 'git stash save', 'git stash -u', 'git -C . stash', 'true | git stash', 'bash -c "echo a; git stash"'];
+  for (const cmd of refused) {
+    it('refuses ' + cmd, () => assert.ok(run(stash, cmd), cmd));
   }
   const fine = [
-    'git checkout main', 'git checkout -- src/a.js', 'git checkout HEAD -- src/a.js', 'git -C . status',
-    'git switch main', 'git branch', 'git branch -d old', 'git stash list', 'git checkout main 2>/dev/null',
-    'grep -n -E "permissions|git push|uses:" file', 'echo "a; git checkout -b x"', "echo 'a && git stash'",
+    'git stash list', 'git stash show', 'git stash pop', 'git checkout -b foo', 'git switch foo', 'git branch foo',
+    'git -C . worktree add ../x', 'git checkout feature-x', "echo 'a && git stash'",
   ];
   for (const cmd of fine) {
-    it('allows ' + cmd, () => assert.equal(run(main, cmd), null, cmd));
+    it('allows ' + cmd, () => assert.equal(run(stash, cmd), null, cmd));
   }
+  it('leaves worktree sessions and agents alone', () => {
+    assert.equal(stash.verdict({ tool_name: 'EnterWorktree', tool_input: {} }), null);
+    assert.equal(stash.verdict({ tool_name: 'mcp__ccd_session__start_session', tool_input: { target: 'cloud' } }), null);
+  });
 });
 
 describe('ship guard', () => {
@@ -185,4 +183,23 @@ describe('board guard', () => {
   it('passes a read', () => assert.equal(call({ action: 'read', url: 'u' }), null));
   it('passes a missing file', () => assert.equal(call({ file_path: path.join(dir, 'gone.html') }), null));
   it('passes another tool', () => assert.equal(call({ file_path: withCss }, 'Write'), null));
+});
+
+describe('ship guard reruns', () => {
+  const { rerunOf, rerunVerdict } = require('../.claude/hooks/guard-ship.js');
+  it('spots a rerun', () => {
+    assert.equal(rerunOf('gh run rerun 123 --failed'), '123');
+    assert.equal(rerunOf('gh -R a/b run rerun 9'), '9');
+    assert.equal(rerunOf('gh run view 123 --log'), null);
+  });
+  const noMachine = { name: 'Gate / Mac', conclusion: 'failure', steps: [], runner_name: null };
+  const ran = { name: 'Gate / Windows', conclusion: 'failure', steps: [{ name: 'x' }], runner_name: 'GitHub Actions 3' };
+  it('allows a run whose red jobs never got a machine, twice', () => {
+    assert.equal(rerunVerdict([noMachine, { name: 'ok', conclusion: 'success', steps: [{}] }], 1), null);
+    assert.equal(rerunVerdict([noMachine], 2), null);
+    assert.ok(rerunVerdict([noMachine], 3));
+  });
+  it('refuses a rerun of a job that ran and failed', () => {
+    assert.match(rerunVerdict([noMachine, ran], 1), /Gate \/ Windows/);
+  });
 });

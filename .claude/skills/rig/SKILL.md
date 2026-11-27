@@ -32,7 +32,7 @@ belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig
 builds the packaged app and runs `blockers` on Windows and Mac (`scenarios/blockers/`: launch, prep,
 a table session, work kept, time of day) and `launch` alone on Linux. All three block: a red means no tag, no
 release and no installers. `/commit` runs none of it; its gate is unit tests, lint and the guards. **`design-sweep`
-is a local tool, never in CI**: CI releases a working app; the sweep keeps the DM from ever seeing a misaligned row.
+runs in CI** on a change to the interface, as a trial that warns and never blocks (`.github/workflows/design-sweep.yml`).
 
 **The blocker set stays small, and a blocker that fails while the app works is rewritten or
 deleted the same day, never loosened.** No longer timeout, no wider tolerance, no rerun count. A
@@ -153,7 +153,7 @@ covers the same packaging bugs and needs no portable step.
 `scenarios/blockers/*.js` is the release set, one file per journey. Any other file under `scenarios/`
 is run by name as a one-scenario probe.
 
-**`design-sweep` is kept and run on every interface change** (PROCESS.md, Building): it opens each screen and
+**`design-sweep` is kept, and CI runs it on interface changes** (`.claude/rules/process.md`, "Proving it works"): it opens each screen and
 measures every row with `lib.alignSweep`, reads its rendered ink with `lib.inkSweep` (`ink.js`),
 and every hover with `lib.hoverSweep`. **The ink is judged on the mean of readings taken with the entry moved down
 by fractions of a pixel by layout, never one reading**: Chromium snaps a text's baseline and an svg's top to whole
@@ -166,13 +166,27 @@ and `record.js` (the recording tool's) stay; a kept scenario breaks on the next 
 beneath, in the same order. There is no separate criteria document.
 
 **A criterion is a DoD line performed, never inspected.** The line reads what the DM does → what the
-DM sees, and the check does exactly that with real CDP input: `Input.dispatchMouseEvent` to hover or
-click, `Input.dispatchKeyEvent` and `Input.insertText` to type, then asserts what is on screen.
-Aim at the element's first line box (`getClientRects()[0]`), since a wrapped value's bounding box
-starts under the text before it, and assert `elementFromPoint` hits the target. Reading a `title`, a
+DM sees, and the check does exactly that through `tools/rig/user.js`, the DM's hands in real CDP input:
+`click`, `dblclick`, `rightClick`, `hover`, `type`, `press`, `keyDown`/`keyUp`, `drag`, `wheel`, and `map(x, y)`
+for a point in map units. It aims at a target's first line box (a field's first line), waits up to 5 s for it as
+the DM waits, and refuses one something else covers, a map point included, naming what lies on top.
+**Set the stage through the interface too**: a pane from its rail button, a tool by its key, a room by a click on
+the map, the map panned with the middle button so a point is on screen. A shortcut is only for what the DM never
+does (a file the native picker hands over, a silent speaker), and its line ends with `// setup: <why>`.
+**`run.js` refuses a scenario that fakes an action** (`fakeInput.js`): a JS `.click()`, `.focus()`, a value set by
+script, a synthetic event or an old `__rig*` mouse or key helper. `fakeInput.allow.json` holds what a kept file may
+still fake, and a count may only go down. A real-input rewrite of the blockers found clicks the old ones made on
+buttons the DM never sees, and points under the tool bar or off the window. Reading a `title`, a
 dataset or a store in place of the action proves nothing about it: BACKLOG 311's hover shipped
 unchecked that way. A part the OS draws (a native tooltip, a save dialog) is named as unreachable and
 everything up to it is checked.
+
+**A UI change is checked as the DM meets it before it is called ready.** Run the probe in Russian
+(`lib.inRussian`), measure what the DM notices on rendered ink (a square button, an icon centred within
+0.5px, text clipped where `scrollHeight` exceeds `clientHeight`, a stray horizontal scroll), and look at
+the close-ups yourself. A builder's PASS on UI counts once the main session's own probe and look agree.
+Probe every control that changes the same property as the fixed one: bounding a window's move once left
+its edges and corner unbounded.
 
 **A scenario that has never been red has proven nothing.** Written before the fix, run it against
 the unfixed code and confirm it fails on the right line. Written after, break the thing it covers,
@@ -303,8 +317,11 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   its close-and-reopen recovery as a backstop; it should no longer fire.
 - **Electron does not expose the CDP `Browser` domain.** `Browser.getWindowForTarget` answers
   "wasn't found", so there is no moving or resizing an OS window from the protocol.
+- **A key pressed while a closing field still has focus goes to the field.** A search box keeps
+  focus until its exit ends, so a shortcut pressed the instant it closes is swallowed: wait until it
+  is gone from the screen (`display: none`), as the DM's eye does.
 - **`el.blur()` does not reliably fire a blur event, and `document.activeElement` does not say
-  whether it will.** Chromium keeps the element as the document's focused one even while the
+  whether it will.** `user.js` turns on focus emulation, so a real click moves focus as for the DM. Chromium keeps the element as the document's focused one even while the
   WINDOW is not the OS's focused one, and `blur()` then dispatches nothing - a commit handler
   hanging off it never runs, and the run reads the app as having done nothing. Parked windows are
   never activated, so whether it fires turns on what else is on the machine: it fails at random

@@ -343,3 +343,12 @@ map, the backlog size, ledger entries and the public-docs name rule are tests to
 passes or fails where the notice hooks spoke once and went quiet. The skill-map test found
 `dock.js` and `dock.css` claimed by `dm-ui` but never mapped. Eight hooks went with it; four stay, the
 screen guard, the skill hint and the two size ratchets on the inline script and CLAUDE.md.
+
+### The process loads into every session; the ledgers split by topic · `SETTLED` (2026-11-27)
+`docs/PROCESS.md` was linked by a plain link, which Claude Code never loads, so its rules reached a session only
+when it happened to open the file. Its rules moved to `.claude/rules/process.md`, which loads with `CLAUDE.md` into
+every session and every agent and survives compaction; its pipeline, `/commit` scripts and listings moved to
+`docs/architecture/`. `CLAUDE.md` keeps the technical bans; a test holds both under 200 lines, the length past which
+the Claude Code docs say rules are followed less. `DECISIONS.md` and `ARCHITECTURE.md` became lists of topics, each
+topic in its own file, read before a decision on it or a change to it. `design-system.md` keeps loading for every
+`src/` file: interface code sits in 15 of 17 folders.

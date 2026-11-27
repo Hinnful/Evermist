@@ -243,3 +243,45 @@ describe('ship.js acceptance', () => {
     assert.equal(rules.acceptCheck({ branch: 'release/5.21.0', amend: true, accept: [] }), null);
   });
 });
+
+describe('ship.js parallel releases', () => {
+  it('keeps the yes when only the Summary version changes', () => {
+    assert.equal(rules.notesHash('5.22.2 - Probe\n\n* a'), rules.notesHash('5.22.3 - Probe\n\n* a'));
+    assert.notEqual(rules.notesHash('5.22.2 - Probe'), rules.notesHash('5.22.2 - Probe B'));
+  });
+  it('renumbers the Summary and nothing else', () => {
+    assert.equal(rules.renumber('5.22.2 - Fix 5.22.2 bug\n* x', '5.22.3'), '5.22.3 - Fix 5.22.2 bug\n* x');
+    assert.equal(rules.renumber('Docs only', '5.22.3'), 'Docs only');
+  });
+  it('replays a bump of the same size on a newer base', () => {
+    assert.equal(rules.bumpKind('5.22.1', '5.22.2'), 'patch');
+    assert.equal(rules.bumpKind('5.22.1', '5.23.0'), 'minor');
+    assert.equal(rules.bumpKind('5.22.1', '6.0.0'), 'major');
+    assert.equal(rules.bumpKind('5.22.1', '5.22.1'), null);
+    assert.equal(rules.bump('5.22.2', 'patch'), '5.22.3');
+    assert.equal(rules.bump('5.22.2', 'minor'), '5.23.0');
+    assert.equal(rules.bump('5.22.2', 'major'), '6.0.0');
+  });
+});
+
+describe('run folders', () => {
+  const { execFileSync } = require('child_process');
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { runRoot } = require('../.claude/commit/runRoot.js');
+  it('resolve to the main checkout from a worktree', () => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'runroot-'));
+    const g = (...a) => execFileSync('git', a, { cwd: repo, stdio: 'pipe' });
+    g('init', '-q'); g('-c', 'user.name=a', '-c', 'user.email=a@b', 'commit', '-q', '--allow-empty', '-m', 'x');
+    const wt = repo + '-wt';
+    g('worktree', 'add', '-q', '--detach', wt);
+    try {
+      assert.equal(fs.realpathSync(runRoot(wt)), fs.realpathSync(repo));
+      assert.equal(fs.realpathSync(runRoot(repo)), fs.realpathSync(repo));
+    } finally {
+      g('worktree', 'remove', '--force', wt);
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  });
+});

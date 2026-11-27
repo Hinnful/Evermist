@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin, ROOT } = require('./guard-lib');
 const { runDir, sessionIds } = require('../commit/shipRules');
+const { runRoot } = require('../commit/runRoot');
 
 // Which marker a finished tool call leaves, or null. Arming the monitor off means nothing was armed.
 function markerFor(tool, input) {
@@ -26,8 +27,8 @@ function main() {
   if (!m) return;
   const stamp = JSON.stringify({ time: new Date().toISOString(), text: m.text });
   for (const id of sessionIds(p, process.env)) {
-    fs.mkdirSync(runDir(ROOT, id), { recursive: true });
-    fs.writeFileSync(path.join(runDir(ROOT, id), m.file), stamp + '\n');
+    fs.mkdirSync(runDir(runRoot(p.cwd) || ROOT, id), { recursive: true });
+    fs.writeFileSync(path.join(runDir(runRoot(p.cwd) || ROOT, id), m.file), stamp + '\n');
   }
 }
 

@@ -1,6 +1,7 @@
 'use strict';
 
 const ink = require('./ink');
+const { user } = require('./user');
 
 // lib.js — the one page-side helper set, and the blockers' shared setup, that every
 // blocker scenario uses. Nothing here asserts; it only puts the app into a state a scenario can read.
@@ -798,10 +799,27 @@ async function importWithPlan(rig, name, plan) {
 
 // The plan's rooms, drawn by the Draw Rooms button. Resolves with the rooms, left to right, each as
 // { id, name, mode, cx, cy } (the centre of its box, in map units).
+// A dock pane opened, or shut, from its own rail button.
+async function openPane(dm, name) {
+  if (await dm.evaluate('_dockPane') !== name) await user(dm).click('#dock-tab-' + name);
+  await settle(dm, `_dockPane === '${name}'`, 5000);
+}
+async function closePane(dm) {
+  const open = await dm.evaluate('_dockPane');
+  if (!open) return;
+  await user(dm).click('#dock-tab-' + open);
+  await settle(dm, '!_dockPane', 5000);
+}
+
+// Pressed as the DM does, in Map settings, which is left as it was found.
 async function drawRooms(rig, want) {
-  const dm = rig.dm;
-  await dm.evaluate('document.getElementById("btn-floorplan").click(); 0');
+  const dm = rig.dm, u = user(dm);
+  const was = await dm.evaluate('_dockPane');
+  if (was !== 'scene') await u.click('#dock-tab-scene');
+  await settle(dm, "_dockPane === 'scene'", 5000);
+  await u.click('#btn-floorplan');
   await settle(dm, 'polygons.length >= ' + (want || 1), 30000);
+  if (was !== 'scene') { await u.click('#dock-tab-scene'); await settle(dm, '_dockPane !== "scene"', 5000); }
   return dm.evaluate(`polygons.map(p => {
     const xs = p.vertices.map(v => v.x), ys = p.vertices.map(v => v.y);
     return { id: p.id, name: p.name, mode: p.mode,
@@ -822,7 +840,7 @@ const tvFog = (player, x, y) => player.evaluate('(' + TV_FOG + ')(' + Math.round
 // system browser, as a URL, or null when none came. Settings must be open.
 async function connectOpens(dm, browser) {
   const before = browser.opened().length;
-  await dm.evaluate(`document.getElementById('sy-connect').click(); 0`);
+  await user(dm).click('#sy-connect');
   const got = await poll(() => browser.opened()[before] || null, 20000, 200);
   return got ? new URL(got) : null;
 }
@@ -851,4 +869,4 @@ function wav(seconds, tone) {
   return buf;
 }
 
-module.exports = { DM_MAP, wav, alignSweep, inkSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };
+module.exports = { DM_MAP, wav, alignSweep, inkSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults, openPane, closePane };

@@ -101,8 +101,7 @@ BY-SA) and Dyson Logos maps (free with credit) can ship, but have no floor plan 
 is a sample built for Evermist: one small Dungeon Alchemist map exported as video with its `.dd2vtt`, plus a short keyed
 text of about six rooms written for it, so the sample shows the animated map, the drawn rooms and doors, and the module
 text at once. Dungeon Alchemist's terms allow content for "limited commercial purposes" but do not mention redistributing
-exports; one question to their support settles it before shipping. Care point: the installer's size. Needs `/spec`
-before building.
+exports; one question to their support settles it before shipping. Care point: the installer's size.
 **First use · DM only**
 
 ### 289. A home page on Evermist's own domain

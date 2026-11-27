@@ -14,6 +14,7 @@
 const path = require('path');
 const { readStdin, readJson, writeJson, ROOT } = require('./guard-lib');
 const { runDir, sessionIds } = require('../commit/shipRules');
+const { runRoot } = require('../commit/runRoot');
 
 const MAX_BLOCKS = 1;
 
@@ -40,7 +41,7 @@ function decide(todo, blocksSoFar) {
 function main() {
   const p = readStdin();
   for (const id of sessionIds(p, process.env)) {
-    const dir = runDir(ROOT, id);
+    const dir = runDir(runRoot(p.cwd) || ROOT, id);
     const pushed = readJson(path.join(dir, 'pushed.json'), null);
     if (!pushed) continue;
     const todo = remaining(pushed, readJson(path.join(dir, 'monitor-armed'), null), readJson(path.join(dir, 'renamed'), null));
