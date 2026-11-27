@@ -11,6 +11,7 @@ const os = require('os');
 const path = require('path');
 const rules = require('./shipRules.js');
 const { runRoot } = require('./runRoot.js');
+const { isApp, appHash } = require('./sweepStamp.js');
 const { isPackaged } = require('../../tools/build-files.js');
 
 // The repo is the one this is run in, never the one this file sits in: a test copy of the
@@ -180,6 +181,16 @@ function stageBase(opts, notes) {
   return `caught up with origin/main; this release is now ${next}`;
 }
 
+// A release that changes the app needs a clean design sweep on these very files; CI no longer runs one.
+function stageSweep({ paths }) {
+  if (!paths.some(isApp)) return 'the app is untouched';
+  let stamp = null;
+  try { stamp = JSON.parse(readText(path.join(RUN, 'sweep-passed.json'))); } catch { /* never ran */ }
+  if (stamp && stamp.hash === appHash(ROOT)) return 'clean on these files';
+  throw new Error((stamp ? 'the app changed since the last clean design sweep' : 'no clean design sweep in this session') +
+    '. Run `npm run rig -- --dm-size 1280x1500 design-sweep`, fix what it finds, then run ship.js again');
+}
+
 // CI's guards job runs the same script; a red one there costs a whole gate and an amend.
 function stageGuards() {
   execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-guards.js')], { cwd: ROOT, stdio: 'pipe' });
@@ -281,6 +292,7 @@ function main() {
     ['yes', () => stageYes(opts, notes)],
     ['backlog', () => must(rules.backlogCheck(opts), 'carried')],
     ['acceptance', () => must(rules.acceptCheck({ ...opts, accept: opts.accept.map((f) => ({ file: f, text: readText(path.resolve(ROOT, f)) })) }), 'every DoD line proven')],
+    ['sweep', () => stageSweep(opts)],
     ['disclosure', () => must(rules.disclosureCheck({ ...opts, disclosure: readText(path.join(RUN, 'disclosure.txt')) }), 'none needed')],
     ['guards', stageGuards],
     ['guard inputs', () => stageGuardInputs(opts)],

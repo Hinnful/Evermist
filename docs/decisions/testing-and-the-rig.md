@@ -586,3 +586,10 @@ an action unless `fakeInput.allow.json` grants it, and only `record.js`, which r
 grant. Rewritten, the blockers pass at 88 and 29 checks; the rewrite moved clicks off points that lay under the
 tool bar, the minimap and the window's edge. A video of each run for the DM was rejected: the rig exists so the
 DM never checks by hand.
+
+### The design sweep runs at `/commit`, once per release · `SETTLED` (2026-11-27)
+**Reverses** "The design sweep runs in CI as a trial" (`process.md`, the same day). CI exists to stop an app nobody
+can use, and a misaligned row is no such fault; on a runner with no graphics card the sweep covered 10 of 52
+surfaces in 13 minutes. Running it at the end of every build was rejected too: it slows the variants the DM wants
+fast. `/commit` runs it once on a release that changes the app, about four minutes here, and a clean run stamps
+the app's files (`sweepStamp.js`); `ship.js` refuses a release whose files changed since.

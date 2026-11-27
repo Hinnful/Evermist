@@ -72,10 +72,10 @@ rig runs or commits. Studies follow the `research` skill; UI options and new UI,
   `[rig: <scenario> "<check>"]`, `[unit: <test>]`, `[eye]` or `[unreachable: <what>; around: <check>]`. A
   reachable line is never reported unchecked. `ship.js --accept <spec>` refuses an unmarked line.
 - **A fix's scenario runs once and is deleted.** Only `blockers/`, `design-sweep` and `record.js` stay.
-- **On this machine the rig is a probe, never a gate.** `/commit` runs unit tests, lint and the guards; the
-  release gate runs the blocker set on three platforms. The DM may ask for `blockers` at low priority.
-- **A change to the interface is done when `test/designSystem.test.js` passes and `design-sweep` is clean.**
-  CI runs the sweep on interface changes, as a trial that warns. An audit walks `tools/rig/inventory.js`, never
+- **While building, the rig is a probe, never a gate**, so variants come fast. The release gate runs the
+  blocker set on three platforms. The DM may ask for `blockers` at low priority.
+- **`/commit` runs the design sweep once, on a release that changes the app**, and ship.js refuses one whose app
+  files changed since the last clean sweep. Never during iterations, never in CI. An audit walks `tools/rig/inventory.js`, never
   a sample; its close-ups go to a fresh reviewer with only `design-system.md`; its report opens with what it did
   not check; a finding the DM makes afterwards gets a line in `docs/decisions/audit-misses.md`.
 - **Never ask the DM to hand-verify, run a build, or open Chrome.** Look, feel and speed are the DM's;

@@ -73,8 +73,7 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
    is checked, and only then does the release go public and the tag appear.
 7. **Clean up.** The staging branch is deleted.
 
-A change to the interface also runs the design sweep beside the gate, as a trial that warns and never
-blocks. A red step stops everything after it, so nothing public exists for a change that failed. No other
+A red step stops everything after it, so nothing public exists for a change that failed. No other
 workflow runs on a release or change push. `platformrig/**` runs the gate's three installers,
 three rig legs and the update proofs as one row named after the branch, and ships nothing.
 

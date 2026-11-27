@@ -716,8 +716,13 @@ async function installHelpers(session) {
 //
 // ⚠ THIS REPLACES rig.sleep, AND rig.sleep IS NOT TO COME BACK INTO A SCENARIO. A fixed wait is
 // either a lie or a waste, and on a slow runner it is the lie.
+// A wait that ran to its bound is printed: it fails nothing, but silent ones once tripled a run's time unseen.
 async function settle(session, expr, ms) {
-  try { await session.waitFor(expr, ms || 8000, expr); } catch (_) { return false; }
+  const bound = ms || 8000;
+  try { await session.waitFor(expr, bound, expr); } catch (_) {
+    console.log('  (a wait ran its whole ' + Math.round(bound / 1000) + ' s: ' + String(expr).slice(0, 100) + ')');
+    return false;
+  }
   return true;
 }
 
@@ -747,7 +752,7 @@ async function poll(fn, ms, everyMs) {
   for (;;) {
     const got = await fn();
     if (got) return got;
-    if (Date.now() > deadline) return null;
+    if (Date.now() > deadline) { console.log('  (a poll ran its whole ' + Math.round((ms || 8000) / 1000) + ' s)'); return null; }
     await new Promise(r => setTimeout(r, everyMs || 100));
   }
 }
@@ -829,8 +834,11 @@ async function drawRooms(rig, want) {
 }
 
 // One step of a walk. A step that throws is a failed check naming it, and the walk goes on.
+// Each step's time is printed, so a slow runner's log says which step took it.
 async function step(rig, label, fn) {
+  const t0 = Date.now();
   try { await fn(); } catch (err) { rig.check(false, label + ' stopped: ' + (err && err.message ? err.message : err)); }
+  console.log('  (' + label + ': ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
 }
 
 // The Player's fog data at a map point: 255 is hidden ground, 0 is clear.

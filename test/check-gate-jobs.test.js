@@ -46,13 +46,6 @@ describe('the gate legs check', () => {
     }
   });
 
-  it('lands past a failed trial, but not past an unfinished one', () => {
-    const ok = { name: 'Gate / Linux', status: 'completed', conclusion: 'success' };
-    assert.deepEqual(gateProblems([ok, { name: 'Design sweep / Linux', status: 'completed', conclusion: 'failure' }]), []);
-    assert.deepEqual(gateProblems([ok, { name: 'Design sweep / Linux', status: 'in_progress', conclusion: null }]),
-      ['Design sweep / Linux is in_progress, not finished.']);
-  });
-
   it('refuses an empty job list', () => {
     assert.equal(gateProblems([]).length, 1);
   });

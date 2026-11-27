@@ -285,3 +285,32 @@ describe('run folders', () => {
     }
   });
 });
+
+describe('the design sweep stamp', () => {
+  const { execFileSync } = require('child_process');
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { isApp, appHash } = require('../.claude/commit/sweepStamp.js');
+  it('counts the app and its pages, never the generated changelog or the tooling', () => {
+    assert.equal(isApp('src/ui/dock.js'), true);
+    assert.equal(isApp('index.html'), true);
+    assert.equal(isApp('src/ui/changelogData.js'), false);
+    assert.equal(isApp('tools/rig/run.js'), false);
+    assert.equal(isApp('docs/BACKLOG.md'), false);
+  });
+  it('changes with an app file and holds through the changelog', () => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'sweepstamp-'));
+    try {
+      fs.mkdirSync(path.join(repo, 'src', 'ui'), { recursive: true });
+      fs.writeFileSync(path.join(repo, 'src', 'ui', 'a.js'), 'a');
+      fs.writeFileSync(path.join(repo, 'src', 'ui', 'changelogData.js'), '1');
+      execFileSync('git', ['init', '-q'], { cwd: repo });
+      const h0 = appHash(repo);
+      fs.writeFileSync(path.join(repo, 'src', 'ui', 'changelogData.js'), '2');
+      assert.equal(appHash(repo), h0);
+      fs.writeFileSync(path.join(repo, 'src', 'ui', 'a.js'), 'b');
+      assert.notEqual(appHash(repo), h0);
+    } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+  });
+});

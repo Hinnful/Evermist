@@ -1,6 +1,6 @@
 ## Step 2 - The gate
 
-Three checks, and nothing else locally:
+Three checks, and for a release that changes the app the design sweep below:
 
 ```
 npm test
@@ -16,7 +16,16 @@ tests, so a red here can be one of those; its message says what to fix.
 **BLOCK on red.** Report which check failed and what it said. Do not set the version and do not
 write notes.
 
-**The rig is not part of this step.** The release gate runs its blocker set on every platform, so a
+**A release that changes the app also runs the design sweep, once:**
+
+```
+npm run rig -- --dm-size 1280x1500 design-sweep
+```
+
+A clean run stamps the app's files; `ship.js` refuses a release whose files changed since. A fault is fixed
+before the notes, and the sweep runs again. It runs here and nowhere else: never during iterations, never in CI.
+
+**No other rig run is part of this step.** The release gate runs its blocker set on every platform, so a
 local run answers nothing the gate will not. It stays a probe for a question code cannot answer:
 one scenario, or a throwaway probe file deleted afterwards (the `rig` skill carries how).
 

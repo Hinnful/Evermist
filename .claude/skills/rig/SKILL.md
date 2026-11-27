@@ -31,8 +31,8 @@ belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig
 **THE BLOCKER SET IS THE RELEASE GATE, and the only set there is.** `.github/workflows/rig.yml`
 builds the packaged app and runs `blockers` on Windows and Mac (`scenarios/blockers/`: launch, prep,
 a table session, work kept, time of day) and `launch` alone on Linux. All three block: a red means no tag, no
-release and no installers. `/commit` runs none of it; its gate is unit tests, lint and the guards. **`design-sweep`
-runs in CI** on a change to the interface, as a trial that warns and never blocks (`.github/workflows/design-sweep.yml`).
+release and no installers. `/commit` runs none of it. **`design-sweep` runs at `/commit`**, once per release that changes the app: a clean
+run stamps the app's files, and `ship.js` refuses a release whose files changed since (`.claude/commit/sweepStamp.js`).
 
 **The blocker set stays small, and a blocker that fails while the app works is rewritten or
 deleted the same day, never loosened.** No longer timeout, no wider tolerance, no rerun count. A
@@ -153,7 +153,7 @@ covers the same packaging bugs and needs no portable step.
 `scenarios/blockers/*.js` is the release set, one file per journey. Any other file under `scenarios/`
 is run by name as a one-scenario probe.
 
-**`design-sweep` is kept, and CI runs it on interface changes** (`.claude/rules/process.md`, "Proving it works"): it opens each screen and
+**`design-sweep` is kept, and `/commit` runs it** (`.claude/rules/process.md`, "Proving it works"): it opens each screen and
 measures every row with `lib.alignSweep`, reads its rendered ink with `lib.inkSweep` (`ink.js`),
 and every hover with `lib.hoverSweep`. **The ink is judged on the mean of readings taken with the entry moved down
 by fractions of a pixel by layout, never one reading**: Chromium snaps a text's baseline and an svg's top to whole

@@ -1138,6 +1138,15 @@ async function main() {
   const fails = tally.fails.concat(tally.consoleErrors.length ? ['console errors during the run'] : []);
   if (fails.length) console.log('FAIL ' + fails.join('; '));
   else console.log('PASS — ' + tally.checked + ' checks');
+  // A clean design sweep leaves its stamp for ship.js, which refuses a release whose app changed since.
+  if (!fails.length && files.some(f => path.basename(f) === 'design-sweep.js') && !args.exe) {
+    const { appHash } = require('../../.claude/commit/sweepStamp');
+    const { runRoot } = require('../../.claude/commit/runRoot');
+    const run = path.join(runRoot(ROOT) || ROOT, '.claude', 'commit', 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local');
+    fs.mkdirSync(run, { recursive: true });
+    fs.writeFileSync(path.join(run, 'sweep-passed.json'), JSON.stringify({ time: new Date().toISOString(), hash: appHash(ROOT) }) + '\n');
+    console.log('design sweep stamped for ship.js');
+  }
   for (const item of tally.byEye) console.log('UNCHECKED (yours to judge): ' + item);
   if (flakes.length) console.log('FLAKES (passed on rerun): ' + flakes.join(', '));
   console.log('output: ' + outDir);

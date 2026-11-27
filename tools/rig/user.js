@@ -30,10 +30,12 @@ const AIM = (sel, text, nth) => `(() => {
   const want = ${JSON.stringify(text === undefined ? null : text)};
   const seen = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
-  const says = (e) => [e.innerText, e.getAttribute('aria-label'), e.title, e.placeholder]
-    .some((v) => typeof v === 'string' && v.trim() === want);
-  const all = [...document.querySelectorAll(${JSON.stringify(sel || '*')})].filter(seen);
-  const hits = want === null ? all : all.filter(says);
+  // ⚠ CHEAP TESTS FIRST. innerText and getComputedStyle lay the page out, and run over every element of a page they
+  // took a Windows runner minutes per click; textContent and the attributes narrow the field before them.
+  const says = (e) => [e.getAttribute('aria-label'), e.title, e.placeholder].some((v) => typeof v === 'string' && v.trim() === want)
+    || ((e.textContent || '').trim() === want && e.innerText.trim() === want);
+  const pool = [...document.querySelectorAll(${JSON.stringify(sel || '*')})];
+  const hits = (want === null ? pool : pool.filter(says)).filter(seen);
   const e = ${JSON.stringify(nth === undefined ? null : nth)} === null ? (want === null ? hits[0] : hits.pop()) : hits[${JSON.stringify(nth || 0)}];
   if (!e) return null;
   e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
