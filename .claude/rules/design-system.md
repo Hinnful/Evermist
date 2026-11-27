@@ -209,7 +209,7 @@ selector is which atom; a new control joins a row here before it ships. A Type c
 | Table cell | `.bs-t td` `.bs-t th` `.cb-cell` | | |
 | Window header | `.sm-whead` `.cb-head` `.bsw-head` `.nw-head` `.dk-head` | `48` `42` | |
 | Window title | `.sm-wtitle` `.dk-head .cp-adv-title` | | `16` |
-| Section title | `#dock .cp-label` `.nw-row.sec` `.nw-appears .aph` `.nw-lore summary` | | `14` |
+| Section title | `#dock .cp-label` `.nw-row.sec` `.nw-appears .aph` | | `14` |
 | Sub-header | `.dk-sub` | | `11` |
 | Switch row | `.dk-swrow` | `28` | |
 | Switch row label | `.dk-swrow > span` | | `12` |
@@ -435,7 +435,7 @@ The rules:
 | Party marker | `.wp-here` `.wmist-hole` | its glide and the mist hole that follows it |
 | Minimap | `#minimap-canvas` | the minimap's own dimming |
 | Switch knob | `.dk-switch` | the knob slides as everywhere else |
-| Chevrons | `.car` `.sm-chev` `.nw-tw` `.nw-lore-chev` | a fold's chevron turns |
+| Chevrons | `.car` `.sm-chev` `.nw-tw` | a fold's chevron turns |
 | Column frame | `.pane-col::after` | the toolbar's column highlight |
 
 ## Building a screen

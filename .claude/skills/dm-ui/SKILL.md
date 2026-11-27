@@ -100,10 +100,9 @@ The room card's module renders into the Notes window's room level; there is no f
   Campaign map and at launch, and works on an empty library.
 - **The header holds hide-tree, back, forward and the breadcrumbs** (the tree's path to what is shown, a crumb
   opens that level, the middle folds into "…" with a list when narrow). The tree sits left, its width dragged on its
-  edge: the campaign, groups nested by outline, maps and rooms, a Roads section (only with roads), Monsters and
-  NPCs (a DM note, or made with "+ New"), Factions and Lore. Section titles are the dock's 14px bold, sentence case.
+  edge: the campaign, groups nested by outline, maps and rooms, a Roads section (only with roads), Factions and Lore. Creatures are not in it: they live in the Bestiary. Section titles are the dock's 14px bold, sentence case.
 - **The tree uses the library pattern** (`notesTreeDrag.js`, `notesMapDrop.js`): ⋯ on every row but a section title, Ctrl+R
-  renames, every list reorders by drag with a blue line, and rooms, roads and monsters group by a hold over a middle. A map
+  renames, every list reorders by drag with a blue line, and rooms and roads group by a hold over a middle. A map
   dropped on a Campaign group moves its card inside the outline. The order is Notes-only (`evermist.notesOrder`) and never
   touches the fog; Ctrl+Z with the tree focused undoes a drop, with no toast.
 - **What is shown is a target** `{ kind, id, scene? }`: what the DM picked in the tree or a crumb
@@ -116,9 +115,8 @@ The room card's module renders into the Notes window's room level; there is no f
   (`pane-scene-notes`, `pane-room-patch`), never `paneForward`. A map nobody holds: `sceneStore.updateScene`, a
   room patched by id and `polygons` never reordered. A tree click on a room of a held map selects that column and picks
   the room; on any other map it only shows the note.
-- **Every name and note reaches the DOM through `textContent`** and every Delete asks with `confirmDialog`, except a map's, which goes to the Trash with the undo toast. A monster's
-  note is its DM `notes` (one field with the Bestiary page), the book's `lore` folded below read-only, and a Stat
-  block button. Factions and lore live under `evermist.notesEntries`, which the previous release never reads.
+- **Every name and note reaches the DOM through `textContent`** and every Delete asks with `confirmDialog`, except a map's, which goes to the Trash with the undo toast. A creature's
+  note is its DM `notes`, shown only on its Bestiary page; a creature link, an Appears in row or a search pick opens that page, and New > Monster or NPC opens it in edit mode. Factions and lore live under `evermist.notesEntries`, which the previous release never reads.
 - **`#rp-desc` renders inside it**, but its logic stays in `roomCard.js`. Other levels share the title and
   `#np-field`, with the field's own undo. The notes area carries the app's own 8px scrollbar.
 - **Notes are always editable and take mentions** (`notesEditor.js`): every field is the editor, with no edit mode. Typing @ opens the

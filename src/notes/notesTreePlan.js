@@ -1,10 +1,10 @@
 'use strict';
 // notesTreePlan.js — the Notes window's tree, as pure rules: the campaign, its groups nested by outline, their
-// maps and rooms, the roads, the monsters with a note, factions and lore; the rows an open set shows; a node's
+// maps and rooms, the roads, factions and lore; the rows an open set shows; a node's
 // path for the breadcrumbs; and which middle crumbs fold into "…". No DOM.
 //
 // A node is { key, kind, name, id, scene?, sec?, okey?, list?, children }. Keys: campaign, place:<name>, map:<id>,
-// room:<scene>:<id>, road:<uid>, monster:<id>, entry:<id>, sec:<roads|monster|faction|lore>, and a Notes group
+// room:<scene>:<id>, road:<uid>, entry:<id>, sec:<roads|faction|lore>, and a Notes group
 // ng:<list>:<gid>. `okey` is the node's item in evermist.notesOrder, `list` the key of the list its children are.
 
 function _ntGeo(name) {
@@ -76,20 +76,17 @@ function notesTreeBuild(src) {
     sec.children = src.roads.map(r => _node('road:' + r.uid, 'road', r.name, r.uid, { okey: r.uid }));
     root.children.push(sec);
   }
-  const mon = _node('sec:monster', 'section', 'Monsters and NPCs', null, { sec: 'monster', list: 'monster' });
-  mon.children = (src.blocks || []).filter(b => (b.notes || '').trim() || b.listed || b.mentioned)
-    .sort((a, b) => String(a.name).localeCompare(String(b.name))).map(b => _node('monster:' + b.id, 'monster', b.name, b.id, { okey: b.uid || null }));
   const fac = _node('sec:faction', 'section', 'Factions', null, { sec: 'faction' });
   fac.children = _entryNodes(src.entries || [], 'faction', 'faction');
   const lore = _node('sec:lore', 'section', 'Lore', null, { sec: 'lore' });
   lore.children = _entryNodes(src.entries || [], 'lore', 'lore');
-  root.children.push(mon, fac, lore);
+  root.children.push(fac, lore);
   if (src.order) _ntSorted(root, src.order);
   return root;
 }
 
-// Every list the key holds put in order: the Campaign's maps and groups, each map's rooms, the roads and the monsters.
-// Rooms, roads and monsters take Notes groups; the Campaign's lists do not, since their groups are the outlines.
+// Every list the key holds put in order: the Campaign's maps and groups, each map's rooms and the roads.
+// Rooms and roads take Notes groups; the Campaign's lists do not, since their groups are the outlines.
 function _ntSorted(n, order) {
   const O = _ntOrder(), flat = n.kind === 'campaign' || n.kind === 'place';
   // The sections stay last, where the tree puts them.

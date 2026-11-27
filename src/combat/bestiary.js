@@ -280,11 +280,13 @@ async function _bsImportFile(file) {
   _bsAdd(monsters);
 }
 
-function _bsNew() {
+// `listed` for one made from Notes: the AI assistant lists it with the creatures that have a note.
+function _bsNew(listed) {
   const b = cbNewBlock(combatUniqueName(cbState.blocks, t('New monster'), ''));
+  if (listed) b.listed = true;
   cbSave();
-  _bsShow(b.id, true);
-  const name = _bsEl('bs-page').querySelector('.bs-page-head [data-p="name"]');
+  if (!bestiaryOpenOn(b.id, true)) return;
+  const name =_bsEl('bs-page').querySelector('.bs-page-head [data-p="name"]');
   name.focus();
   document.getSelection().selectAllChildren(name);
 }
@@ -320,6 +322,14 @@ function bestiarySetOpen(open, fromFight) {
   _bsRenderPage();
   const search = _bsEl('bs-search');
   (search.offsetParent ? search : _bsEl('bs-panel')).focus();
+  return true;
+}
+
+// Opens the window straight on `id`'s page, so the list's first monster never lands in Back's history.
+function bestiaryOpenOn(id, editing) {
+  if (!bsIsOpen()) bs.open = id;
+  if (!bestiarySetOpen(true)) return false;
+  _bsShow(id, editing);
   return true;
 }
 

@@ -1,1 +1,1 @@
-{"version":"0.0.1","configurations":[{"name":"evermist","runtimeExecutable":"npx","runtimeArgs":["serve","."],"port":3000,"autoPort":true}]}
+{"version": "0.0.1", "configurations": [{"name": "evermist", "runtimeExecutable": "npx", "runtimeArgs": ["serve", "."], "port": 3000, "autoPort": true}, {"name": "site", "runtimeExecutable": "npx", "runtimeArgs": ["serve", ".claude/private/prototypes/home-page/v2/dist", "-l", "tcp://0.0.0.0:4100"], "port": 4100}]}

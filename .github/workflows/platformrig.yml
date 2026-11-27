@@ -1,8 +1,9 @@
 name: Platform rig
+# One row in the Actions list, named by the branch, so a platform run never reads as a version.
+run-name: 'Platform rig: ${{ github.ref_name }}'
 
-# A push to any `platformrig/**` branch: the three installers and the rig's blocker set on all three
-# platforms, as a release runs them. Ships nothing and never lands. update-proofs.yml has its own
-# trigger on the same branches.
+# A push to any `platformrig/**` branch: the three installers, the rig's blocker set and the update
+# proofs on all three platforms, as a release runs them. Ships nothing and never lands.
 on:
   push:
     branches:
@@ -21,3 +22,7 @@ jobs:
     name: Gate
     uses: ./.github/workflows/rig.yml
     secrets: inherit
+
+  update:
+    name: Prove updates
+    uses: ./.github/workflows/update-proofs.yml

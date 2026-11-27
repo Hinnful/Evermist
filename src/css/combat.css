@@ -359,7 +359,6 @@
   .bp-sec.shut .bp-sec-b { display: none; }
   .bp-sec-b p { margin: 0 0 10px; }
   .bp-sec-b p .n { font-weight: 700; font-style: italic; color: var(--g-text); }
-  .bp-sec-b .bp-none { color: var(--g-dim); }
   /* Spells as rows (BACKLOG 304): no panel behind a level; the chip and its crystals on a grey plate, spells as soft
      labels with no hover, since hovering one does nothing. */
   .sp-cast { margin: 0 0 14px; }
@@ -735,8 +734,14 @@
     -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
   }
   .bp-sec-b p .n { font-weight: 700; font-style: normal; color: var(--g-text); }
-  .bp-sec-b .bp-none { color: var(--g-dim); }
   .bp-notes { font: 400 13px/1.55 system-ui, -apple-system, sans-serif; }
+  /* "Appears in": the count is the title's own size, dim, trimmed as the title is so the two share a baseline; a row is
+     the Notes window's (notesWindow.css .nw-appears .ap), name left, kind and place right. */
+  .bp-sec-h .n { font-weight: 500; color: var(--g-dim); text-box: trim-both cap alphabetic; padding-block: calc((1.2em - 1cap) / 2); }
+  .bp-ap .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 6px; cursor: var(--cur-pointer); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--g-body); font-size: 12px; }
+  .bp-ap .ap:hover { background: var(--g-hover); }
+  .bp-ap .ap small { color: var(--g-dim); font-size: 11px; }
+  .bp-ap .hint { color: var(--g-dim); font-size: 11px; }
 
   /* Edit mode is the read page itself: a value shows its field only under the pointer or in focus, the fill and
      the edit ring drawn as spread shadows so nothing moves. On a tile the fill is the page's ground. */

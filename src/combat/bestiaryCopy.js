@@ -131,7 +131,7 @@ function bcInit(page) {
     const en = f.notes !== undefined && _bcEntry(r);
     if (en) { en.notes = neStoredText(e.target); mxBump(); cbSaveSoon(); }
   });
-  // The notes are the entry's, one field with the Notes window's: read again on focus.
+  // The notes are the entry's, one field with its own page: read again on focus.
   page.addEventListener('focusin', e => {
     const r = bcRow(), en = r && e.target.dataset && e.target.dataset.notes !== undefined && _bcEntry(r);
     if (en && e.target.value !== (en.notes || '')) e.target.value = en.notes || '';

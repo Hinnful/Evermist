@@ -95,6 +95,7 @@ const INVENTORY = [
     states: [{ name: 'rest', set: 'bestiaryRender();' },
       { name: 'ticked', set: 'Object.keys(cbState.blocks).slice(0, 2).forEach(id => bs.picked.add(id)); bestiaryRender();' },
       { name: 'page', set: "bs.picked.clear(); _bsShow(Object.values(cbState.blocks).find(b => b.name === 'Ааракокра-аэромант').id);" },
+      { name: 'page end', set: "notesCampaignSet('Встреча: ' + mpToken('Ааракокра-аэромант', 'monster', mxMonsterUid(cbState.blocks[bs.open]))); mxBump(); bpAppearsSync(); document.querySelector('#bs-page .bs-page-body').scrollTop = 1e6;" },
       { name: 'page editing', set: 'bs.editing = true; _bsRenderPage();' },
       { name: 'medium width', set: "bs.editing = false; document.getElementById('bs-panel').style.width = '700px'; bswdApply(); bestiaryRender();" },
       { name: 'nothing matches', set: "document.getElementById('bs-panel').style.width = '1000px'; bswdApply(); bs.f.q = 'zzz'; bestiaryRender();" }],

@@ -65,6 +65,16 @@ describe('mcpShim', () => {
     assert.match(tool.inputSchema.properties.timeOfDay.description, /none shows it as drawn/);
     assert.match(tool.description, /time of day/i);
   });
+  it('offers no monster list as a Notes order level: a creature\'s note lives on its Bestiary page', async () => {
+    const [, list] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { id: 2, method: 'tools/list' }]);
+    for (const name of ['read_notes_order', 'set_notes_order']) {
+      const tool = list.result.tools.find(t => t.name === name);
+      assert.deepEqual(tool.inputSchema.properties.level.enum, ['campaign', 'group', 'map', 'roads']);
+      assert.doesNotMatch(tool.description + tool.inputSchema.properties.level.description, /monster/i);
+    }
+    const notes = list.result.tools.find(t => t.name === 'read_notes');
+    assert.ok(JSON.stringify(notes.inputSchema).includes('monster'), 'read_notes still takes level monster');
+  });
   it('explains what Evermist holds and that Claude only preps', async () => {
     const [init] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }]);
     const text = init.result.instructions;

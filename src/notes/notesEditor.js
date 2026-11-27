@@ -256,12 +256,19 @@ function _neInsertMention(el, at, name, kind, id, replacing) {
 
 // ─── Opening, the red label's menu, the hover preview ────────────────────────
 
+// The one way a note opens what it names: a creature on its Bestiary page, the Notes window left as it is; anything
+// else in the Notes window. `key` is the tree's, `target` what notesShow takes.
+function neOpen(key, target) {
+  if (target.kind === 'monster') { bestiaryOpenOn(target.id); return; }
+  nwShow();
+  if (!ntGoKey(key)) notesShow(target);
+}
+
 function neOpenMention(kind, id) {
   const r = mxResolve(kind, id);
   if (!r || !r.target || !r.key) return;
   if (kind === 'fight') { cbSetOpen(true); _cfSwitch(id); return; }
-  nwShow();
-  if (!ntGoKey(r.key)) notesShow(r.target);
+  neOpen(r.key, r.target);
 }
 
 function _neMissMenu(el, label) {

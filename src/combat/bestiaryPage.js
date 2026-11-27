@@ -1,5 +1,5 @@
 // bestiaryPage.js — a bestiary monster's page: AC and HP, the abilities, the lines, its traits and
-// actions with a caster's spells as rows of crystals, then its lore and the DM's notes. Edit keeps the same page and
+// actions with a caster's spells as rows of crystals, then its lore, the DM's notes and the notes that mention it. Edit keeps the same page and
 // makes each value typeable in place (combatStatBlock.js wires the typing).
 const BP_LINES = [['skills', 'Skills'], ['vuln', 'Vulnerabilities'], ['resist', 'Resistances'], ['immune', 'Immunities'],
   ['senses', 'Senses'], ['languages', 'Languages']];
@@ -240,10 +240,9 @@ function _bpRead(b, noNotes, spent, ed) {
       + `<div class="bp-kv"><b>${t('Challenge')}:</b> <span class="bp-hi">${_cbEsc(b.cr || '—')}</span></div>`}</div>
     ${ed ? _bpEditSecs(b) : secs.map(s => _bpSection(s, s, b.secs[s].map(e => _bpEntry(e, spent, null, ctrs.get(e))).join(''), false,
       s === 'Legendary actions' && _bpPoolPlate(b, spent))).join('')}
-    ${_bpSection('lore', 'Lore', ed ? `<p class="bp-lore-ed">${_cbEd('lore', b.lore, 'What the monster is, where it lives, how it fights', 'bp-t')}</p>`
-    : lore.length ? lore.map(p => `<p>${_cbEsc(p)}</p>`).join('')
-      : '<p class="bp-none">' + t('No lore yet. An import keeps the page\'s own description here; Edit to write your own.') + '</p>')}
-    ${noNotes ? '' : _bpSection('notes', 'Your notes', _bpNotes(b))}
+    ${ed ? _bpSection('lore', 'Lore', `<p class="bp-lore-ed">${_cbEd('lore', b.lore, 'What the monster is, where it lives, how it fights', 'bp-t')}</p>`)
+    : lore.length ? _bpSection('lore', 'Lore', lore.map(p => `<p>${_cbEsc(p)}</p>`).join('')) : ''}
+    ${noNotes ? '' : _bpSection('notes', 'Your notes', _bpNotes(b)) + _bpSection('appears', 'Appears in', '<div class="bp-ap" data-appears></div>', false, '<span class="n"></span>')}
   </div>`;
 }
 
@@ -270,13 +269,29 @@ function bpLinesRedraw(el, b, focus) {
   document.getSelection().collapseToEnd();
 }
 
-// The notes field is the Notes window's editor, filled from the stored text after the page is drawn.
+// The notes field is the Notes window's editor, filled from the stored text after the page is drawn, and "Appears in"
+// lists the notes that mention `b`, the entry (a fight row's copy shows its entry's).
 function bpMount(page, b) {
   const f = page.querySelector('[data-notes]');
   if (!f) return;
   neInit(f);
   f.dataset.neKey = 'monster:' + b.id;
   f.value = b.notes || '';
+  page.querySelector('[data-appears]').dataset.id = b.id;
+  bpAppearsSync();
+}
+
+// The open page's "Appears in", rebuilt only when what it lists may have changed (mxBump calls it).
+function bpAppearsSync() {
+  const box = document.querySelector('#bs-page [data-appears]'), b = box && cbState.blocks[box.dataset.id];
+  if (!b) return;
+  const reading = searchReading(), sig = b.id + '|' + mxRev() + '|' + (reading ? 1 : 0);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  const rows = mxAppearsIn(mxRefOf({ tg: { kind: 'monster', id: b.id }, block: b }), 'monster:' + b.id);
+  box.closest('.bp-sec').querySelector('.bp-sec-h .n').textContent = String(rows.length);
+  box.textContent = '';
+  naFill(box, rows, reading);
 }
 
 // `noNotes` for a fight's copy with no entry behind it: the notes are an entry's, and it has none. `spent` is whose
@@ -296,12 +311,13 @@ function bpWire(el, ed) {
     mxBump();
     cbSaveSoon();
   });
-  // The notes are one field with the Notes window's: read again on focus, and the last edit wins.
+  // The notes are read again on focus: the AI assistant or a fight row's copy may have written them since.
   el.addEventListener('focusin', e => {
     const b = ed.block();
     if (b && e.target.dataset && e.target.dataset.notes !== undefined && e.target.value !== (b.notes || '')) e.target.value = b.notes || '';
   });
   el.addEventListener('click', e => {
+    if (e.target.closest('.bp-ap') && naClick(e)) return;
     const h = !e.target.closest('button, .ctr') && e.target.closest('.bp-sec-h');
     const sec = h && h.closest('[data-fold]');
     if (!sec) return;

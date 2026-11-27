@@ -1,12 +1,12 @@
 'use strict';
 // notesTreeDrag.js — the Notes tree on the shared list parts (libraryList.js): the ⋯ menu, Move to group, which row may
-// go where, and what a drop writes. Rooms, roads and monsters order and group in evermist.notesOrder (notesOrder.js),
+// go where, and what a drop writes. Rooms and roads order and group in evermist.notesOrder (notesOrder.js),
 // factions and lore nest in their own key, and a map's drop moves its card on the Campaign (notesMapDrop.js). Every
 // drop leaves one step on the tree's undo (notesTree.js).
 
 const _ndParent = n => { const p = notesTreePath(_ntRoot, n.key); return p.length > 1 ? p[p.length - 2] : null; };
 const _ndEntry = n => n.kind === 'faction' || n.kind === 'lore';
-const _ndListed = n => n.kind === 'room' || n.kind === 'road' || n.kind === 'monster';
+const _ndListed = n => n.kind === 'room' || n.kind === 'road';
 const _ndCampaign = n => n.kind === 'map' || n.kind === 'place';
 
 // The node whose children are the top of the list `n` sits in: a Notes group's own parent for one of its members.
@@ -22,7 +22,6 @@ function _ndListKey(top) { return top.kind === 'place' ? 'place:' + mxGroupUidFo
 function _ndKey(n) {
   if (n.kind === 'ngroup' || n.kind === 'map' || n.kind === 'road') return n.id;
   if (n.kind === 'place') return mxGroupUidFor(n.id);
-  if (n.kind === 'monster') { const b = cbState.blocks[n.id]; return b ? mxMonsterUid(b) : null; }
   if (n.kind === 'room') return _ndRoomKey(n);
   return null;
 }
@@ -114,7 +113,7 @@ function _ndDropEntry(a, b, zone) {
   ntRefresh();
 }
 
-// A room, road or monster: before or after a row, into a Notes group, or held on another to make one.
+// A room or road: before or after a row, into a Notes group, or held on another to make one.
 function _ndDropListed(a, b, zone) {
   const top = _ndTop(a), lk = _ndListKey(top), key = _ndKey(a), now = Date.now();
   if (!key || !lk) return;

@@ -145,15 +145,15 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/hintsCues.js` | The first-use cues: the Campaign's Open and Group, Show on TV, Effects, Music, Sounds and the fight table |
 | `notes/notesPlan.js` | Pure notes kernel: a notes string cleaned, a restored campaign note merged in, the campaign.json writer and readers. Tested |
 | `notes/notesEntriesPlan.js` | Pure rules for factions and lore: a list cleaned, an entry added, renamed, moved, ordered, deleted with its children and merged on restore. Tested |
-| `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, monsters with a note, factions and lore, the stored order applied, a node's path, which crumbs fold. Tested |
+| `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, factions and lore, the stored order applied, a node's path, which crumbs fold. Tested |
 | `notes/notesOrderPlan.js` | Pure rules for the Notes tree's own order and groups (`evermist.notesOrder`): the cleaner, a list applied with missing items skipped, the moves a drop makes, the per-list merge, an import's remap. Tested |
-| `notes/notesPanel.js` | What the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room, a monster, a faction or lore, routed to whoever holds the map |
+| `notes/notesPanel.js` | What the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room, a faction or lore, routed to whoever holds the map |
 | `notes/notesEntries.js` | Factions and lore in their own key: read, written and reported when a save fails |
 | `notes/notesOrder.js` | The Notes tree's order and groups in `evermist.notesOrder`: read, written list by list, merged from sync or an import |
 | `notes/mentionPlan.js` | Pure rules for mentions between notes: the stored form parsed and written, shown names refreshed under the cap, a note's mentions of an id, ids remapped for a transfer import, plain words for search, the group uids. Tested |
 | `notes/mentionIndex.js` | What a mention points at: whether its entry exists and its name and note, the @ picker's entries and the ids minted on a pick, the notes that mention an entry, the group uids |
 | `notes/notesEditor.js` | The notes editor: a plain-text contenteditable with mention labels, its own undo, paste, the @ picker, create-from-name, the red label's menu, the hover preview |
-| `notes/notesAppears.js` | The "Appears in" list at the end of every note in the Notes window |
+| `notes/notesAppears.js` | The "Appears in" list at the end of every note in the Notes window and of a Bestiary page; a creature row opens its page |
 | `notes/notesTree.js` | The Notes window's tree: rows, clicks, keys, menus, the undo of its drops, and New, Rename, Delete and Show on map per kind |
 | `notes/notesTreeDrag.js` | The Notes tree on the shared list parts: ⋯ and Move to group, which row may go where, what a drop writes, Notes groups' Rename and Ungroup |
 | `notes/notesMapDrop.js` | A map dropped in the Notes tree: its order, its card moved into or out of a Campaign group, two loose maps made a group |
@@ -231,10 +231,10 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/statBlockParse.js` | Pure stat block parser. Tested |
 | `combat/statBlockBook.js` | Pure: a book into stat blocks, and the clean-read gate. Tested |
 | `combat/statBlockImport.js` | The link queue and the book import |
-| `combat/bestiary.js` | The bestiary: table, filters, selection |
+| `combat/bestiary.js` | The bestiary: table, filters, selection; opens straight on a page (`bestiaryOpenOn`) |
 | `combat/spellcasting.js` | Pure: a spellcasting entry read into its lead and groups of spells by level or frequency, and the crystals' keys and counts. Tested |
 | `combat/limitedUses.js` | Pure: a limited ability's count read off its name (a day, after a rest), the legendary pool off its section's opening, and their crystals' keys. Tested |
-| `combat/bestiaryPage.js` | A bestiary monster's page; a caster's spells as rows with crystals, spent on the entry (`evermist.entrySpent`, this computer only) or the fight row (`spent`) |
+| `combat/bestiaryPage.js` | A bestiary monster's page, with Your notes and Appears in at the bottom; an NPC without stats keeps it; a caster's spells as rows with crystals, spent on the entry (`evermist.entrySpent`, this computer only) or the fight row (`spent`) |
 | `combat/bestiaryCopy.js` | A fight row's copy as a page in the Bestiary window: crumbs, the strip and Save to Bestiary, the pencil, the book to its entry; its notes are the entry's |
 | `combat/bestiaryWindow.js` | The Bestiary window's shell: open and shut, header drag, corner resize, 8px inside, the list's toggle and edge, back and forward, crumbs, `evermist.bestiaryWin` |
 | `combat/bestiaryWidths.js` | The Bestiary window's widths: wide, medium (search in the list, folded filters, icon buttons), narrow (the page alone) |

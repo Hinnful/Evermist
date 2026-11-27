@@ -157,7 +157,6 @@ describe('notesTreeBuild with an order', () => {
     scenes: [{ id: 's1', name: 'Mansion', group: '' }, { id: 's2', name: 'Inn', group: '' }],
     groups: [{ name: 'Vallaki', uid: 'gV', outline: [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 9 }] }],
     roads: [{ uid: 'r1', name: 'North' }, { uid: 'r2', name: 'South' }],
-    blocks: [{ id: 'b1', uid: 'u1', name: 'Ash', notes: 'x' }, { id: 'b2', uid: 'u2', name: 'Birch', notes: 'x' }, { id: 'b3', name: 'Cedar', notes: 'x' }],
     entries: [],
     rooms: { s1: [{ id: 4, uid: 'a', name: '' }, { id: 7, uid: 'b', name: 'Hall' }, { id: 9, uid: '', name: '' }] },
     roomLabel: n => 'Room ' + n,
@@ -170,16 +169,15 @@ describe('notesTreeBuild with an order', () => {
   } });
   const root = T.notesTreeBuild({ ...src, order });
   it('orders the Campaign, groups included, ahead of the sections', () => {
-    assert.deepEqual(root.children.map(c => c.key), ['map:s2', 'place:Vallaki', 'map:s1', 'sec:roads', 'sec:monster', 'sec:faction', 'sec:lore']);
+    assert.deepEqual(root.children.map(c => c.key), ['map:s2', 'place:Vallaki', 'map:s1', 'sec:roads', 'sec:faction', 'sec:lore']);
   });
   it('a moved unnamed room keeps the label of its place in the map\'s list', () => {
     const map = T.notesTreeFind(root, 'map:s1');
     assert.deepEqual(map.children.map(c => c.kind === 'ngroup' ? c.name + ':' + c.children.map(r => r.name).join() : c.name), ['Hall', 'Wing:Room 1', 'Room 3']);
     assert.equal(map.children[1].key, 'ng:map:s1:#w');
   });
-  it('orders roads and monsters, newcomers last', () => {
+  it('orders roads, newcomers last', () => {
     assert.deepEqual(T.notesTreeFind(root, 'sec:roads').children.map(c => c.id), ['r2', 'r1']);
-    assert.deepEqual(T.notesTreeFind(root, 'sec:monster').children.map(c => c.id), ['b2', 'b1', 'b3']);
   });
   it('builds as before with no order', () => {
     const plainRoot = T.notesTreeBuild(src);

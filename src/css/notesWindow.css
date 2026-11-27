@@ -44,10 +44,10 @@
   .nw-tw { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); border-radius: 4px; }
   .nw-tw[data-tog]:hover { color: var(--g-text); background: var(--g-pick); }
   /* The one chevron (--chev) in place of the row's own glyph, turned 90° while shut. */
-  .nw-tw > svg, .nw-lore-chev > svg { display: none; }
-  .nw-tw::before, .nw-lore-chev::before { content: ''; width: 10px; height: 10px; background: currentColor; transition: transform .12s;
+  .nw-tw > svg { display: none; }
+  .nw-tw::before { content: ''; width: 10px; height: 10px; background: currentColor; transition: transform .12s;
     -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat; }
-  .nw-tw.shut::before, .nw-lore:not([open]) .nw-lore-chev::before { transform: rotate(-90deg); }
+  .nw-tw.shut::before { transform: rotate(-90deg); }
   .nw-menu { position: fixed; }
   .nw-menu .sm-mi.why, .lib-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 2px; padding-top: 4px; padding-bottom: 4px; color: var(--g-dim); }
   .nw-why { font-size: 11px; color: var(--g-dim); }
@@ -80,20 +80,13 @@
   }
   .nw-title:hover:not(:read-only) { background: var(--g-hover); }
   .nw-title:focus:not(:read-only) { background: var(--plate-edit-bg); border-radius: var(--plate-radius); box-shadow: inset 0 0 0 1.5px var(--plate-edit-ring); }
-  .nw-title[hidden], #np-field[hidden], .nw-monster[hidden] { display: none; }
+  .nw-title[hidden], #np-field[hidden] { display: none; }
   /* The room's own name row and notes keep roomCard.css; here they sit flush in the window's padding. */
   .nw-note .dk-room { flex: none; overflow: visible; }
   .nw-note .dk-room[hidden] { display: none; }
   .nw-note .dk-rhead { padding: 0; }
   .nw-note .rp-desc { padding: 4px 0 12px; margin-top: 4px; }
   #np-field { flex: 1 1 auto; min-height: 90px; overflow-y: auto; padding: 4px 0 12px; margin: 0; }
-  .nw-monster { flex: none; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-  .nw-lore { width: 100%; color: var(--g-body); }
-  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: var(--cur-pointer); font: 600 14px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  .nw-lore summary > span:last-child { text-box: trim-both cap alphabetic; }
-  .nw-lore summary::-webkit-details-marker { display: none; }
-  .nw-lore-chev { display: flex; color: var(--g-dim); }
-  .nw-lore-body { white-space: pre-wrap; user-select: text; padding: 4px 0 0; font-size: 13px; line-height: 1.55; }
   .nw-tl::-webkit-scrollbar, .nw-note::-webkit-scrollbar, #np-field::-webkit-scrollbar { width: 8px; }
   .nw-tl::-webkit-scrollbar-thumb, .nw-note::-webkit-scrollbar-thumb, #np-field::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 4px; }
   .nw-tl::-webkit-scrollbar-thumb:hover, .nw-note::-webkit-scrollbar-thumb:hover, #np-field::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }

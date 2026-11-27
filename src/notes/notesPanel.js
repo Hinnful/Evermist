@@ -1,6 +1,6 @@
 'use strict';
 // notesPanel.js — what the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room,
-// a monster, a faction or a piece of lore. The shell is notesWindow.js, the tree notesTree.js.
+// a faction or a piece of lore. A creature's note is on its Bestiary page (bestiaryPage.js). The shell is notesWindow.js, the tree notesTree.js.
 //
 // The room's own field (#rp-desc) lives inside the window, but its logic stays in roomCard.js. What is shown is a
 // target { kind, id, scene? }: what the DM picked in the tree or a crumb (notesLevelPick), else what the selection
@@ -175,7 +175,7 @@ function _npFollow(room, scene) {
   return scene ? { kind: 'map', id: scene.key } : { kind: 'campaign' };
 }
 
-const _NP_KIND = { campaign: 'Campaign', place: 'Group', road: 'Road', map: 'Map', room: 'Room', monster: 'Monster or NPC', faction: 'Faction', lore: 'Lore' };
+const _NP_KIND = { campaign: 'Campaign', place: 'Group', road: 'Road', map: 'Map', room: 'Room', faction: 'Faction', lore: 'Lore' };
 
 // The target as the window draws it: its tree key, name, kind word and notes, or null when what it named is gone.
 // `notes` is null while a map's is being read.
@@ -188,7 +188,6 @@ function _npMeta(tg, room) {
     ? { ...base, key: 'place:' + tg.id, name: tg.id, notes: notesPlaceGet(tg.id) } : null;
   if (tg.kind === 'road') { const r = worldRoadByUid(tg.id); return r ? { ...base, key: 'road:' + tg.id, name: r.name, notes: notesRoadGet(tg.id) } : null; }
   if (tg.kind === 'map') { const s = allScenes.find(x => x.id === tg.id); return s ? { ...base, key: 'map:' + tg.id, name: s.name, notes: _npMapNotes(tg.id) } : null; }
-  if (tg.kind === 'monster') { const b = cbState.blocks[tg.id]; return b ? { ...base, key: 'monster:' + tg.id, name: b.name, notes: b.notes || '', block: b } : null; }
   if (tg.kind === 'entry') return e ? { ...base, key: 'entry:' + tg.id, name: e.name, notes: e.note } : null;
   const r = tg.own ? room : (searchRoomsOf(tg.scene) || []).find(x => x.id === tg.id);
   if (!r || !allScenes.some(x => x.id === tg.scene)) return null;
@@ -210,7 +209,6 @@ function _npCommit() {
   _npFilled = v;
   if (aim.kind === 'map') _npCommitMap(aim.id, v);
   else if (aim.kind === 'entry') notesEntrySetNote(aim.id, v);
-  else if (aim.kind === 'monster' && cbState.blocks[aim.id]) { cbState.blocks[aim.id].notes = v; cbSave(); }   // at once: a commit is often the app closing
 }
 
 // A save from elsewhere (an AI assistant edit, an undo) to the map whose stored notes the window holds.
@@ -333,13 +331,6 @@ function _npShowLevel(m) {
   _npEl('nw-kind').textContent = t(m.word);
   _npEl('rp-delete').disabled = room && !m.tg.own;
   _npEl('rp-delete').title = room && !m.tg.own ? t('Open the map to delete') : t('Delete room (Del)');
-  const mon = _npEl('nw-monster');
-  mon.hidden = m.tg.kind !== 'monster';
-  if (!mon.hidden) {
-    const lore = String(m.block.lore || '').trim();
-    _npEl('nw-lore').hidden = !lore;
-    _npEl('nw-lore-body').textContent = lore;
-  }
 }
 
 function notesPanelSync(room) {
@@ -350,6 +341,7 @@ function notesPanelSync(room) {
   const scene = worldMapOpen ? null : _npScene();
   if (worldMapOpen) room = null;
   dockRefreshRail();
+  bpAppearsSync();   // its "Reading maps…" ends with no mention changed
   const roomKey = room ? roomTabKey(room) : null;
   if (roomKey !== _npRoomKey) { _npRoomKey = roomKey; notesLevelPick = null; }
   if (_npCalibrating() || !nwIsOpen()) {
@@ -451,14 +443,6 @@ function initNotesPanel() {
   neInit(field);
   _rpWireField(field, { commit: _npCommit, enterCommits: false });
   _rpWireField(_npEl('nw-title'), { commit: _npTitleCommit, enterCommits: true, escapeReverts: true });
-  // A monster's notes are one field in two places; the Bestiary page re-reads it the same way.
-  field.addEventListener('focus', () => {
-    const b = _npAim && _npAim.kind === 'monster' ? cbState.blocks[_npAim.id] : null;
-    if (b && field.value !== (b.notes || '')) { field.value = b.notes || ''; _npFilled = field.value; }
-  });
-  _npEl('nw-stat').addEventListener('click', () => {
-    if (_npAim && _npAim.kind === 'monster') { bestiarySetOpen(true); _bsShow(_npAim.id); }
-  });
   nwInit();
   ntInit();
   naInit();

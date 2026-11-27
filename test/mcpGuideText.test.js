@@ -12,6 +12,8 @@ describe('mcpGuideText', () => {
   it('teaches the notes model: mentions, first mention, no self-link, reuse, one session at a time', () => {
     for (const w of ['@\{Name\}', 'first mention', 'inside its own note', 'Reuse before create', 'kind monster', 'one session', 'appears_in', 'read_notes_order', 'set_notes_order']) assert.match(MCP_GUIDE.notes, new RegExp(w));
     assert.match(MCP_GUIDE.claude, /Notes window/);
+    assert.match(MCP_GUIDE.notes, /monster or NPC keeps its note on its Bestiary page, not in the Notes window/);
+    assert.match(MCP_GUIDE.notes, /groups rooms and roads in Notes-only groups/);
   });
   it('teaches fight HP, copying and shrinking a map, rooms from a floor plan, and how notes are laid out', () => {
     assert.match(MCP_GUIDE.fights, /never put max HP into hp/);

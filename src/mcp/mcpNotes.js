@@ -124,8 +124,8 @@ async function _mcpOrderTarget(args) {
     return f.error ? f : { node: find('map:' + f.scene.id), where: 'the rooms of "' + f.scene.name + '"', grouping: true };
   }
   if (args.level === 'roads') { const node = find('sec:roads'); return node ? { node, where: 'the roads', grouping: true } : { error: 'There are no roads.' }; }
-  if (args.level === 'monsters') return { node: find('sec:monster'), where: 'the monsters and NPCs', grouping: true };
-  return { error: 'level must be campaign, group, map, roads or monsters.' };
+  if (args.level === 'monsters') return { error: 'The Notes window no longer lists monsters and NPCs: a creature\'s note lives on its Bestiary page. read_notes and set_notes with level monster still read and write it.' };
+  return { error: 'level must be campaign, group, map or roads.' };
 }
 
 // Each row top to bottom with the Notes group it sits in.
@@ -161,7 +161,7 @@ function _mcpOrderGroups(raw, items) {
 async function _mcpSetOrder(args) {
   const tg = await _mcpOrderTarget(args);
   if (tg.error) return _mcpNo(tg.error);
-  if (args.groups !== undefined && !tg.grouping) return _mcpNo('Notes groups are for rooms, roads and monsters. A map changes its Campaign group with move_scene.');
+  if (args.groups !== undefined && !tg.grouping) return _mcpNo('Notes groups are for rooms and roads. A map changes its Campaign group with move_scene.');
   const items = _mcpOrderRows(tg.node);
   const many = Array.isArray(args.order) && args.order.length ? mcpLibMany(items, args.order, 'row', 'read_notes_order') : { items: [] };
   if (many.error) return _mcpNo(many.error);

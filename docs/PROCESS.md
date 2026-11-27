@@ -183,7 +183,7 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
 3. **The gate**, only for a new version or a rig change: Windows, Mac and Linux each build the
    installer, and the rig drives the packaged app, no sharding: `blockers` (launch, prep, a table
    session, work kept) on Windows and Mac, `launch` alone on Linux. A run whose app never started
-   reruns once; any other failure is red. A run whose only red jobs never got a machine reruns itself after a pause, at most twice; a job that ran and failed stays red. **Every platform blocks the release.**
+   reruns once; any other failure is red. A run whose only red jobs never got a machine is rerun by the session watching CI, at most twice; a job that ran and failed stays red. **Every platform blocks the release.**
 4. **Update proofs**, only for a new version: each platform steps back to an older build and
    forward again through its Restart button.
 5. **Land.** `main` fast-forwards to the gated commit.
@@ -192,8 +192,8 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
 7. **Clean up.** The staging branch is deleted.
 
 A red step stops everything after it, so nothing public exists for a change that failed. No other
-workflow runs on a release or change push. `platformrig/**` runs the gate's three installers and
-three rig legs and ships nothing.
+workflow runs on a release or change push. `platformrig/**` runs the gate's three installers,
+three rig legs and the update proofs as one row named after the branch, and ships nothing.
 
 ## Talking with the DM
 

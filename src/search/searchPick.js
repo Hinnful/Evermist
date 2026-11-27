@@ -5,6 +5,7 @@
 // The right-hand word of the selected row.
 function searchActionWord(row) {
   const e = row.entry;
+  if (e.kind === 'monster') return t('Stat block');
   if (e.kind === 'campaign' || row.rank === SP_NOTE || e.kind === 'faction' || e.kind === 'lore') return t('Show notes');
   if (e.kind === 'map') return autoSync && !sceneOnTv(e.id) && !(currentScene && currentScene.id === e.id) ? t('Open and send') : t('Open');
   return t({ room: 'Open map', place: 'Show on Campaign', road: 'Show on Campaign', monster: 'Stat block', fight: 'Fight table', music: 'Pick track', picture: 'Open picture' }[e.kind]);
@@ -93,8 +94,7 @@ function searchPick(row) {
   else if (e.kind === 'place') _srPlace(e.id, notes);
   else if (e.kind === 'road') _srRoad(e.id, notes);
   else if (e.kind === 'campaign') _srCampaign();
-  else if (e.kind === 'monster' && notes) notesShow({ kind: 'monster', id: e.id });
-  else if (e.kind === 'monster') { bestiarySetOpen(true); _bsShow(e.id); }
+  else if (e.kind === 'monster') neOpen(e.key, { kind: 'monster', id: e.id });
   else if (e.kind === 'faction' || e.kind === 'lore') notesShow({ kind: 'entry', id: e.id });
   else if (e.kind === 'fight') { cbSetOpen(true); _cfSwitch(e.id); }
   else if (e.kind === 'music') { dockOpen('music'); musicPickTrack(e.id); }

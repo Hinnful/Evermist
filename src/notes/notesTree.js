@@ -2,7 +2,7 @@
 // notesTree.js — the Notes window's tree: its rows, clicks, keys, menus, the undo of its drops, and what New, Rename,
 // Delete and Show on map do for each kind. The tree's shape is notesTreePlan.js; its drag is notesTreeDrag.js.
 //
-// ⚠ EVERY NAME REACHES THE DOM THROUGH textContent: map, room and monster names come from imported files.
+// ⚠ EVERY NAME REACHES THE DOM THROUGH textContent: map and room names come from imported files.
 
 const NT_ICONS = {
   campaign: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/>',
@@ -10,13 +10,12 @@ const NT_ICONS = {
   map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
   room: '<rect x="4" y="4" width="16" height="16" rx="1"/>',
   road: '<path d="M5 21C8 14 9 9 7 3M19 21c-3-7-4-12-2-18"/>',
-  monster: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
   faction: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   lore: '<path d="M6 3h10l4 4v14H6z"/><path d="M9 11h8M9 15h8"/>',
   ngroup: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
 };
 // The words are whole strings so each one has its Russian entry.
-const NT_NEW = { monster: 'New monster or NPC', faction: 'New faction', lore: 'New lore' };
+const NT_NEW = { faction: 'New faction', lore: 'New lore' };
 
 let _ntRoot = null;
 let _ntOpen = new Set();
@@ -32,7 +31,6 @@ let _ntReadStarted = false;
 const _ntList = () => document.getElementById('nw-tl');
 
 function _ntInput() {
-  const mentioned = mxMentionedMonsters();
   const known = knownGroupNames(), recs = worldPlaceRecords();
   const names = known.concat(recs.map(r => r.name).filter(n => !known.includes(n)));
   const rooms = {};
@@ -41,7 +39,6 @@ function _ntInput() {
     scenes: allScenes.map(s => ({ id: s.id, name: s.name, group: sanitizeGroupName(s.group) })),
     groups: names.map(name => { const rec = worldPlaceByName(name); return { name, uid: mxGroupUidPeek(name), outline: rec ? wmOutline(rec) : [] }; }),
     roads: worldRoadRecords().map(r => ({ uid: r.uid, name: r.name })),
-    blocks: Object.values(cbState.blocks).map(b => ({ id: b.id, uid: b.uid || null, name: b.name, notes: (b.notes || '').trim() ? 'x' : '', listed: !!b.listed, mentioned: !!b.uid && mentioned.has(b.uid) })),
     entries: notesEntriesAll(), rooms, order: notesOrderAll(),
   };
 }
@@ -212,12 +209,7 @@ function ntRenameKey(key, name) {
   else if (n.kind === 'map') renameScene(n.id, v);
   else if (n.kind === 'road') worldRoadRename(n.id, v);
   else if (n.kind === 'room') notesRoomPatch(n.scene, n.id, { name: v });
-  else if (n.kind === 'monster') {
-    const b = cbState.blocks[n.id], others = Object.assign({}, cbState.blocks);
-    delete others[n.id];
-    b.name = combatUniqueName(others, v, b.source || '');
-    cbSave();
-  } else notesEntryRename(n.id, v);
+  else notesEntryRename(n.id, v);
   if (worldMapOpen) worldMapRefresh();
   _ntSig = '';
   refreshRoomPanel();
@@ -279,9 +271,6 @@ function _ntDoDelete(n) {
       sendToPane({ type: 'pane-room-select', id: n.id }, col);
       sendToPane({ type: 'pane-room-edit', op: 'delete', id: n.id }, col);
     } else { if (placeMode !== 'rooms') setPlaceMode('rooms'); selectedPolygonId = n.id; extraPickedIds = []; deleteSelectedPolygon(); }
-  } else if (n.kind === 'monster') {
-    const b = cbState.blocks[n.id];
-    if (b) { b.notes = ''; delete b.listed; cbSave(); }
   } else {
     const to = notesEntryDelete(n.id);
     return _ntAfterDelete(n, to ? { kind: 'entry', id: to } : null);
@@ -294,7 +283,6 @@ function _ntDeleteWords(n) {
   if (n.kind === 'place') return [t('Delete the group “{name}”?', v), t('The group and its notes go. Its maps stay.')];
   if (n.kind === 'road') return [t('Delete the road “{name}”?', v), t('The road and its notes go. Its maps stay where they are.')];
   if (n.kind === 'room') return [t('Delete “{name}”?', v), t('The room and its notes go from the map.')];
-  if (n.kind === 'monster') return [t('Clear the note on “{name}”?', v), t('Your note goes and it leaves this list. Its stat block stays in the Bestiary.')];
   const inside = n.children.length ? _ntLeaves(n).length - 1 : 0;
   return [t('Delete “{name}”?', v), inside ? t.plural(inside, 'It and the {n} entry inside it go, with their notes.', 'It and the {n} entries inside it go, with their notes.') : t('Its note goes with it.')];
 }
@@ -307,20 +295,13 @@ function ntDelete(n) {
   confirmDialog({ title: w[0], message: w[1], confirmLabel: 'Delete', danger: true, onConfirm: () => _ntDoDelete(n) });
 }
 
-// A new blank one of `kind` under `parent` (a section's kind or an entry id), named and ready to type.
+// A new blank one of `kind` under `parent` (a section's kind or an entry id), named and ready to type. A creature's
+// page is the Bestiary's, so a new one opens there and the Notes window stays as it is.
 function _ntMake(kind, parent) {
-  let tg;
-  if (kind === 'monster') {
-    const b = cbNewBlock(combatUniqueName(cbState.blocks, t('New monster'), ''));
-    b.listed = true;
-    cbSave();
-    tg = { kind: 'monster', id: b.id };
-  } else {
-    const e = notesEntryAdd(kind, t(kind === 'faction' ? 'New faction' : 'New lore'), parent || kind);
-    if (parent && parent !== kind) _ntOpen.add('entry:' + parent);
-    tg = { kind: 'entry', id: e.id };
-  }
-  notesLevelPick = tg;
+  if (kind === 'monster') { _bsNew(true); return; }
+  const e = notesEntryAdd(kind, t(kind === 'faction' ? 'New faction' : 'New lore'), parent || kind);
+  if (parent && parent !== kind) _ntOpen.add('entry:' + parent);
+  notesLevelPick = { kind: 'entry', id: e.id };
   _ntSig = '';
   refreshRoomPanel();
   const title = document.getElementById('nw-title');
@@ -330,7 +311,6 @@ function _ntMake(kind, parent) {
 
 function ntNewHere() {
   const n = _ntNode(_ntSel);
-  if (n && n.kind === 'monster') { _ntMake('monster'); return; }
   if (n && (n.kind === 'faction' || n.kind === 'lore')) { _ntMake(n.kind, notesEntryGet(n.id).parent); return; }
   const b = document.getElementById('nw-new').getBoundingClientRect();
   ntMenuAt(b, [{ label: 'Monster or NPC', run: () => _ntMake('monster') }, { label: 'Faction', run: () => _ntMake('faction') }, { label: 'Lore', run: () => _ntMake('lore') }]);

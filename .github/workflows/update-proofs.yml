@@ -2,13 +2,10 @@ name: Update proofs
 
 # Proves every platform updates itself: install this version, walk it back to an older build and
 # forward again through the Restart button. Each build gets a local feed baked in, since the app
-# reads its feed from inside the build. release.yml calls it; a push to any `platformrig/**` branch
-# runs it alone and ships nothing.
+# reads its feed from inside the build. release.yml and platformrig.yml call it, so it never shows as
+# a row of its own.
 on:
   workflow_call:
-  push:
-    branches:
-      - 'platformrig/**'
 
 permissions:
   contents: read

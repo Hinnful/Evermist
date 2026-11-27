@@ -4,16 +4,20 @@
 // that mention a given entry, and the group uids. The stored form and its rules are mentionPlan.js.
 //
 // A mention is blue while its entry exists and red when it does not. A monster is found by its uid and goes red
-// only when it leaves the Bestiary; clearing its note in the tree leaves it blue.
+// only when it leaves the Bestiary.
 
 const MX_GROUP_UIDS_KEY = 'evermist.groupUids';
 const MX_WORDS = { campaign: 'Campaign', group: 'Group', road: 'Road', map: 'Map', room: 'Room', monster: 'Monster or NPC', faction: 'Faction', lore: 'Lore', fight: 'Fight' };
 
 let _mxRev = 0;
-let _mxMentioned = { rev: -1, set: null };
+let _mxSoon = 0;
 
-// Something that holds a note changed: what "appears in" and the tree's mentioned monsters read is stale.
-function mxBump() { _mxRev++; }
+// Something that holds a note changed: what "appears in" reads is stale. The Bestiary page's list has no repaint of its
+// own to ride, so it is rebuilt on the next frame.
+function mxBump() {
+  _mxRev++;
+  if (!_mxSoon) _mxSoon = requestAnimationFrame(() => { _mxSoon = 0; bpAppearsSync(); });
+}
 function mxRev() { return _mxRev; }
 
 function _mxGroupNames() {
@@ -184,23 +188,22 @@ function mxRefOf(m) {
   return r && r.uid ? mpRef('room', tg.scene + ':' + r.uid) : null;
 }
 
-// The notes that mention `ref`, as { key, name, word }, the note shown (`selfKey`) left out.
+// The target a search row's note opens on, as a notes meta's `tg` reads.
+function _mxTargetOf(row) {
+  if (row.kind === 'campaign') return { kind: 'campaign' };
+  if (row.kind === 'room') return { kind: 'room', id: row.roomId, scene: row.id };
+  if (row.kind === 'faction' || row.kind === 'lore') return { kind: 'entry', id: row.id };
+  return { kind: row.kind, id: row.id };
+}
+
+// The notes that mention `ref`, as { key, name, word, where, target }, the note shown (`selfKey`) left out.
 function mxAppearsIn(ref, selfKey) {
   if (!ref) return [];
   const out = [];
   for (const row of searchEntries()) {
     if (!row.text || row.key === selfKey || !mpFindRef(row.text, ref)) continue;
     const word = row.kind === 'campaign' ? 'Campaign' : MX_WORDS[row.kind === 'place' ? 'group' : row.kind];
-    out.push({ key: row.key, name: row.kind === 'campaign' ? t('Campaign') : row.label || row.name, word, where: row.kind === 'room' ? row.where : '' });
+    out.push({ key: row.key, name: row.kind === 'campaign' ? t('Campaign') : row.label || row.name, word, where: row.kind === 'room' ? row.where : '', target: _mxTargetOf(row) });
   }
   return out;
-}
-
-// The uids of the monsters some note mentions, so the tree lists them under Monsters and NPCs.
-function mxMentionedMonsters() {
-  if (_mxMentioned.rev === _mxRev && _mxMentioned.set) return _mxMentioned.set;
-  const set = new Set();
-  for (const row of searchEntries()) for (const m of mpMentions(row.text)) if (m.kind === 'monster') set.add(m.id);
-  _mxMentioned = { rev: _mxRev, set };
-  return set;
 }
