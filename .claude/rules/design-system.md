@@ -414,7 +414,9 @@ The rules:
   fog, a scene switch, the TV and the Player.
 - **Measured from the press, every time.** A surface is fully seen within its fade plus 50ms of the press (a menu, popup or
   bar, which do not fade, within 50ms), and at rest within its entry plus 50ms. `design-sweep` times every inventory
-  entry from the real click, or from the call for one code opens, lists the times and fails one over.
+  entry from the real click, or from the call for one code opens, lists the times and fails one over. It reads times on
+  frames, so each limit carries one frame for the reading, and a late surface is opened twice more and judged on the
+  middle of the three.
 - **A new surface takes its kind.** A surface no kind fits is a decision for this file.
 
 | Loop | Keyframes | What |

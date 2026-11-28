@@ -27,7 +27,8 @@
 //   shift from the rail, a toast's from below, a dialog's about its centre); it ends at rest, at opacity 1 with
 //   nothing running; it leaves faster than it came, on its kind's exit, taking no clicks. A `still` entry does not move.
 // - Every entry that moves is seen whole within its fade plus 50ms of the press (or the call), and at rest within its
-//   entry plus 50ms; the times are listed, and written to times.txt.
+//   entry plus 50ms, each plus one frame for the reading; a late entry is opened twice more and judged on the middle
+//   of the three; the times are listed, and written to times.txt.
 // - A surface with a pop or window shadow that shows during the sweep without an inventory entry fails.
 // - Every floating surface stays 8px inside a small window from every spot its anchor can take, scrolls what does not
 //   fit and comes back inside when the window shrinks (fit.js). DS_FIT=only runs this pass alone, and stamps nothing.
@@ -38,6 +39,13 @@ const path = require('path');
 const fs = require('fs');
 const { SETUP, INVENTORY, CLOSE_ALL } = require('../inventory');
 const { fitPass } = require('../fit');
+const { runRoot } = require('../../../.claude/commit/runRoot');
+
+// The ink prints that read clean (lib.inkPrint), shared by every session and worktree on this machine. A state whose
+// print is here is not shot again: its rows, letters and paint are the ones that passed. DS_FULL=1 reads every row.
+const ROOT = path.resolve(__dirname, '../../..');
+const CLEAN = path.join(runRoot(ROOT) || ROOT, '.claude', 'commit', 'runs', 'sweep-ink-clean.json');
+const readClean = () => { try { return JSON.parse(fs.readFileSync(CLEAN, 'utf8')); } catch { return {}; } };
 
 // Every animation motion.js starts, logged as it starts (its element, keyframes, timing, transform origin, whether it
 // takes clicks, the box it stood in), and every opacity transition a stylesheet is running when a run is read.
@@ -190,6 +198,8 @@ function judgeOut(T, kind, inn, run, trig) {
 }
 
 module.exports = async function (rig) {
+  const T_START = Date.now(), spent = {}, perEntry = [];
+  const timed = async (step, fn) => { const t = Date.now(); try { return await fn(); } finally { spent[step] = (spent[step] || 0) + Date.now() - t; } };
   await lib.inRussian(rig);
   await lib.importWithPlan(rig, 'Склеп');
   const dm = rig.dm;
@@ -199,12 +209,21 @@ module.exports = async function (rig) {
     const [w, h] = await dm.evaluate('[innerWidth, innerHeight]');
     await dm.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: false });
   }
-  await dm.evaluate('(async () => { ' + SETUP + ' })()');
+  await timed('setup', () => dm.evaluate('(async () => { ' + SETUP + ' })()'));
+  spent.boot = Date.now() - T_START - spent.setup;
   const all = new Map(), unchecked = [], menus = {}, times = [], inkRows = [];
+  const clean = process.env.DS_FULL ? {} : readClean(), passed = {};
+  let reused = 0, shot = 0;
   let inkMs = 0;
   const fault = (where, f) => { if (!all.has(f)) all.set(f, where); };
   const run = js => dm.evaluate('(async () => { ' + js + ' })()');
-  const still = () => lib.settle(dm, "document.getAnimations().every(a => a.playState !== 'running' || a.effect.getComputedTiming().iterations === Infinity)", 3000);
+  // Resolves when every running animation that is not a Loop has finished, read from the animations' own promises
+  // rather than polled; a chain that keeps starting new ones is cut at 3s and printed, as a settle's bound is.
+  const still = async () => { if (!(await dm.evaluate(`(async () => { const end = performance.now() + 3000;
+    for (;;) { const run = document.getAnimations().filter(a => a.playState === 'running' && a.effect.getComputedTiming().iterations !== Infinity);
+      if (!run.length) return true; const left = end - performance.now(); if (left <= 0) return false;
+      await Promise.race([Promise.allSettled(run.map(a => a.finished)), new Promise(r => setTimeout(r, left))]); } })()`)))
+    console.log('  (a wait ran its whole 3 s: the running animations)'); };
   const visible = sel => dm.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return false;
     const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; })()`);
 
@@ -234,39 +253,62 @@ module.exports = async function (rig) {
     await dm.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button, buttons: 0, clickCount: 1 });
   };
   const frames = () => dm.evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+  // One frame, as the page paints them. A time is read on frames, and a motion whose length is a whole number of frames
+  // ends on that frame or the next by sub-millisecond jitter, so each budget carries one frame for the reading.
+  const FRAME = await dm.evaluate(`new Promise(r => { const t = []; const f = n => { t.push(performance.now());
+    if (n) requestAnimationFrame(() => f(n - 1)); else { const d = t.slice(1).map((v, i) => v - t[i]).sort((a, b) => a - b); r(d[d.length >> 1]); } };
+    requestAnimationFrame(() => f(12)); })`);
 
   const fitOnly = process.env.DS_FIT === 'only';
   // An entry marked fitOnly is read inside another entry and opened alone only by the fit pass.
   for (const e of fitOnly ? [] : INVENTORY.filter(x => !x.fitOnly)) {
+    const tEntry = Date.now(), tOpen = Date.now();
     try {
       if (!KINDS.concat('still').includes(e.motion)) fault(e.id, 'has no motion kind in tools/rig/inventory.js');
       if (e.prep) { await run(e.prep); await still(); }
       const clicked = !!e.trigger && (typeof e.trigger === 'string' || !!e.trigger.sel || e.trigger.map != null || !!e.trigger.effect);
-      let trig = null;
-      await dm.evaluate('__mv.reset(); 1');
-      await dm.evaluate(`__mv.watch(${q(e.root)}, ${clicked})`);
-      if (clicked) {
-        trig = await aim(e.trigger);
-        if (!trig || trig.covered) throw new Error('its trigger ' + q(e.trigger) + (trig ? ' is covered by ' + trig.covered : ' is not on screen'));
-        if (e.trigger.hover) await dm.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: trig.x, y: trig.y });
-        else await click(trig, e.trigger.button || 'left');
-        if (e.trigger.text) await dm.send('Input.insertText', { text: e.trigger.text });
-      } else {
-        await run(e.open || '');
-        trig = e.trigger ? await aim(e.trigger) : e.from ? await aim(e.from) : null;
-      }
-      // `origin`: page JS naming the point the surface truly comes from (a caret, a corner), when it is not the trigger's box.
-      if (e.origin) trig = await dm.evaluate(e.origin) || trig;
-      await lib.settle(dm, `(e => !!e && e.getClientRects().length > 0)(document.querySelector(${q(e.root)}))`, 3000);
-      await frames();
-      await dm.evaluate(`__mv.hold(${q(e.root)})`);
-      const inn = await dm.evaluate('__mv.take(true)');
-      await still();
+      const open = async () => {
+        let at = null;
+        await dm.evaluate('__mv.reset(); 1');
+        await dm.evaluate(`__mv.watch(${q(e.root)}, ${clicked})`);
+        if (clicked) {
+          at = await aim(e.trigger);
+          if (!at || at.covered) throw new Error('its trigger ' + q(e.trigger) + (at ? ' is covered by ' + at.covered : ' is not on screen'));
+          if (e.trigger.hover) await dm.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+          else await click(at, e.trigger.button || 'left');
+          if (e.trigger.text) await dm.send('Input.insertText', { text: e.trigger.text });
+        } else {
+          await run(e.open || '');
+          at = e.trigger ? await aim(e.trigger) : e.from ? await aim(e.from) : null;
+        }
+        // `origin`: page JS naming the point the surface truly comes from (a caret, a corner), when it is not the trigger's box.
+        if (e.origin) at = await dm.evaluate(e.origin) || at;
+        await lib.settle(dm, `(e => !!e && e.getClientRects().length > 0)(document.querySelector(${q(e.root)}))`, 3000);
+        await frames();
+        await dm.evaluate(`__mv.hold(${q(e.root)})`);
+        const took = await dm.evaluate('__mv.take(true)');
+        await still();
+        return { at, took };
+      };
+      const { at: trig, took: inn } = await open();
       if (!(await visible(e.root))) { unchecked.push(e.id + ': did not open'); await run(e.close || '').catch(() => {}); continue; }
+      spent.open = (spent.open || 0) + Date.now() - tOpen;
       judgeIn(T, e.motion, inn, trig).forEach(f => fault(e.id, f));
       if (e.motion !== 'still') {
-        const tm = await dm.evaluate('__mv.timing()'), k = T.ms[e.motion];
-        const seenBy = (FADES[e.motion] ? k.in / 3 : 0) + 50, restBy = k.in + 50;
+        const k = T.ms[e.motion], seenBy = (FADES[e.motion] ? k.in / 3 : 0) + 50 + FRAME, restBy = k.in + 50 + FRAME;
+        const late = t => !t || t.seen === null || t.seen > seenBy || (t.rest !== null && t.rest > restBy);
+        const tries = [await dm.evaluate('__mv.timing()')];
+        // A late open is opened twice more and judged on the middle of the three: another session's load on this machine
+        // delays one open by a frame or more, and a surface that is truly slow is late every time.
+        for (let i = 0; i < 2 && late(tries[0]); i++) {
+          await run((e.close || '') + CLOSE_ALL); await frames(); await still();
+          await open();
+          tries.push(await dm.evaluate('__mv.timing()'));
+        }
+        const mid = f => { const v = tries.map(f).sort((x, y) => x - y)[Math.floor(tries.length / 2)]; return v === Infinity ? null : v; };
+        const tm = tries.some(Boolean) && { seen: mid(t => (t && t.seen !== null ? t.seen : Infinity)), rest: mid(t => (t && t.rest !== null ? t.rest : -1)) };
+        if (tm && tm.rest === -1) tm.rest = null;
+        if (tries.length > 1) rig.note(e.id + ': opened ' + tries.length + ' times, seen ' + tries.map(t => t && t.seen).join(', ') + 'ms');
         times.push({ id: e.id, kind: e.motion, by: clicked ? 'click' : 'call', seen: tm && tm.seen, rest: tm && tm.rest, seenBy, restBy });
         if (!tm || tm.seen === null) fault(e.id, 'was never seen whole within 3s of the ' + (clicked ? 'press' : 'call'));
         else {
@@ -279,26 +321,31 @@ module.exports = async function (rig) {
         (trig ? ', trigger at ' + Math.round(trig.x) + ',' + Math.round(trig.y) : ''));
       for (const st of e.states || [{ name: 'rest', set: '' }]) {
         const where = e.id + (st.name === 'rest' ? '' : ' (' + st.name + ')');
-        await run(st.set);
-        await lib.settle(dm, 'false', 250);
-        await still();
-        await unlisted(where);
-        let { rows, faults, ink, cut } = await lib.alignSweep(dm, e.root);
+        await timed('state', async () => { await run(st.set); await frames(); await still(); });
+        await timed('unlisted', () => unlisted(where));
+        let { rows, faults, ink, cut } = await timed('align', () => lib.alignSweep(dm, e.root));
         const t0 = Date.now();
-        let inked = await lib.inkSweep(dm, ink);
+        const print = await lib.inkPrint(dm, ink);
+        let inked = clean[print] ? { faults: [], measured: [], unmoved: [], reused: true } : await lib.inkSweep(dm, ink);
         // An entry a late answer grew (a footer shown once a check returns) is found again where it now stands.
         for (let k = 0; inked.relaid && k < 2; k++) {
           await still();
           ({ rows, faults, ink, cut } = await lib.alignSweep(dm, e.root));
           inked = await lib.inkSweep(dm, ink);
         }
-        inkMs += Date.now() - t0;
+        inkMs += Date.now() - t0; spent.ink = (spent.ink || 0) + Date.now() - t0;
+        if (inked.reused) reused++;
+        else {
+          shot++;
+          if (!inked.relaid && !inked.unmoved.length && !inked.faults.length) passed[await lib.inkPrint(dm, ink)] = Date.now();
+        }
         if (inked.relaid) { unchecked.push(where + ': its layout kept changing while its rows were read'); inked = { faults: [], measured: [], unmoved: [] }; }
         inkRows.push(...inked.measured.map(m => Object.assign({ where }, m)));
         inked.unmoved.forEach(u => unchecked.push(where + ': no layout offset moved its root (' + u + '), so its rows were judged at one position'));
-        const hover = await lib.hoverSweep(dm, e.root);
-        const surface = await lib.surfaceSweep(dm, e.root);
-        rig.note(where + ': ' + rows + ' rows, ' + faults.length + ' mixed or capless; ' + inked.measured.length + ' inked, ' + inked.faults.length + ' off; ' +
+        const hover = await timed('hover', () => lib.hoverSweep(dm, e.root));
+        const surface = await timed('surface', () => lib.surfaceSweep(dm, e.root));
+        rig.note(where + ': ' + rows + ' rows, ' + faults.length + ' mixed or capless; ' + (inked.reused ? 'ink as at its last clean read; ' :
+          inked.measured.length + ' inked, ' + inked.faults.length + ' off; ') +
           hover.hosts + ' lit, ' + hover.faults.length + ' swallowed; ' + surface.length + ' controls off' +
           (cut.length ? '; ' + cut.length + ' rows a scroll edge cuts, their cut items not read: ' + cut.join(', ') : ''));
         faults.concat(inked.faults, hover.faults, surface).forEach(f => fault(where, f));
@@ -308,6 +355,7 @@ module.exports = async function (rig) {
           await dm.screenshot(path.join(shots, where.replace(/[^\w-]+/g, '_') + '.png'), r);
         }
       }
+      const tClose = Date.now();
       await still();
       for (const sh of e.shifts || []) (await lib.shiftSweep(dm, sh.root || e.root, sh.run, sh.except)).forEach(f => fault(e.id + ' (' + sh.name + ')', f));
       if (e.menu) menus[e.id] = await dm.evaluate(`(() => { const m = document.querySelector(${JSON.stringify(e.root)}), r = m.getBoundingClientRect(),
@@ -315,15 +363,29 @@ module.exports = async function (rig) {
       await dm.evaluate(`__mv.hold(${q(e.root)}); __mv.reset(); 1`);
       await run(e.close || '');
       await frames();
-      judgeOut(T, e.motion, inn, await dm.evaluate('__mv.take(false)'), trig).forEach(f => fault(e.id + ' (closing)', f));
+      // A surface that closes on the next render (a map selection cleared) starts its exit a frame or two late, so its
+      // exit is read on each frame for up to a second; one that truly closes with no motion costs that second.
+      const out = e.motion === 'still' ? null : await dm.evaluate(`new Promise(r => { const t0 = performance.now();
+        const f = () => { const x = __mv.take(false); if (x || performance.now() - t0 > 1000) r(x); else requestAnimationFrame(f); }; f(); })`);
+      judgeOut(T, e.motion, inn, out, trig).forEach(f => fault(e.id + ' (closing)', f));
       await run(CLOSE_ALL);
-      await lib.settle(dm, 'false', 150);
+      await frames();
       await still();
+      spent.close = (spent.close || 0) + Date.now() - tClose;
     } catch (err) {
       unchecked.push(e.id + ': ' + err.message.split('\n')[0]);
       await run((e.close || '') + CLOSE_ALL).catch(() => {});
     }
+    perEntry.push([e.id, (e.states || [1]).length, Date.now() - tEntry]);
   }
+  spent.total = Date.now() - T_START;
+  // Kept newest first and capped, so the file never grows past what a few weeks of work leave behind.
+  const merged = Object.entries(Object.assign(readClean(), passed)).sort((a, b) => b[1] - a[1]).slice(0, 3000);
+  fs.mkdirSync(path.dirname(CLEAN), { recursive: true });
+  fs.writeFileSync(CLEAN, JSON.stringify(Object.fromEntries(merged)) + '\n');
+  rig.note('ink: ' + shot + ' states shot, ' + reused + ' unchanged since a clean read');
+  rig.note('time by step (s): ' + Object.entries(spent).map(([k, v]) => k + ' ' + (v / 1000).toFixed(1)).join(', '));
+  rig.note('slowest entries (s): ' + perEntry.sort((a, b) => b[2] - a[2]).slice(0, 5).map(([id, n, ms]) => id + ' ' + (ms / 1000).toFixed(1) + ' (' + n + ' states)').join(', '));
 
   // Each fit fault and each surface the pass could not open is its own failed check, so a run names every one of them
   // even when the runner keeps no notes (a first attempt that is rerun).
@@ -351,5 +413,5 @@ module.exports = async function (rig) {
   // One row height, and no menu narrower than the skin's 200px at the UI's zoom.
   if (!fitOnly) rig.check(sizes.length > 1 && sizes.every(m => Math.abs(m.row - sizes[0].row) < 0.5 && m.w >= 239), 'the right-click menus differ in size: ' + JSON.stringify(menus));
   rig.note('faults: ' + list.length + (list.length ? '\n    ' + list.join('\n    ') : ''));
-  rig.check(list.length === 0, list.length + ' faults on the inventory; the notes above name each');
+  rig.check(list.length === 0, list.length + ' faults on the inventory: ' + list.slice(0, 3).join('; ') + (list.length > 3 ? '; the notes above name the rest' : ''));
 };

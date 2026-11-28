@@ -75,7 +75,8 @@ rig runs or commits. Studies follow the `research` skill; UI options and new UI,
 - **While building, the rig is a probe, never a gate**, so variants come fast. The release gate runs the
   blocker set on three platforms. The DM may ask for `blockers` at low priority.
 - **`/commit` runs the design sweep once, on a release that changes the app**, and ship.js refuses one whose app
-  files changed since the last clean sweep. Never during iterations, never in CI. An audit walks `tools/rig/inventory.js`, never
+  files changed since the last clean sweep. Never during iterations, never in CI. It opens every screen and shoots
+  only the states drawn differently from a clean read; every fault it finds is fixed in that release. An audit walks `tools/rig/inventory.js`, never
   a sample; its close-ups go to a fresh reviewer with only `design-system.md`; its report opens with what it did
   not check; a finding the DM makes afterwards gets a line in `docs/decisions/audit-misses.md`.
 - **Never ask the DM to hand-verify, run a build, or open Chrome.** Look, feel and speed are the DM's;

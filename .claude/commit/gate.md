@@ -24,6 +24,8 @@ npm run rig -- --dm-size 1280x1500 design-sweep
 
 A clean run stamps the app's files; `ship.js` refuses a release whose files changed since. A fault is fixed
 before the notes, and the sweep runs again. It runs here and nowhere else: never during iterations, never in CI.
+Every screen opens in every state on every run, but a state whose rows, letters and paint match a clean read on this
+machine is not shot again, so a run after a fix shoots only what changed. Every fault it finds is fixed in this release.
 
 **No other rig run is part of this step.** The release gate runs its blocker set on every platform, so a
 local run answers nothing the gate will not. It stays a probe for a question code cannot answer:

@@ -159,6 +159,12 @@ and every hover with `lib.hoverSweep`. **The ink is judged on the mean of readin
 by fractions of a pixel by layout, never one reading**: Chromium snaps a text's baseline and an svg's top to whole
 pixels apart, so one reading of a row flips with where its window lands.
 
+**A state whose ink print read clean before is not shot again** (`lib.inkPrint`): the print hashes the rows
+alignSweep found, each item's letters, box and paint, and the ink reader's own code, and the clean prints sit in the
+main checkout's `.claude/commit/runs/sweep-ink-clean.json`, shared by every worktree. Everything else runs on every
+state every time; `DS_FULL=1` shoots every row. A paint property the reader depends on joins `PAINT` in `lib.js`, or a
+change to it alone would reuse a stale pass.
+
 **A build's scenario is run once and then deleted, data guards included.** Only `blockers/`, `design-sweep`
 and `record.js` (the recording tool's) stay; a kept scenario breaks on the next interface change and nobody runs it.
 

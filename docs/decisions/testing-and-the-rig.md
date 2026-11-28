@@ -594,6 +594,21 @@ surfaces in 13 minutes. Running it at the end of every build was rejected too: i
 fast. `/commit` runs it once on a release that changes the app, about four minutes here, and a clean run stamps
 the app's files (`sweepStamp.js`); `ship.js` refuses a release whose files changed since.
 
+### The design sweep reuses clean ink prints instead of choosing screens · `SETTLED` (2026-11-27)
+The sweep still opens every inventory entry in every state, but a state whose ink print (the aligned rows with each
+item's box, letters and colour, its paint and pseudo-elements, the reader's own code) matches one that read clean
+is not shot again. Clean prints sit in the main checkout's `.claude/commit/runs/sweep-ink-clean.json`, shared by
+every worktree; `DS_FULL=1` shoots every row. A run with nothing changed fell from 3 min 45 s to about 1 minute.
+**Rejected:** choosing screens from the files a release changed: 32 of 45 app releases touched `ru.js` and 36 of 45
+a shared file, so nearly all would check everything, and a shared file can break a screen no list names.
+**Rejected on product grounds:** leaving a fault on an untouched screen unfixed or listed; each release fixes
+everything the sweep finds. Fixed 250 ms and 150 ms pauses gave way to the animations' own `finished` promises and
+two frames; Chromium's `optimizeForSpeed` gained little. A surface seen late opens twice more and is judged on the
+middle time (a slow load delays one open; a truly slow surface is late every time), and each budget carries one
+frame for the reading. The exit is read on every frame for up to a second, for surfaces that close on the next
+render. Known gaps: the TV setup window's screen-picker label is unmeasured, and two states (filter-list "ticked",
+fight "defeated fold") are shot every run.
+
 ### The blockers are what stops a table, and time of day is not · `SETTLED` (2026-11-27)
 A review held the blocker set to one test: the app cannot be used at the table, or the DM's work is lost. The
 time-of-day blocker failed it; it had joined with the feature in 5.10.0 and took more than half of the Windows

@@ -1,6 +1,9 @@
 'use strict';
 
 const ink = require('./ink');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { user } = require('./user');
 
 // lib.js — the one page-side helper set, and the blockers' shared setup, that every
@@ -513,7 +516,7 @@ async function inkSweep(session, rows) {
         const clip = { x: Math.max(0, Math.floor(b.x0) - 2), y: Math.max(0, Math.floor(b.y0) - 3) };
         clip.width = Math.min(vw, Math.ceil(b.x1) + 2) - clip.x; clip.height = Math.min(vh, Math.ceil(b.y1) + 4) - clip.y;
         if (clip.width < 1 || clip.height < 1) continue;
-        const shot = await session.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, clip: { ...clip, scale } }, 60000);
+        const shot = await session.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true, captureBeyondViewport: false, clip: { ...clip, scale } }, 60000);
         const img = ink.decodePng(Buffer.from(shot.data, 'base64'));
         for (const row of b.rows) got.push([row, ink.measureRow(img, clip, row, sh.items[row.k])]);
       }
@@ -540,7 +543,7 @@ async function inkSweep(session, rows) {
     }
   } finally {
     await session.evaluate('__rigInkShift(null), 1');
-    await session.evaluate(`(() => { for (const e of document.querySelectorAll('[data-rig-ink-opacity]')) { e.style.opacity = e.dataset.rigInkOpacity; delete e.dataset.rigInkOpacity; } return 1; })()`);
+    await session.evaluate(`(() => { for (const e of document.querySelectorAll('[data-rig-ink-opacity]')) { e.style.opacity = e.dataset.rigInkOpacity; delete e.dataset.rigInkOpacity; if (!e.getAttribute('style')) e.removeAttribute('style'); } return 1; })()`);
   }
   const faults = [], measured = [];
   for (const row of rows) {
@@ -550,6 +553,23 @@ async function inkSweep(session, rows) {
     if (m.fault) faults.push(m.fault);
   }
   return { faults, measured, unmoved };
+}
+
+// Everything inkSweep's verdict rests on, as one hash: the rows alignSweep found (each item's box, letters and colour),
+// the paint of each item and its ::before and ::after, and the code that reads the ink. An equal print reads the same
+// ink, so design-sweep skips a print that read clean before. Call it right after alignSweep.
+const PAINT = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'font-feature-settings', 'font-variation-settings',
+  'letter-spacing', 'color', 'background-color', 'background-image', 'border-top', 'border-right', 'border-bottom', 'border-left',
+  'border-radius', 'box-shadow', 'outline', 'mask-image', '-webkit-mask-image', 'mask-size', 'mask-position', 'opacity', 'transform',
+  'filter', 'text-shadow', 'text-decoration', 'text-box-trim', 'text-box-edge', 'fill', 'stroke', 'stroke-width', 'content', 'visibility'];
+const READER = ['ink.js', 'lib.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\0');
+async function inkPrint(session, rows) {
+  const paint = await session.evaluate(`(() => { const P = ${JSON.stringify(PAINT)};
+    // A blob: address is new on every run for the same picture; the picture's box is in the rows already.
+    const css = (e, p) => { const s = getComputedStyle(e, p); return P.map((k) => s.getPropertyValue(k)).join('|').replace(/blob:[^")]+/g, 'blob'); };
+    const svg = (e) => { const g = e.closest('svg') || e.querySelector('svg'); return g ? g.outerHTML.replace(/\\s(id|data-[\\w-]+)="[^"]*"/g, '') : ''; };
+    return __rigInkEls.map((els) => els.map(([e]) => [css(e), css(e, '::before'), css(e, '::after'), svg(e)].join('#'))); })()`);
+  return crypto.createHash('sha256').update(READER).update(JSON.stringify(rows.map((r) => r.items))).update(JSON.stringify(paint)).digest('hex');
 }
 
 // The hover rule: a plate inside something the pointer lights stands off the surface it lies on at least as well
@@ -877,4 +897,4 @@ function wav(seconds, tone) {
   return buf;
 }
 
-module.exports = { DM_MAP, wav, alignSweep, inkSweep, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults, openPane, closePane };
+module.exports = { DM_MAP, wav, alignSweep, inkSweep, inkPrint, hoverSweep, surfaceSweep, shiftSweep, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults, openPane, closePane };
