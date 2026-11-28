@@ -174,10 +174,7 @@ function _wmMenuShow(rows, e) {
   menu.addEventListener('mousedown', ev => ev.stopPropagation());
   menu.addEventListener('contextmenu', ev => ev.preventDefault());
   document.body.appendChild(menu);
-  // The menu wears the UI zoom, so a screen point is divided by it.
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2, r = menu.getBoundingClientRect(), w = r.width, h = r.height;
-  menu.style.left = Math.max(4, Math.min(e.clientX, innerWidth - w - 4)) / z + 'px';
-  menu.style.top = Math.max(4, Math.min(e.clientY, innerHeight - h - 4)) / z + 'px';
+  placeSurface(menu, { x: e.clientX, y: e.clientY }, { side: 'below' });
   _wmMenu = menu;
   motionShow(menu, 'menu', { from: { x: e.clientX, y: e.clientY } });
 }

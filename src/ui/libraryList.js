@@ -131,13 +131,6 @@ function _llMenuEl(rows, extra) {
   return menu;
 }
 
-// The menu wears the UI zoom, so a screen point is divided by it.
-function _llPlace(menu, x, y, left) {
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2, r = menu.getBoundingClientRect(), w = r.width, h = r.height;
-  menu.style.left = Math.max(4, Math.min(left ? x - w : x, innerWidth - w - 4)) / z + 'px';
-  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) / z + 'px';
-}
-
 // Move to group's list opens to the left, toward the map, as every pop-out of the dock does.
 function _llSub(row, rows) {
   const old = _llMenu && _llMenu.querySelector('.lib-sub');
@@ -145,7 +138,7 @@ function _llSub(row, rows) {
   const sub = _llMenuEl(rows, ' lib-sub');
   _llMenu.appendChild(sub);
   const r = row.getBoundingClientRect();
-  _llPlace(sub, r.left - 2, r.top - 5, true);
+  placeSurface(sub, { x: r.left - 2, y: r.top - 5 }, { side: 'left' });
   motionShow(sub, 'menu', { from: row });
 }
 
@@ -156,8 +149,7 @@ function libMenuAt(btn, rows) {
   document.body.appendChild(menu);
   _llMenu = menu;
   btn.classList.add('lit');
-  const r = btn.getBoundingClientRect();
-  _llPlace(menu, r.right, r.bottom + 2, true);
+  placeSurface(menu, btn, { side: 'below', gap: 2, align: 'end' });
   motionShow(menu, 'menu', { from: btn });
 }
 
@@ -168,7 +160,7 @@ function libMenuAtPoint(x, y, rows) {
   const menu = _llMenuEl(rows);
   document.body.appendChild(menu);
   _llMenu = menu;
-  _llPlace(menu, x, y, false);
+  placeSurface(menu, { x, y }, { side: 'below' });
   motionShow(menu, 'menu', { from: { x, y } });
 }
 

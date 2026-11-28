@@ -42,13 +42,15 @@ function _nwLoad() {
 function nwAppearsShut() { return _nwGeo.appearsShut; }
 function nwSetAppearsShut(shut) { _nwGeo.appearsShut = !!shut; _nwSave(); }
 
-// Kept on screen: its header always reachable, whatever size the window was last.
+// 8px inside the app window, moved and resized alike, as the Bestiary: its size first, then its place, so the header
+// and the resize corner stay on screen; the max size keeps the native corner drag inside too.
 function _nwPlace() {
   const w = _nwEl(), z = _nwZoom();
-  const r = w.getBoundingClientRect(), ww = r.width / z, hh = r.height / z;
   const left = parseFloat(w.style.left), top = parseFloat(w.style.top);
-  w.style.left = Math.max(8, Math.min(dockFreeRight() / z - ww - 8, Number.isFinite(left) ? left : 90)) + 'px';
-  w.style.top = Math.max(8, Math.min(innerHeight / z - Math.min(hh, 120), Number.isFinite(top) ? top : 40)) + 'px';
+  const f = placeWindowFit({ left: Number.isFinite(left) ? left : 90, top: Number.isFinite(top) ? top : 40, width: w.offsetWidth, height: w.offsetHeight },
+    { left: 0, top: 0, right: dockFreeRight() / z, bottom: innerHeight / z }, { minWidth: 300, minHeight: 220 });
+  Object.assign(w.style, { left: f.left + 'px', top: f.top + 'px', width: f.width + 'px', height: f.height + 'px',
+    maxWidth: f.maxWidth + 'px', maxHeight: f.maxHeight + 'px' });
 }
 
 function _nwApplyTree() {
@@ -253,6 +255,7 @@ function nwInit() {
   document.getElementById('nw-fwd').addEventListener('click', () => _nwStep(1));
   document.getElementById('nw-x').addEventListener('click', nwHide);
   window.addEventListener('keydown', _nwEscape, true);
+  window.addEventListener('resize', () => { if (_nwOpen) _nwPlace(); });
   new ResizeObserver(() => {
     if (!_nwOpen) return;
     w.style.width = w.offsetWidth + 'px';

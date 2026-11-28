@@ -14,7 +14,7 @@
   #sr-bar { flex: none; height: 2px; margin-top: -1px; position: relative; overflow: hidden; }
   #sr-bar.load::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--b-icon); animation: srSlide 1.1s ease-in-out infinite; }
   @keyframes srSlide { from { left: -35%; } to { left: 100%; } }
-  #sr-list { max-height: 400px; overflow-y: auto; padding: 4px; min-width: 0; }
+  #sr-list { max-height: min(400px, calc(100vh / var(--ui-zoom, 1.2) - 200px)); overflow-y: auto; padding: 4px; min-width: 0; }
   #sr-list:empty { display: none; }
 
   /* The divider between groups is the menus' rule: full width, 1px, --g-line. */

@@ -125,14 +125,15 @@
   /* ===== TV SETUP (tvControl.js): an .sm-win at the question width, centred over the map ===== */
   .tvs { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
   .tvs-shade { position: absolute; inset: 0; background: var(--veil); }
-  .tvs .sm-wbody { overflow: visible; display: flex; flex-direction: column; padding: 14px 16px 16px; }
+  .tvs .sm-wbody { overflow-y: auto; display: flex; flex-direction: column; padding: 14px 16px 16px; }
   .tvs .sm-sub { margin: 16px 0 4px; }
   .tvs .sm-sub:first-child { margin-top: 0; }
   .tvs .tv-ic { display: inline-flex; flex: none; }
   .tvs .sm-hbtn.dd { width: 100%; padding: 0 9px; }
   .tvs .sm-hbtn.dd .sm-dim { font-weight: 400; }
   .tvs .ddw { position: relative; }
-  .tvs #tb-dd { position: absolute; zoom: 1; left: 0; right: 0; top: calc(100% + 4px); min-width: 0; }
+  /* Fixed, so a short window's scrolling body does not clip it; tvControl.js gives it the button's width and its place. */
+  .tvs #tb-dd { position: fixed; zoom: 1; min-width: 0; }
   /* Turn: the TV three ways, as the seat sees it. */
   .tv-turn { display: flex; justify-content: center; gap: 8px; }
   .tv-turn button { position: relative; flex: none; width: 102px; height: 57px; padding: 0; border: 0; border-radius: 6px; overflow: hidden;

@@ -354,11 +354,8 @@ function ntMenuAt(at, rows) {
   menu.addEventListener('keydown', e => e.stopPropagation());
   document.body.appendChild(menu);
   menu.style.zIndex = 400;
-  // The menu wears the UI zoom, so a screen point is divided by it.
-  const z = _nwZoom(), r = menu.getBoundingClientRect(), w = r.width, h = r.height;
-  const x = at.left !== undefined ? at.left : at.x, y = at.bottom !== undefined ? at.bottom + 2 : at.y;
-  menu.style.left = Math.max(4, Math.min(x, innerWidth - w - 4)) / z + 'px';
-  menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) / z + 'px';
+  // Under a row's box, or at a point.
+  placeSurface(menu, at, { side: 'below', gap: at.bottom !== undefined ? 2 : 0 });
   _ntMenu = menu;
   motionShow(menu, 'menu', { from: at });
 }

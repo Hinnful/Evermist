@@ -110,10 +110,10 @@ function toggleMaterialPalette(host, on, noLight) {
   const find = pal.querySelector('#mat-find');
   find.value = '';
   _renderPalette();
-  // Kept off the dock: a palette that would run under the open pane moves left by the overlap.
-  pal.style.left = '';
-  const r = pal.getBoundingClientRect(), edge = innerWidth - dockMapInset() - 8;
-  if (r.right > edge) pal.style.left = -(r.right - edge) / (r.width / pal.offsetWidth) + 'px';
+  // Above its field's row, below it when there is no room, kept off the open pane and clear of the bars at the bottom,
+  // which stand over it.
+  placeSurface(pal, to, { side: 'above', gap: 10 * (pal.currentCSSZoom || 1),
+    view: () => ({ left: 0, top: 0, right: innerWidth - dockMapInset(), bottom: placeFloor() }) });
   motionShow(pal, 'menu', { from: to.querySelector('#fxp-mat, #mat-pick') });
   find.focus();
 }

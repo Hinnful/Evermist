@@ -158,7 +158,7 @@
   :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-in, :is(#fx-sizes, #fxp-size) .sz-field.hand .sz-unit { display: none; }
   :is(#fx-sizes, #fxp-size) .sz-field:not(.hand) .sz-handv { display: none; }
   /* The material palette wears the menu skin (.sm-menu): its pick carries the check, the row under the pointer the tint. */
-  #mat-pal { position: absolute; left: 0; bottom: calc(100% + 10px); width: max-content; min-width: 320px; padding: 4px; border-radius: 8px; background: var(--g-bg);
+  #mat-pal { position: absolute; left: 0; top: 0; width: max-content; min-width: 320px; padding: 4px; border-radius: 8px; background: var(--g-bg);
     border: 1px solid var(--g-line); box-shadow: var(--pop-shadow); z-index: 5; }
   #mat-pal[hidden] { display: none; }
   #mat-find { width: 100%; box-sizing: border-box; height: 28px; padding: 0 9px; border: 0; border-radius: 6px; background: var(--g-field); color: var(--g-text);
@@ -371,6 +371,7 @@
   .dd-it .ky { margin-left: 24px; color: var(--g-dim); font-weight: 400; }
   .dd-it:hover:not(.off) { background: var(--b-tint); color: var(--b-icon); }
   .dd-it:hover:not(.off) .ky { color: var(--b-icon); }
+  #tb-dd > * { flex: none; }
   #tb-dd.nock .ck { display: none; }
   #tb-dd.nock .dd-it { padding-left: 10px; }
   .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }

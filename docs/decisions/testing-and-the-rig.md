@@ -602,3 +602,6 @@ it), and the grid surviving a restart; a reveal held off the TV in Manual until 
 back; and two maps on the TV, each with its own fog. Each joined the walk-through of a session rather than a new
 scenario, since every scenario boots the app again. Sync through Drive stays outside: it needs two apps and a fake
 Drive, and runs as a probe when sync changes.
+
+### The fit pass lives in the design sweep, not in CI · `SETTLED` (2026-11-27)
+`design-sweep` gained a fit pass (`tools/rig/fit.js`) that opens every inventory entry in a 1024x640 window, with movable anchors at nine spots, and fails a surface within 8px of or past a window edge, a control off screen or covered with no scroll to reach it, a surface that does not return inside after the window shrinks to 820x440, and (with a `DS_FIT_BASE` file) a surface opened mid-window that moved from where it stood before. Old code: 133 faults; new: 0. It stays out of the CI blocker set to keep CI time down; `DS_FIT=only` runs it alone and does not stamp the sweep. **Rig traps:** `run.js` drops a failed first attempt's `rig.note` lines on rerun, so a detail rides in the failed check's message; on Linux Wayland TV setup offers no screen list, so a real click cannot reach it.

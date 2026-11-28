@@ -87,9 +87,7 @@ function _cbSuggestOpen(input, items, at, pick) {
     el.querySelectorAll('[data-i]').forEach((x, i) => x.classList.toggle('on', i === _cbSug.at));
   });
   document.body.appendChild(el);
-  const z = cbZoom(), r = input.getBoundingClientRect();
-  el.style.left = (r.left / z) + 'px';
-  el.style.top = ((r.bottom + 4) / z) + 'px';
+  placeSurface(el, input, { side: 'below', gap: 4 });
   _cbSug = { items, at, el, pick };
 }
 

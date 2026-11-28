@@ -148,7 +148,7 @@ function refreshEffectPopup() {
   const left = Math.max(mg, Math.min(innerWidth - dockMapInset() - box.width - mg, (l + r) / 2 - box.width / 2));
   let y = top - box.height - mg;
   if (y < mg) y = bottom + mg;
-  y = Math.max(mg, Math.min(innerHeight - box.height - mg, y));
+  y = Math.max(mg, Math.min(placeFloor() - box.height - mg, y));
   const st = _rpScreenToStyle(el, left, y);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';

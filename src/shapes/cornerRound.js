@@ -189,8 +189,11 @@ function _cornerPlaceField(poly) {
   const el = document.getElementById('corner-field'), box = el.getBoundingClientRect();
   const away = { x: p.x >= q.x ? 1 : -1, y: p.y >= q.y ? 1 : -1 };
   _cornerFieldAt = p;
-  const st = _rpScreenToStyle(el, p.x + away.x * 10 - (away.x < 0 ? box.width : 0),
-                                  p.y + away.y * 10 - (away.y < 0 ? box.height : 0));
+  // Each axis flips on its own when the far side would leave the window.
+  const at = { left: p.x, top: p.y, right: p.x, bottom: p.y }, size = { width: box.width, height: box.height };
+  const view = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+  const st = _rpScreenToStyle(el, placePlan(at, size, view, { side: away.x > 0 ? 'right' : 'left', gap: 10 }).left,
+                                  placePlan(at, size, view, { side: away.y > 0 ? 'below' : 'above', gap: 10 }).top);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';
 }

@@ -79,7 +79,7 @@ function refreshRoomSwitcher() {
   const left = Math.max(m, Math.min(innerWidth - dockMapInset() - box.width - m, (l + r) / 2 - box.width / 2));
   let y = top - box.height - m;
   if (y < m) y = bottom + m;
-  y = Math.max(m, Math.min(innerHeight - box.height - m, y));
+  y = Math.max(m, Math.min(placeFloor() - box.height - m, y));
   const st = _rpScreenToStyle(el, left, y);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';

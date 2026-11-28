@@ -39,10 +39,13 @@ function worldMapOpenBarPlace() {
                !document.body.classList.contains('searching');
   _wmBar.classList.toggle('on', show);
   if (!show) return;
-  const r = card.getBoundingClientRect(), w = _wm.getBoundingClientRect();
-  const z = parseFloat(getComputedStyle(_wmBar).zoom) || 1;
-  _wmBar.style.left = (r.left + r.width / 2 - w.left) / z + 'px';
-  _wmBar.style.top = Math.max(_wmBar.offsetHeight + 6, (r.top - w.top - 10) / z) + 'px';
+  const r = card.getBoundingClientRect(), w = _wm.getBoundingClientRect(), b = _wmBar.getBoundingClientRect();
+  const z = parseFloat(getComputedStyle(_wmBar).zoom) || 1, cx = r.left + r.width / 2;
+  // Centred over the card, slid along the edge to stay 8px inside what the rail leaves visible; it never drops under the card.
+  const p = placePlan({ left: cx, top: r.top, right: cx, bottom: r.top }, { width: b.width, height: b.height },
+    { left: w.left, top: w.top, right: Math.min(w.right, dockFreeRight()), bottom: w.bottom }, { side: 'above', gap: 10, align: 'center' });
+  _wmBar.style.left = (p.left + b.width / 2 - w.left) / z + 'px';
+  _wmBar.style.top = Math.max(_wmBar.offsetHeight + 8 / z, (r.top - w.top - 10) / z) + 'px';
 }
 
 // The things laid over the layer that follow what it shows: the bar over the picked map. They

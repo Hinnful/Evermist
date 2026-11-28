@@ -101,13 +101,13 @@ function _cfDelete(f) {
 
 function _cfToggle() {
   if (_cfMenu) { cbCloseFights(); return; }
-  const head = document.querySelector('#cb-fight .cb-head'), z = cbZoom(), r = head.getBoundingClientRect();
+  const head = document.querySelector('#cb-fight .cb-head'), z = cbZoom();
   _cfMenu = document.createElement('div');
   _cfMenu.id = 'cf-menu';
   document.body.appendChild(_cfMenu);
   _cfDraw();
-  _cfMenu.style.left = (r.left / z + 6) + 'px';
-  _cfMenu.style.top = (r.bottom / z + 2) + 'px';
+  placeSurface(_cfMenu, () => { const r = head.getBoundingClientRect(); return { left: r.left + 6 * z, top: r.top, right: r.right, bottom: r.bottom }; },
+    { side: 'below', gap: 2 * z });
   document.getElementById('cb-fightpick').classList.add('open');
   motionShow(_cfMenu, 'menu', { from: document.getElementById('cb-fightpick') });
   _cfMenu.addEventListener('mousedown', e => e.stopPropagation());

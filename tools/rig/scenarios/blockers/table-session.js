@@ -482,10 +482,16 @@ module.exports = async function tableSession(rig) {
   const updates = async manual => {
     if (await dm.evaluate('autoSync') === !manual) return;
     await u.click({ sel: '#tv-ui .tv-ov', text: 'Настройка ТВ' });
-    await u.click({ sel: '#tv-setup .cp-segtab', text: manual ? 'Вручную' : 'Сразу' });
+    const tab = manual ? 'Вручную' : 'Сразу';
+    await u.click({ sel: '#tv-setup .cp-segtab', text: tab });
+    // What stood under the tab right after the click, so a red names why the click did nothing.
+    const seen = await dm.evaluate(`(() => { const t = [...document.querySelectorAll('#tv-setup .cp-segtab')].filter(e => e.textContent.trim() === ${JSON.stringify(tab)});
+      const e = t[t.length - 1]; if (!e) return 'no tab'; const r = e.getBoundingClientRect(), h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return (e.classList.contains('active') ? 'tab picked' : 'tab not picked') + ', ' + t.length + ' tab(s), under it ' + (h ? h.tagName + '.' + h.className : 'nothing') +
+        ', setup windows ' + document.querySelectorAll('#tv-setup .sm-win').length + ', autoSync ' + autoSync; })()`);
     await u.press('Escape');
     await lib.settle(dm, 'autoSync === ' + !manual, 5000);
-    rig.check(await dm.evaluate('autoSync') === !manual, 'TV setup did not switch Updates to ' + (manual ? 'Manual' : 'Auto'));
+    rig.check(await dm.evaluate('autoSync') === !manual, 'TV setup did not switch Updates to ' + (manual ? 'Manual' : 'Auto') + ' (' + seen + ')');
   };
   await lib.step(rig, '13: Manual, then Send', async () => {
     const r = rooms[0];

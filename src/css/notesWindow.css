@@ -105,7 +105,7 @@
     border-radius: 8px; box-shadow: var(--pop-shadow); font: 400 12px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--g-text); user-select: none;
   }
   .ne-pop { padding: 4px; min-width: 200px; max-width: 320px; }
-  .ne-pop > div { min-height: 28px; padding: 6px 10px 6px 6px; border-radius: 6px; cursor: var(--cur-pointer); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ne-pop > div { min-height: 28px; padding: 6px 10px 6px 6px; border-radius: 6px; cursor: var(--cur-pointer); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .ne-pop > div.on, .ne-pop > div:hover { background: var(--b-tint); color: var(--b-icon); }
   .ne-pop > div.on small, .ne-pop > div:hover small { color: var(--b-icon); opacity: .75; }
   .ne-pop small { color: var(--g-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

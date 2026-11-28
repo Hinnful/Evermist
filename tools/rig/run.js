@@ -1139,7 +1139,7 @@ async function main() {
   if (fails.length) console.log('FAIL ' + fails.join('; '));
   else console.log('PASS — ' + tally.checked + ' checks');
   // A clean design sweep leaves its stamp for ship.js, which refuses a release whose app changed since.
-  if (!fails.length && files.some(f => path.basename(f) === 'design-sweep.js') && !args.exe) {
+  if (!fails.length && files.some(f => path.basename(f) === 'design-sweep.js') && !args.exe && process.env.DS_FIT !== 'only') {
     const { appHash } = require('../../.claude/commit/sweepStamp');
     const { runRoot } = require('../../.claude/commit/runRoot');
     const run = path.join(runRoot(ROOT) || ROOT, '.claude', 'commit', 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local');

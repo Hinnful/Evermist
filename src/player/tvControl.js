@@ -395,8 +395,7 @@ function _tvSetupRender() {
   trigger.setAttribute('data-tv-screen', '');
   ddw.append(trigger);
   if (_tvSetupDd) {
-    const list = _tvMake('div');
-    list.id = 'tb-dd';
+    const list = Object.assign(_tvMake('div'), { id: 'tb-dd' });
     const item = (on, nm, mt, go) => {
       list.append(_tvBtn('dd-it', '', [_tvText('ck', on ? '✓' : ''), nm, _tvText('ky', mt)], () => {
         _tvSetupDd = false;
@@ -448,6 +447,8 @@ function _tvSetupRender() {
   // A rebuild swaps the parts and keeps the window itself, so a window still flying in keeps flying.
   const old = veil.querySelector('.sm-win');
   if (old) old.replaceChildren(...win.childNodes); else veil.append(win);
+  const dd = veil.querySelector('.ddw #tb-dd'), btn = dd && veil.querySelector('[data-tv-screen]');
+  if (dd) { dd.style.width = btn.offsetWidth + 'px'; placeSurface(dd, btn, { side: 'below', gap: 4 * (dd.currentCSSZoom || 1) }); }
 }
 
 // ─── The picture's controls ──────────────────────────────────────────────────

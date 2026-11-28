@@ -152,15 +152,11 @@ function dockClosePop() {
   _dockPopEl = _dockPopFrom = null;
 }
 
-// Its right edge 8px off the dock, its top level with `row`, kept inside the window.
+// Its right edge 8px off the dock, its top level with `row`, kept inside the window and scrolling when taller than it.
 function dockPlacePop(el, row) {
   const dock = _dockEl();
   if (!dock || !row) return;
-  const r = el.getBoundingClientRect(), d = dock.getBoundingClientRect(), a = row.getBoundingClientRect();
-  const top = Math.max(8, Math.min(window.innerHeight - r.height - 8, a.top));
-  const st = _rpScreenToStyle(el, d.left - 8 - r.width, top);
-  el.style.left = st.left + 'px';
-  el.style.top = st.top + 'px';
+  placeSurface(el, () => ({ x: dock.getBoundingClientRect().left - 8, y: row.getBoundingClientRect().top }), { side: 'left' });
 }
 
 // ─── Calibration ──────────────────────────────────────────────────────────────

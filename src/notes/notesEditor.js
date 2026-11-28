@@ -14,8 +14,6 @@ let _nePick = null;       // the open picker: { el, node, start, end, items, at,
 let _neTip = null;
 let _neTipTimer = 0;
 
-function _neZoom() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2; }
-
 // ─── Stored form ↔ DOM ───────────────────────────────────────────────────────
 
 function _neLabel(p) {
@@ -194,9 +192,8 @@ function _nePickerUpdate(el) {
   const r = document.createRange();
   r.setStart(at.node, at.end);
   r.collapse(true);
-  const box = r.getClientRects()[0] || el.getBoundingClientRect(), z = _neZoom();
-  pop.style.left = Math.max(4, Math.min(box.left, innerWidth - 240)) / z + 'px';
-  pop.style.top = (box.bottom + 4) / z + 'px';
+  const box = r.getClientRects()[0] || el.getBoundingClientRect();
+  placeSurface(pop, { left: box.left, top: box.top, right: box.right, bottom: box.bottom }, { side: 'below', gap: 4 });
   if (fresh) motionShow(pop, 'menu', { from: { x: box.left, y: box.bottom } });
 }
 
@@ -304,11 +301,10 @@ function _neShowTip(label) {
   p.textContent = r ? (mpPlain(r.note).trim().split('\n').slice(0, 4).join('\n').slice(0, 200) || t('No note yet.')) : t('Nothing by this name exists any more.');
   head.append(b, ' ', kind);
   _neTip.append(head, p);
-  const box = label.getBoundingClientRect(), z = _neZoom(), tip = _neTip;
+  const tip = _neTip;
   motionShow(tip, 'popup', { from: label, reveal: () => {
     tip.style.display = 'block';
-    tip.style.left = Math.max(4, Math.min(box.left, innerWidth - 260)) / z + 'px';
-    tip.style.top = (box.bottom + 6) / z + 'px';
+    placeSurface(tip, label, { side: 'below', gap: 6 });
   } });
 }
 

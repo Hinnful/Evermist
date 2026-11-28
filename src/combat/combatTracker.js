@@ -198,12 +198,7 @@ function cbMenu(items, rect, owner) {
     it.pick(rect);
   });
   document.body.appendChild(m);
-  const z = cbZoom();
-  m.style.left = (rect.left / z) + 'px';
-  m.style.top = ((rect.bottom + 4) / z) + 'px';
-  const mr = m.getBoundingClientRect();
-  if (mr.bottom > innerHeight) m.style.top = (Math.max(4, rect.top - mr.height - 4) / z) + 'px';
-  if (mr.right > innerWidth) m.style.left = (Math.max(4, innerWidth - mr.width - 4) / z) + 'px';
+  placeSurface(m, rect, { side: 'below', gap: 4 });
   _cbMenuOwner = owner || null;
   if (owner) owner.classList.add('open');
   motionShow(m, 'menu', { from: owner || rect });

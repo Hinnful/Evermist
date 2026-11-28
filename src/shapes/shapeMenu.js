@@ -68,7 +68,7 @@ function _tbRows() {
   return order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, 'rooms') ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, 'rooms'), svgOf('btn-' + s)]);
 }
 
-// Opens a list over `anchor`, above it and kept inside the window. `kind` names it so a second click on
+// Opens a list over `anchor`, above it, below it when there is no room, kept inside the window. `kind` names it so a second click on
 // the same chevron closes it; `onPick(id)` is what a row does.
 function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
   _tbCloseList();
@@ -97,11 +97,8 @@ function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
     dd.appendChild(row);
   }
   document.body.appendChild(dd);
-  const r = anchor.getBoundingClientRect(), box = dd.getBoundingClientRect();
-  const left = Math.max(8, Math.min(innerWidth - 8 - box.width, r.left - 6));
-  const st = _rpScreenToStyle(dd, left, r.top - 10 - box.height);
-  dd.style.left = st.left + 'px';
-  dd.style.top = st.top + 'px';
+  placeSurface(dd, () => { const r = anchor.getBoundingClientRect(); return { left: r.left - 6, top: r.top, right: r.right, bottom: r.bottom }; },
+    { side: 'above', gap: 10 });
   motionShow(dd, 'menu', { from: chevEl || anchor });
 }
 

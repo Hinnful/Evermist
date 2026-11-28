@@ -31,6 +31,10 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 
 Every surface on the DM screen opens from what called it and leaves back to it, through `motion.js` and its pure kernel `motionPlan.js`, by kind: menu, popup, window, pane, dialog, toast, bar, layer and list. The kind sets the duration and curve; rows glide wherever a list reorders. The interface does not read reduced-motion. At start-up the splash stays until `bootUnderSplash` (`playerWindow.js`) has finished the start-up work and sent `boot-idle`; the fog's cloud set is built once and the warm TV window copies it, and the toolbar fire's WebGL programs are built under the splash.
 
+### Floating surfaces
+
+Every popup, list, menu, pop-out, hint and HUD of the DM window is placed by one rule, `placeSurface` (`place.js`, kernel `placePlan.js`): its own side of its anchor, else the opposite side, else pinned inside an 8px window margin with a max height so it scrolls. Open surfaces are placed again on a window resize. The map's popups and the material palette stay above the bottom bars (`placeFloor()`). The Notes window and the Bestiary are fitted back inside a smaller window, and the Campaign's Open/More bar slides along the edge to stay inside the area left of the rail.
+
 ### The DM screen
 
 The map fills the DM window. Over it sit three things: the toolbar at the bottom, the minimap in

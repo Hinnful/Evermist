@@ -408,6 +408,8 @@ function gridCalRefreshUI() {
   if (!was) motionShow(hud, 'popup', {});
 }
 
+window.addEventListener('resize', () => { if (gridCalArmed) gridCalPlaceHud(); });
+
 // Under the square, flipped above near the window's bottom. Called from the draw path, so it
 // tracks a pan, a zoom and a live drag alike.
 // ⚠ The HUD carries the room card's ui-zoom, so a screen number written straight to style.left
@@ -421,26 +423,18 @@ function gridCalPlaceHud() {
   const s = (gridCalDrag && gridCalDrag.which === 'span') ? gridCalDrag : gridCalSpan;
   // A column's bottom lies under the DM window's bar, so the HUD stays above that bar there.
   const floor = isPane ? Math.min(window.innerHeight, gridCalBarTop()) : window.innerHeight;
-  let cx, top;
+  const size = { width: r.width, height: r.height }, view = { left: 0, top: 0, right: window.innerWidth, bottom: floor };
+  let p;
   if (!s) {
-    cx = box.left + box.width / 2;
-    top = gridCalBarTop() - GRIDCAL_HUD_LIFT - r.height;
+    const cx = box.left + box.width / 2, y = gridCalBarTop() - GRIDCAL_HUD_LIFT;
+    p = placePlan({ left: cx, top: y, right: cx, bottom: y }, size, view, { side: 'above', align: 'center', margin: GRIDCAL_HUD_MARGIN });
   } else {
     // ⚠ The magnifier sits on a corner of the shape during a drag, so the HUD clears its radius
     // as well as the shape, or it covers the view being aimed through.
     const sb = gridCalScreenBox(s), gap = GRIDCAL_MAG_RADIUS + GRIDCAL_HUD_GAP;
-    const cb = viewRectToClient(sb.x, sb.y, sb.w, sb.h);
-    cx = (cb.left + cb.right) / 2;
-    top = cb.bottom + gap;
-    if (top + r.height > floor - GRIDCAL_HUD_MARGIN) {
-      top = cb.top - gap - r.height;
-    }
+    p = placePlan(viewRectToClient(sb.x, sb.y, sb.w, sb.h), size, view, { side: 'below', gap, align: 'center', margin: GRIDCAL_HUD_MARGIN });
   }
-  const left = Math.max(GRIDCAL_HUD_MARGIN,
-    Math.min(window.innerWidth - r.width - GRIDCAL_HUD_MARGIN, cx - r.width / 2));
-  top = Math.max(GRIDCAL_HUD_MARGIN,
-    Math.min(floor - r.height - GRIDCAL_HUD_MARGIN, top));
-  const st = _rpScreenToStyle(hud, left, top);
+  const st = _rpScreenToStyle(hud, p.left, p.top);
   hud.style.left = st.left + 'px';
   hud.style.top  = st.top  + 'px';
 }

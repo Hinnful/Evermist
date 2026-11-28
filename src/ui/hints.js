@@ -88,13 +88,13 @@ function _hintNear(rectOf, side) {
   return el => {
     const a = rectOf(), box = el.getBoundingClientRect(), W = box.width, H = box.height;
     if (!a || !W) return false;
-    const z = parseFloat(getComputedStyle(el).zoom) || 1, G = 12, M = 8;
+    const z = parseFloat(getComputedStyle(el).zoom) || 1;
     const cx = (a.left + a.right) / 2, cy = (a.top + a.bottom) / 2, vert = side === 'above' || side === 'below';
-    const fit = (v, size, max) => Math.max(M, Math.min(max - size - M, v));
-    const x = fit(vert ? cx - W / 2 : side === 'right' ? a.right + G : a.left - G - W, W, innerWidth);
-    const y = fit(!vert ? cy - H / 2 : side === 'below' ? a.bottom + G : a.top - G - H, H, innerHeight);
+    // On its side of the box, on the other when there is no room, its arrow on the side it took.
+    const p = placePlan(a, { width: W, height: H }, { left: 0, top: 0, right: innerWidth, bottom: innerHeight }, { side, gap: 12, align: 'center' });
+    const x = p.left, y = p.top;
     el.classList.remove('hc-above', 'hc-below', 'hc-right', 'hc-left');
-    el.classList.add('hintcall-at', 'hc-' + side);
+    el.classList.add('hintcall-at', 'hc-' + p.side);
     el.style.left = x / z + 'px';
     el.style.top = y / z + 'px';
     el.style.setProperty('--a', Math.max(12, Math.min((vert ? W : H) - 12, vert ? cx - x : cy - y)) / z + 'px');

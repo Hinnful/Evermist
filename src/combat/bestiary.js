@@ -144,9 +144,7 @@ function _bsClosePop() { if (bs.pop) { const p = bs.pop; motionHide(p, 'menu', {
 function _bsPlace(el, anchor) {
   document.body.appendChild(el);
   el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { _bsClosePop(); _bsEl('bs-panel').focus(); } });
-  const z = cbZoom(), r = anchor.getBoundingClientRect();
-  el.style.left = (Math.max(8, Math.min(r.left, innerWidth - el.getBoundingClientRect().width - 8)) / z) + 'px';
-  el.style.top = ((r.bottom + 6) / z) + 'px';
+  placeSurface(el, anchor, { side: 'below', gap: 6 });
   bs.pop = el;
   motionShow(el, 'menu', { from: anchor });
 }

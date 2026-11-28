@@ -29,12 +29,15 @@
 // - Every entry that moves is seen whole within its fade plus 50ms of the press (or the call), and at rest within its
 //   entry plus 50ms; the times are listed, and written to times.txt.
 // - A surface with a pop or window shadow that shows during the sweep without an inventory entry fails.
+// - Every floating surface stays 8px inside a small window from every spot its anchor can take, scrolls what does not
+//   fit and comes back inside when the window shrinks (fit.js). DS_FIT=only runs this pass alone, and stamps nothing.
 // Every check waits for each surface's motion to end (every running animation that is not a Loop), so nothing is
 // measured mid-flight.
 const lib = require('../lib');
 const path = require('path');
 const fs = require('fs');
 const { SETUP, INVENTORY, CLOSE_ALL } = require('../inventory');
+const { fitPass } = require('../fit');
 
 // Every animation motion.js starts, logged as it starts (its element, keyframes, timing, transform origin, whether it
 // takes clicks, the box it stood in), and every opacity transition a stylesheet is running when a run is read.
@@ -215,7 +218,7 @@ module.exports = async function (rig) {
   // Where a trigger stands on screen: a selector's first line box (and what lies on top of it there), a room of the
   // open map, or a point.
   const aim = t => dm.evaluate(`(() => { const t = ${q(t)};
-    if (t.map != null) { const v = polygons.filter(p => !p.material && !p.light)[t.map].vertices;
+    if (t.map != null || t.effect) { const v = t.effect ? __fxMake().vertices : polygons.filter(p => !p.material && !p.light)[t.map].vertices;
       const p = toScreen(v.reduce((a, b) => a + b.x, 0) / v.length, v.reduce((a, b) => a + b.y, 0) / v.length), c = viewToClient(p.sx, p.sy);
       return { x: c.x, y: c.y }; }
     if (t.x != null) return { x: t.x, y: t.y };
@@ -232,22 +235,28 @@ module.exports = async function (rig) {
   };
   const frames = () => dm.evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
 
-  for (const e of INVENTORY) {
+  const fitOnly = process.env.DS_FIT === 'only';
+  // An entry marked fitOnly is read inside another entry and opened alone only by the fit pass.
+  for (const e of fitOnly ? [] : INVENTORY.filter(x => !x.fitOnly)) {
     try {
       if (!KINDS.concat('still').includes(e.motion)) fault(e.id, 'has no motion kind in tools/rig/inventory.js');
       if (e.prep) { await run(e.prep); await still(); }
-      const clicked = !!e.trigger && (typeof e.trigger === 'string' || !!e.trigger.sel || e.trigger.map != null);
+      const clicked = !!e.trigger && (typeof e.trigger === 'string' || !!e.trigger.sel || e.trigger.map != null || !!e.trigger.effect);
       let trig = null;
       await dm.evaluate('__mv.reset(); 1');
       await dm.evaluate(`__mv.watch(${q(e.root)}, ${clicked})`);
       if (clicked) {
         trig = await aim(e.trigger);
         if (!trig || trig.covered) throw new Error('its trigger ' + q(e.trigger) + (trig ? ' is covered by ' + trig.covered : ' is not on screen'));
-        await click(trig, e.trigger.button || 'left');
+        if (e.trigger.hover) await dm.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: trig.x, y: trig.y });
+        else await click(trig, e.trigger.button || 'left');
+        if (e.trigger.text) await dm.send('Input.insertText', { text: e.trigger.text });
       } else {
         await run(e.open || '');
         trig = e.trigger ? await aim(e.trigger) : e.from ? await aim(e.from) : null;
       }
+      // `origin`: page JS naming the point the surface truly comes from (a caret, a corner), when it is not the trigger's box.
+      if (e.origin) trig = await dm.evaluate(e.origin) || trig;
       await lib.settle(dm, `(e => !!e && e.getClientRects().length > 0)(document.querySelector(${q(e.root)}))`, 3000);
       await frames();
       await dm.evaluate(`__mv.hold(${q(e.root)})`);
@@ -316,6 +325,14 @@ module.exports = async function (rig) {
     }
   }
 
+  // Each fit fault and each surface the pass could not open is its own failed check, so a run names every one of them
+  // even when the runner keeps no notes (a first attempt that is rerun).
+  const fit = await fitPass(rig, dm, { base: process.env.DS_FIT_BASE, save: process.env.DS_FIT_SAVE });
+  fit.faults.forEach(f => rig.check(false, 'fit fault: ' + f));
+  fit.unchecked.forEach(x => rig.check(false, 'fit unchecked: ' + x));
+  rig.note('fit pass: ' + fit.faults.length + ' faults, ' + fit.unchecked.length + ' unchecked, ' + Object.keys(fit.mids).length + ' middle places compared');
+  if (shots) fs.writeFileSync(path.join(shots, 'fit-faults.txt'), fit.faults.concat(fit.unchecked).join('\n') + '\n');
+
   const list = [...all].map(([f, where]) => where + ' — ' + f);
   const timeRows = times.map(t => t.id.padEnd(24) + t.kind.padEnd(8) + t.by.padEnd(7) + 'seen ' + String(t.seen).padStart(4) + 'ms (by ' + Math.round(t.seenBy) +
     ')  rest ' + String(t.rest).padStart(4) + 'ms (by ' + Math.round(t.restBy) + ')');
@@ -332,7 +349,7 @@ module.exports = async function (rig) {
   const sizes = Object.values(menus);
   rig.note('menus ' + JSON.stringify(menus));
   // One row height, and no menu narrower than the skin's 200px at the UI's zoom.
-  rig.check(sizes.length > 1 && sizes.every(m => Math.abs(m.row - sizes[0].row) < 0.5 && m.w >= 239), 'the right-click menus differ in size: ' + JSON.stringify(menus));
+  if (!fitOnly) rig.check(sizes.length > 1 && sizes.every(m => Math.abs(m.row - sizes[0].row) < 0.5 && m.w >= 239), 'the right-click menus differ in size: ' + JSON.stringify(menus));
   rig.note('faults: ' + list.length + (list.length ? '\n    ' + list.join('\n    ') : ''));
   rig.check(list.length === 0, list.length + ' faults on the inventory; the notes above name each');
 };
