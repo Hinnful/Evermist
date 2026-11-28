@@ -10,7 +10,7 @@ const FX_SHAPE_ORDER = ['rect', 'circle', 'cone', 'line', 'wall', 'ring', 'poly'
 // Picks `s` in Effects mode and arms it at the last size; the Polygon has no size and just takes the tool.
 function effectsToolArm(s) {
   setShape(s);
-  const p = presetForSize(s, effectsSize);
+  const p = presetForSize(s, effectsSize, presetMapMaxFt(s));
   if (p) setPreset(p);
   reportPaneTool();
 }

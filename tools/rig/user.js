@@ -22,6 +22,9 @@ const KEYS = {
   PageUp: [33, 'PageUp'], PageDown: [34, 'PageDown'],
 };
 
+// A printable key whose code is not Key<letter> or Digit<n>: its code and virtual key.
+const PUNCT = { '[': ['BracketLeft', 219], ']': ['BracketRight', 221] };
+
 const describe = (t) => (typeof t === 'string' ? t : JSON.stringify(t));
 
 // The middle of the target's first line box, scrolled into view, and what the pointer would really hit there.
@@ -101,8 +104,8 @@ function user(page) {
     const named = KEYS[key];
     const ch = !named && key.length === 1 ? key : '';
     const upper = ch.toUpperCase();
-    const code = named ? named[1] : /[a-z]/i.test(ch) ? 'Key' + upper : /\d/.test(ch) ? 'Digit' + ch : '';
-    const vk = named ? named[0] : upper.charCodeAt(0);
+    const code = named ? named[1] : /[a-z]/i.test(ch) ? 'Key' + upper : /\d/.test(ch) ? 'Digit' + ch : PUNCT[ch] ? PUNCT[ch][0] : '';
+    const vk = named ? named[0] : PUNCT[ch] ? PUNCT[ch][1] : upper.charCodeAt(0);
     const modifiers = mods(m);
     const text = named ? named[2] : (m.ctrl || m.alt || m.meta ? '' : (m.shift ? upper : ch));
     const base = { key: named ? named[1].replace('Space', ' ') : ch, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk, modifiers };

@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, stepPresetIndex, presetSizeText, presetForSize } = require('../src/shapes/presetGeometry');
+const { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, stepPresetSize, presetSizeText, presetForSize, presetSizeOk, presetMaxFt, presetClampSize } = require('../src/shapes/presetGeometry');
 const { i18nFill } = require('../src/i18n/i18nPlan');
 
 const O = { x: 500, y: 400 };
@@ -11,7 +11,7 @@ const bbox = vs => {
 };
 const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} vs ${b}`);
 
-test('every size is one grid square more than the last, from the smallest to the largest', () => {
+test('the usual sizes step one grid square from the smallest to the largest the list offers', () => {
   const span = { rect: [5, 30], circle: [5, 60], cone: [5, 90], line: [5, 120], wall: [5, 60], ring: [10, 60] };
   assert.deepStrictEqual(Object.keys(EFFECT_PRESETS).sort(), Object.keys(span).sort());
   for (const kind of Object.keys(span)) {
@@ -80,16 +80,46 @@ test('a ring is a band of its own thickness around a real hole', () => {
   assert.ok(vertices.length + holes[0].length <= 64, 'fits the effect shader cap');
 });
 
-test('stepping stops at both ends', () => {
-  assert.strictEqual(stepPresetIndex(6, 7, 1), 6);
-  assert.strictEqual(stepPresetIndex(0, 7, -1), 0);
-  assert.strictEqual(stepPresetIndex(2, 7, 1), 3);
+test('any whole number of squares from the smallest up is a size, a ring from 5 ft', () => {
+  for (const kind of ['rect', 'circle', 'cone', 'line', 'wall', 'ring']) {
+    assert.ok(presetSizeOk(kind, 5), kind);
+    assert.ok(presetSizeOk(kind, 400), kind);
+    assert.ok(!presetSizeOk(kind, 0), kind);
+    assert.ok(!presetSizeOk(kind, 42), kind);
+  }
+  assert.ok(presetSizeOk('rect', 40));
+  assert.ok(!presetSizeOk('poly', 20));
+});
+
+test('the largest size is the one whose widest span fits the map', () => {
+  // 2000 x 1000 px at 10 px a foot: 200 ft along the longer side.
+  assert.strictEqual(presetMaxFt('rect', 2000, 1000, 10), 200);
+  assert.strictEqual(presetMaxFt('line', 1000, 2000, 10), 200);
+  assert.strictEqual(presetMaxFt('circle', 2000, 1000, 10), 100);
+  assert.strictEqual(presetMaxFt('rect', 2047, 1000, 10), 200);
+  assert.strictEqual(presetMaxFt('rect', 20, 20, 10), 5, 'never below the smallest');
+});
+
+test('stepping goes one square at a time past the usual sizes and stops at the map', () => {
+  assert.strictEqual(stepPresetSize('rect', 30, 1, true, 200), 35);
+  assert.strictEqual(stepPresetSize('rect', 35, 1, true, 200), 40);
+  assert.strictEqual(stepPresetSize('rect', 200, 1, true, 200), 200);
+  assert.strictEqual(stepPresetSize('rect', 40, -1, true, 200), 35);
+  assert.strictEqual(stepPresetSize('ring', 10, -1, false, 200), 5);
+  assert.strictEqual(stepPresetSize('ring', 5, -1, false, 200), 5);
 });
 
 test('a shape with a hand tool steps down to by hand and stops there', () => {
-  assert.strictEqual(stepPresetIndex(0, 6, -1, true), -1);
-  assert.strictEqual(stepPresetIndex(-1, 6, -1, true), -1);
-  assert.strictEqual(stepPresetIndex(-1, 6, 1, true), 0);
+  assert.strictEqual(stepPresetSize('rect', 5, -1, true, 200), null);
+  assert.strictEqual(stepPresetSize('rect', null, -1, true, 200), null);
+  assert.strictEqual(stepPresetSize('rect', null, 1, true, 200), 5);
+  assert.strictEqual(stepPresetSize('rect', null, -1, false, 200), 5, 'the wheel never reaches by hand');
+});
+
+test('a typed size lands on the nearest square between the smallest and the map', () => {
+  assert.strictEqual(presetClampSize('rect', 41, 200), 40);
+  assert.strictEqual(presetClampSize('rect', 999, 200), 200);
+  assert.strictEqual(presetClampSize('ring', 1, 200), 5);
 });
 
 test('a size reads in feet and squares', () => {
@@ -106,11 +136,11 @@ test('the cursor label names the unit', () => {
   assert.strictEqual(presetLabel('wall', 30, 1, i18nFill), '30 ft wall');
 });
 
-test('the Effects tool arms a shape at the nearest size it has, and the Polygon at none', () => {
-  assert.deepStrictEqual(presetForSize('circle', 20), { kind: 'circle', s: 20, w: 0 });
-  assert.strictEqual(presetForSize('rect', 20).s, 20);
-  assert.strictEqual(presetForSize('rect', 60).s, 30);
-  assert.strictEqual(presetForSize('ring', 5).s, 10);
-  assert.strictEqual(presetForSize('line', 20).w, 5);
-  assert.strictEqual(presetForSize('poly', 20), null);
+test('the Effects tool arms a shape at the last size, inside the map, and the Polygon at none', () => {
+  assert.deepStrictEqual(presetForSize('circle', 20, 200), { kind: 'circle', s: 20, w: 0 });
+  assert.strictEqual(presetForSize('rect', 60, 200).s, 60);
+  assert.strictEqual(presetForSize('rect', 300, 200).s, 200);
+  assert.strictEqual(presetForSize('ring', 5, 200).s, 5);
+  assert.strictEqual(presetForSize('line', 20, 200).w, 5);
+  assert.strictEqual(presetForSize('poly', 20, 200), null);
 });

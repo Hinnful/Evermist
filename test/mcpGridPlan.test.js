@@ -106,7 +106,11 @@ describe('effect and light shapes', () => {
     assert.equal(ring.holes.length, 1);
     const line = mcpFxShape({ preset: { shape: 'line', feet: 20, x: 10, y: 10, angle: 90 } }, 1000, 1000, 14).vertices;
     near(Math.max(...line.map(p => p.y)) - 100, 280);
-    assert.match(mcpFxShape({ preset: { shape: 'circle', feet: 12, x: 5, y: 5 } }, 1000, 1000, 14).error, /5 to 60 feet/);
+    assert.match(mcpFxShape({ preset: { shape: 'circle', feet: 12, x: 5, y: 5 } }, 1000, 1000, 14).error, /5 to 35 feet on this map/);
+    const big = mcpFxShape({ preset: { shape: 'square', feet: 40, x: 50, y: 50 } }, 1000, 1000, 14).vertices;
+    near(Math.max(...big.map(p => p.x)) - Math.min(...big.map(p => p.x)), 560);
+    assert.ok(mcpFxShape({ preset: { shape: 'ring', feet: 5, x: 50, y: 50 } }, 1000, 1000, 14).holes);
+    assert.match(mcpFxShape({ preset: { shape: 'wall', feet: 75, x: 50, y: 50 } }, 1000, 1000, 14).error, /5 to 70 feet on this map/);
     assert.match(mcpFxShape({ preset: { shape: 'star', feet: 10, x: 5, y: 5 } }, 1000, 1000, 14).error, /square, circle/);
     assert.match(mcpFxShape({ preset: { shape: 'cone', feet: 10 } }, 1000, 1000, 14).error, /x and y/);
   });

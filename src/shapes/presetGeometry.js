@@ -8,12 +8,13 @@ if (typeof module !== 'undefined' && module.exports) {
   ({ circleVertices, coneVertices } = require('../fog/fogGeometry'));
 }
 
-// Sizes follow the grid: one step is one square, 5 ft, from each shape's smallest to its largest.
-// `s` is a square's side, a circle's radius, a cone's, line's or wall's length and a ring's width
+// Sizes follow the grid: one step is one square, 5 ft, from each shape's smallest up to the largest that fits
+// the map. `s` is a square's side, a circle's radius, a cone's, line's or wall's length and a ring's width
 // across; `w` is the line's width (one square), the wall's and the ring's thickness (1 ft). Shape and
-// size only, never a spell (PRODUCT.md).
+// size only, never a spell (PRODUCT.md). EFFECT_PRESETS holds the usual sizes the size list offers, not a limit.
 const GRID_FT = 5;
 const PRESET_RANGE = { rect: [5, 30], circle: [5, 60], cone: [5, 90], line: [5, 120], wall: [5, 60], ring: [10, 60] };
+const PRESET_MIN = { rect: 5, circle: 5, cone: 5, line: 5, wall: 5, ring: 5 };
 const PRESET_WIDTH = { line: 5, wall: 1, ring: 1 };
 // A shape with a hand tool can be drawn by drag at any size; line, wall and ring take a length alone.
 const PRESET_HAS_HAND = { rect: true, circle: true, cone: true };
@@ -24,6 +25,25 @@ for (const kind of Object.keys(PRESET_RANGE)) {
   for (let s = PRESET_RANGE[kind][0]; s <= PRESET_RANGE[kind][1]; s += GRID_FT) {
     EFFECT_PRESETS[kind].push({ s, w: PRESET_WIDTH[kind] || 0 });
   }
+}
+
+function presetWidth(kind) { return PRESET_WIDTH[kind] || 0; }
+
+// Any whole number of squares at or above the shape's smallest.
+function presetSizeOk(kind, s) {
+  return !!PRESET_MIN[kind] && Number.isFinite(s) && s >= PRESET_MIN[kind] && s % GRID_FT === 0;
+}
+
+// The largest size whose widest span (a circle's diameter, any other shape's size) fits the map's longer side.
+function presetMaxFt(kind, mapW, mapH, pxPerFt) {
+  if (!(pxPerFt > 0) || !(Math.max(mapW, mapH) > 0)) return Infinity;
+  const ft = Math.max(mapW, mapH) / pxPerFt / (kind === 'circle' ? 2 : 1);
+  return Math.max(PRESET_MIN[kind], Math.floor(ft / GRID_FT) * GRID_FT);
+}
+
+// A typed or remembered size on the nearest square, between the smallest and `maxFt`.
+function presetClampSize(kind, n, maxFt) {
+  return Math.max(PRESET_MIN[kind], Math.min(maxFt, Math.round(n / GRID_FT) * GRID_FT));
 }
 
 // A preset's outline in map px. A circle, square or ring is centred on `origin`; a cone, line or wall
@@ -61,19 +81,20 @@ function presetSizeText(s, word, plural) {
   return word('{s} ft', { s: s }) + ', ' + plural(n, '{n} square', '{n} squares', { n: n });
 }
 
-// The next index along a list, stopping at both ends. A shape with a hand tool has one step below the
-// smallest size, index -1, which means "by hand".
-function stepPresetIndex(i, n, dir, hasHand) {
-  return Math.max(hasHand ? -1 : 0, Math.min(n - 1, i + dir));
+// The size one square up or down from `s` (null is "by hand"). It stops at `maxFt` and at the smallest; a shape
+// with a hand tool goes below the smallest to null, and from null up to the smallest.
+function stepPresetSize(kind, s, dir, hasHand, maxFt) {
+  const lo = PRESET_MIN[kind];
+  if (s == null) return dir > 0 || !hasHand ? lo : null;
+  const next = s + dir * GRID_FT;
+  if (next < lo) return hasHand ? null : s;
+  return dir > 0 && next > maxFt ? s : next;
 }
 
-// The preset of `kind` nearest `size` feet, or null for a shape with no sizes (the Polygon).
-function presetForSize(kind, size) {
-  const list = EFFECT_PRESETS[kind];
-  if (!list) return null;
-  let best = list[0];
-  for (const z of list) if (Math.abs(z.s - size) < Math.abs(best.s - size)) best = z;
-  return { kind: kind, s: best.s, w: best.w };
+// The preset of `kind` at `size` feet as `presetClampSize` puts it, or null for a shape with no sizes (the Polygon).
+function presetForSize(kind, size, maxFt) {
+  if (!PRESET_MIN[kind]) return null;
+  return { kind: kind, s: presetClampSize(kind, size, maxFt), w: presetWidth(kind) };
 }
 
 // ─── A placed preset, read back and resized ──────────────────────────────────
@@ -103,30 +124,29 @@ function effectPresetOf(rec) {
   const p = rec && rec.preset;
   if (!p || !EFFECT_PRESETS[p.kind] || !Array.isArray(rec.vertices) || rec.vertices.length !== Number(p.n)) return null;
   const s = Number(p.s), angle = Number(p.angle) || 0;
-  const z = EFFECT_PRESETS[p.kind].find(x => x.s === s);
-  if (!z || rec.handles) return null;
+  if (!presetSizeOk(p.kind, s) || rec.handles) return null;
+  const w = presetWidth(p.kind);
   const origin = presetOriginOf(p.kind, rec.vertices);
-  const unit = presetRings(p.kind, s, z.w, origin, angle, 1);
+  const unit = presetRings(p.kind, s, w, origin, angle, 1);
   const pxPerFt = _presetReach(rec.vertices, origin) / _presetReach(unit.vertices, origin);
   if (!(pxPerFt > 0)) return null;
-  const want = presetRings(p.kind, s, z.w, origin, angle, pxPerFt);
+  const want = presetRings(p.kind, s, w, origin, angle, pxPerFt);
   const tol = Math.max(0.5, pxPerFt * 0.05);
   if (want.vertices.some((v, i) => Math.hypot(v.x - rec.vertices[i].x, v.y - rec.vertices[i].y) > tol)) return null;
   return { kind: p.kind, s, angle, origin, pxPerFt };
 }
 
 // The outline at size `s` and the preset that goes with it, or null when the record is By hand or `s` is not
-// one of its shape's sizes. A square, circle or ring grows about its centre, a cone, line or wall along its
+// a size of its shape. A square, circle or ring grows about its centre, a cone, line or wall along its
 // length from its origin; a line's, wall's and ring's width stays.
 function presetResized(rec, s) {
   const p = effectPresetOf(rec);
-  const z = p && EFFECT_PRESETS[p.kind].find(x => x.s === s);
-  if (!z) return null;
-  const r = presetRings(p.kind, s, z.w, p.origin, p.angle, p.pxPerFt);
+  if (!p || !presetSizeOk(p.kind, s)) return null;
+  const r = presetRings(p.kind, s, presetWidth(p.kind), p.origin, p.angle, p.pxPerFt);
   return { vertices: r.vertices, holes: r.holes || null,
            preset: { kind: p.kind, s, origin: p.origin, angle: p.angle, n: r.vertices.length } };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { effectPresetOf, presetResized, presetOriginOf, EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetIndex, presetForSize };
+  module.exports = { effectPresetOf, presetResized, presetOriginOf, EFFECT_PRESETS, GRID_FT, PRESET_MIN, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetSize, presetForSize, presetWidth, presetSizeOk, presetMaxFt, presetClampSize };
 }

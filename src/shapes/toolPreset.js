@@ -14,9 +14,11 @@ document.addEventListener('keyup',   e => { if (e.key === 'Shift' && !isPlayer) 
 function presetPxPerFt() { return (gridMode === 'square' ? gridSize : gridSize * Math.sqrt(3)) / 5; }
 
 function presetForShape(s) {
-  const list = EFFECT_PRESETS[s];
-  return list && PRESET_DEFAULT[s] != null ? { kind: s, ...list.find(z => z.s === PRESET_DEFAULT[s]) } : null;
+  return PRESET_DEFAULT[s] != null ? presetForSize(s, PRESET_DEFAULT[s], presetMapMaxFt(s)) : null;
 }
+
+// The largest size of `kind` that fits the open map at the grid's scale.
+function presetMapMaxFt(kind) { return presetMaxFt(kind, mapWidth, mapHeight, presetPxPerFt()); }
 
 function setPreset(p) {
   paneBroadcast('preset', { preset: p });
@@ -32,15 +34,14 @@ function reportPaneTool() {
   parent.postMessage({ type: 'pane-tool', pane: paneId, shape, preset: presetArmed, placeMode }, '*');
 }
 
-// One grid square a step, stopping at both ends. A shape with a hand tool has one step below the
-// smallest size, which is drawing it by hand; the wheel passes `stayArmed` and never takes that step.
+// One grid square a step, stopping at the smallest and at the largest the map holds. A shape with a hand tool
+// has one step below the smallest size, which is drawing it by hand; the wheel passes `stayArmed` and never takes it.
 function stepPreset(dir, stayArmed) {
   const kind = presetArmed ? presetArmed.kind : shape;
-  const list = EFFECT_PRESETS[kind];
-  if (!list) return;
-  const i = presetArmed ? list.findIndex(z => z.s === presetArmed.s && z.w === presetArmed.w) : -1;
-  const j = stepPresetIndex(i, list.length, dir, !!PRESET_HAS_HAND[kind] && !stayArmed);
-  setPreset(j < 0 ? null : { kind, ...list[j] });
+  if (!EFFECT_PRESETS[kind]) return;
+  const s = stepPresetSize(kind, presetArmed ? presetArmed.s : null, dir, !!PRESET_HAS_HAND[kind] && !stayArmed,
+    presetMapMaxFt(kind));
+  setPreset(s == null ? null : { kind, s, w: presetWidth(kind) });
   reportPaneTool();
 }
 

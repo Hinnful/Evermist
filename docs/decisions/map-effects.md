@@ -309,6 +309,15 @@ with two bubble rings inside (below reads as rain, side by side as eyes, outside
   in thin gas, a thin rim showing the ground clearly, a lumpy edge and a wavering edge.
 - Rejected: a grid relight following a cloud's moving edge (prototyped, dropped); the static Edge squares stay.
 
+### Effect preset sizes have no ceiling of their own · `SETTLED` (2026-11-28)
+Each shape once had a fixed largest size (square 30 ft, circle 60, cone 90, line 120, wall 60, ring 10-60 across) that the rules
+never set, so a 40 ft square or a 100 ft wall could not be made except by hand, and then could not be resized. Every shape now
+steps 5 ft from its smallest to the largest that fits the map: its widest span (a circle's diameter) against the map's longer
+side at the grid's scale. The chevron's list keeps the old sizes as the usual set; arrows, wheel, [ ] and typing go past it, and
+a typed number beyond the largest lands on it. The ring's smallest is 5 ft. A shape armed after another keeps the last size,
+clamped to the map, and Claude's `create_effect` takes the same sizes. No new field: a placed `preset.s` past the old range reads
+as By hand on 5.22.3 and keeps its outline. Rejected: new fixed caps, still arbitrary.
+
 ### A placed effect resizes from its current outline · `SETTLED` (2026-11-19)
 Records carry an additive `preset` (kind, size, origin, angle, vertex count) so a picked effect's popup can resize it. Size
 rescales from the shape's current outline, not the stored origin, so a moved or pasted effect resizes where it stands. Any

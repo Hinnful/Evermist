@@ -188,7 +188,7 @@ function refreshPresetRow() {
   const kind = effectsSizeKind();
   if (row.dataset.kind !== kind) _buildSizeField(row, kind);
   const field = row.querySelector('.sz-field');
-  const armed = presetArmed && presetArmed.kind === kind ? presetArmed : shape === 'select' ? presetForSize(kind, effectsSize) : null;
+  const armed = presetArmed && presetArmed.kind === kind ? presetArmed : shape === 'select' ? presetForSize(kind, effectsSize, presetMapMaxFt(kind)) : null;
   field.classList.toggle('hand', !armed);
   if (armed) {
     const input = field.querySelector('.sz-in');
@@ -239,21 +239,19 @@ function _buildSizeField(row, kind) {
   };
 }
 
-// A typed size lands on the nearest grid square inside the shape's range.
+// A typed size lands on the nearest grid square between the smallest and the largest the map holds.
 function _typeSize(input) {
-  const list = _sizeList();
+  const kind = effectsSizeKind();
   const n = parseFloat(String(input.value).replace(',', '.'));
-  if (!list || !isFinite(n)) { refreshPresetRow(); return; }
-  const lo = list[0].s, hi = list[list.length - 1].s;
-  const s = Math.max(lo, Math.min(hi, Math.round(n / GRID_FT) * GRID_FT));
-  _sizeSet(list.find(z => z.s === s));
+  if (!kind || !isFinite(n)) { refreshPresetRow(); return; }
+  _sizeSet(presetForSize(kind, n, presetMapMaxFt(kind)));
 }
 
 function _openSizeList(chev, hasHand, handGlyph) {
   const list = _sizeList();
   if (!list) return;
   const kind = effectsSizeKind();
-  const cur = presetArmed && presetArmed.kind === kind ? String(presetArmed.s) : shape === 'select' ? String(presetForSize(kind, effectsSize).s) : 'hand';
+  const cur = presetArmed && presetArmed.kind === kind ? String(presetArmed.s) : shape === 'select' ? String(presetForSize(kind, effectsSize, presetMapMaxFt(kind)).s) : 'hand';
   const rows = list.slice().reverse().map(z => [String(z.s), presetSizeText(z.s, t, t.plural), '', false, '']);
   if (hasHand) rows.push(['hand', t('By hand'), '', false, handGlyph]);
   openBarList('sizes', chev, chev, rows, cur, id => _sizeSet(id === 'hand' ? null : list.find(z => String(z.s) === id)));

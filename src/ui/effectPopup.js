@@ -28,9 +28,9 @@ function initEffectPopup() {
   const field = el.querySelector('.sz-field'), input = field.querySelector('.sz-in');
   input.onchange = () => {
     const n = parseFloat(String(input.value).replace(',', '.'));
-    const list = _fxpSizes();
-    if (!list || !isFinite(n)) { _fxpKey = ''; refreshEffectPopup(); return; }
-    _fxpResize(Math.max(list[0].s, Math.min(list[list.length - 1].s, Math.round(n / GRID_FT) * GRID_FT)));
+    const p = _fxpPreset(_fxpRec());
+    if (!p || !isFinite(n)) { _fxpKey = ''; refreshEffectPopup(); return; }
+    _fxpResize(presetClampSize(p.kind, n, _fxpMaxFt(p)));
   };
   input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
   const wheelSt = wheelState();
@@ -81,11 +81,12 @@ function _fxpSizes() {
   return p ? EFFECT_PRESETS[p.kind] : null;
 }
 
+// The largest size that fits the map, at the effect's own scale.
+function _fxpMaxFt(p) { return presetMaxFt(p.kind, mapWidth, mapHeight, p.pxPerFt); }
+
 function _fxpStep(dir) {
-  const list = _fxpSizes(), p = _fxpPreset(_fxpRec());
-  if (!list) return;
-  const i = list.findIndex(z => z.s === p.s);
-  _fxpResize(list[Math.max(0, Math.min(list.length - 1, i + dir))].s);
+  const p = _fxpPreset(_fxpRec());
+  if (p) _fxpResize(stepPresetSize(p.kind, p.s, dir, false, _fxpMaxFt(p)));
 }
 
 // One undo step: the outline rebuilt at size `s`, its corners' rounding kept (the count does not change).

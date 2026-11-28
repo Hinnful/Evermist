@@ -6,7 +6,7 @@
 const MG = (typeof module !== 'undefined' && module.exports)
   ? Object.assign({}, require('../fog/fogGeometry.js'), require('../shapes/presetGeometry.js'), require('./mcpPlan.js'),
     require('../render/effectMaterials.js'))
-  : { circleVertices, presetRings, EFFECT_PRESETS, GRID_FT, mcpCleanHex, EFFECT_MATERIALS };
+  : { circleVertices, presetRings, presetWidth, presetSizeOk, presetMaxFt, PRESET_MIN, GRID_FT, mcpCleanHex, EFFECT_MATERIALS };
 // The Russian dictionary, so a material named in Russian is found too.
 const MG_RU = (typeof module !== 'undefined' && module.exports) ? require('../i18n/ru.js').RU : RU;
 
@@ -124,13 +124,15 @@ function mcpFxShape(a, mapW, mapH, pxPerFt) {
   }
   const p = a.preset || {}, kind = MCP_FX_PRESETS[String(p.shape || '').trim().toLowerCase()];
   if (!kind) return { error: 'preset.shape must be one of ' + Object.keys(MCP_FX_PRESETS).join(', ') + '.' };
-  const sizes = MG.EFFECT_PRESETS[kind], size = sizes.find(z => z.s === _mgNum(p.feet));
-  if (!size) return { error: 'A ' + p.shape + ' comes in ' + sizes[0].s + ' to ' + sizes[sizes.length - 1].s + ' feet, in steps of ' + MG.GRID_FT + '.' };
+  const feet = _mgNum(p.feet), max = MG.presetMaxFt(kind, mapW, mapH, pxPerFt);
+  if (!MG.presetSizeOk(kind, feet) || feet > max) {
+    return { error: 'A ' + p.shape + ' comes in ' + MG.PRESET_MIN[kind] + ' to ' + max + ' feet on this map, in steps of ' + MG.GRID_FT + '.' };
+  }
   const at = mcpPctPoint(p, mapW, mapH);
   if (!at) return { error: 'preset needs x and y in percent of the map, each from 0 to 100.' };
   const angle = p.angle === undefined ? 0 : _mgNum(p.angle);
   if (!Number.isFinite(angle)) return { error: 'preset.angle must be a number of degrees.' };
-  const r = MG.presetRings(kind, size.s, size.w, at, angle * Math.PI / 180, pxPerFt);
+  const r = MG.presetRings(kind, feet, MG.presetWidth(kind), at, angle * Math.PI / 180, pxPerFt);
   return r.holes ? { vertices: r.vertices, holes: r.holes } : { vertices: r.vertices };
 }
 

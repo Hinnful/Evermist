@@ -86,3 +86,13 @@ test('no preset, a bent wall, a size the shape lacks, or junk in the field: By h
   const str = effectPresetOf({ ...rec, preset: { ...rec.preset, s: '10', n: '32' } });
   assert.strictEqual(str.s, 10);
 });
+
+test('a size past the usual list reads back and resizes: a 40 ft square, a 5 ft ring', () => {
+  const sq = placed('rect', 40, 0, { x: 500, y: 400 }, 0);
+  assert.strictEqual(effectPresetOf(sq).s, 40);
+  const out = presetResized(sq, 45);
+  nearPt(out.vertices[0], 275, 175);
+  const ring = placed('ring', 5, 1, { x: 300, y: 300 }, 0);
+  assert.strictEqual(effectPresetOf(ring).s, 5);
+  assert.strictEqual(presetResized(ring, 0), null);
+});

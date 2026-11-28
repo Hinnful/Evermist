@@ -37,7 +37,7 @@ const OUTLINE = { type: 'array', items: { type: 'array', items: { type: 'number'
 const FX_SHAPE = { outline: OUTLINE,
   circle: { type: 'object', description: 'Centre x, y and radius, in percent of the map (radius in percent of its width).', properties: { x: { type: 'number' }, y: { type: 'number' }, radius: { type: 'number' } } },
   preset: { type: 'object', description: 'A size from the Effects row, measured on the map\'s grid: square, circle or ring centred on x, y; cone, line or wall starting at x, y and pointing along angle (degrees, 0 = right, 90 = down).',
-    properties: { shape: { type: 'string', enum: ['square', 'circle', 'cone', 'line', 'wall', 'ring'] }, feet: { type: 'integer', description: 'In steps of 5: square 5-30, circle radius 5-60, cone 5-90, line 5-120, wall 5-60, ring 10-60 across.' }, x: { type: 'number' }, y: { type: 'number' }, angle: { type: 'number' } } } };
+    properties: { shape: { type: 'string', enum: ['square', 'circle', 'cone', 'line', 'wall', 'ring'] }, feet: { type: 'integer', description: 'In steps of 5, from 5 up to the largest that fits the map: a square\'s side, a circle\'s radius, a cone\'s, line\'s or wall\'s length, a ring\'s width across.' }, x: { type: 'number' }, y: { type: 'number' }, angle: { type: 'number' } } } };
 const FX_PICK = { type: ['integer', 'string'], description: 'The effect\'s index from read_scene, or its material when the map has only one effect of it.' };
 const ROOM = { type: 'string', description: 'The room\'s name as read_scene lists it.' };
 const ROOM_INDEX = { type: 'integer', minimum: 1, description: 'The room\'s place in read_scene\'s rooms list, from 1: only when two rooms share a name, or for a room with none.' };

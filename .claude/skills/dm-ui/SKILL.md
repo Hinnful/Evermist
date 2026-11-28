@@ -280,9 +280,9 @@ One box from any view: Ctrl+F (not while a text field has focus), the bar's last
   leaves it empty. **The material glyphs alone carry colour and depth**, a gradient fill under the
   outline; their gradients are defined once in `index.html` outside any hidden element, because the glyphs are copied and a
   copied id resolves to the first copy. Every other bar icon stays a flat outline. The size field steps one grid square (5 ft) by drag, typing, scroll or [ ]; it stops at
-  both ends, and its chevron lists the sizes largest first with "By hand" last for the shapes that have it.
+  the smallest and the largest that fits the map, and its chevron lists the usual sizes largest first with "By hand" last for the shapes that have it.
 - **The map's wheel never leaves the size.** While an effect shape with a size is armed it steps the size and stops at the
-  smallest and the largest: never "by hand", never the zoom (Ctrl+wheel still zooms). By hand is the size list's or typing's.
+  smallest and the map's largest: never "by hand", never the zoom (Ctrl+wheel still zooms). By hand is the size list's or typing's.
 - **Snap and Straight walls are icons with no words**, their names in tooltips, and keep their
   state across a mode switch; Straight walls also across a restart (`evermist.straightWalls`). **Never gather toggles into a pill.**
 - **Every row sits centred over the bar with no pointer to a tool**: the clouds and brush size with the Brush; with a shape
