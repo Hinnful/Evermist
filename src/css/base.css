@@ -117,6 +117,10 @@
     --m-popup-shift: 4px;
     --m-bar-shift: 6px;
     --m-toast-shift: 12px;
+    --m-press-in: 40ms;
+    --m-press-out: 140ms;
+    --m-press-scale: 0.97;
+    --m-press-scale-small: 0.92;
     /* The domain set keeps its own colours; the interface palette never reaches them. */
     --enemy: #f0937f;
     --enemy-tint: rgba(217, 87, 74, 0.22);
@@ -179,6 +183,18 @@
     background: var(--plate-edit-bg); color: var(--plate-text); --plate-hair: var(--plate-edit-ring); --plate-hair-w: 1.5; outline: none;
   }
   #wm [contenteditable="true"]::selection, .ga-name-edit::selection { background: var(--plate-edit-select); color: var(--g-text); }
+
+  /* ===== PRESS (design-system.md, Motion "press") ===== */
+  /* The control shrinks under the pointer at once and eases back; `scale` leaves each control's own transform alone.
+     The transition list replaces each atom's own, so it carries their colour, and the three below their extra track. */
+  :where(.sm-hbtn, .tv-go, #btn-edit-done, .wm-bar-open, .cp-btn, .cp-btn-outline, .dk-load, .dk-fit, .dk-intbtn, .dk-addb, .tv-btn, .bs-f, .cb-save, .nw-newb, .dk-bare, .dk-card-acts button, .cp-btn-danger, .dk-danger, .tool-btn.tb-labeled):not(:disabled):not([aria-disabled="true"]), :where(.sm-bare, .sm-x, .cb-iconbtn, .bs-ib, .nw-ib, .cp-adv-close, .cp-iconbtn, .lib-more, .lib-edit, .pane-close, .tv-ov, .cp-stepbtn, .pl-play, .cp-segtab, .mode-btn, .tool-btn:not(.tb-labeled), .tb-toggle, .tb-chev, .rf-door, .rail-btn):not(:disabled):not([aria-disabled="true"]) { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), scale var(--m-press-out) var(--m-exit); }
+  :where(.sm-hbtn, .tv-go, #btn-edit-done, .wm-bar-open, .cp-btn, .cp-btn-outline, .dk-load, .dk-fit, .dk-intbtn, .dk-addb, .tv-btn, .bs-f, .cb-save, .nw-newb, .dk-bare, .dk-card-acts button, .cp-btn-danger, .dk-danger, .tool-btn.tb-labeled):not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active, :where(.sm-bare, .sm-x, .cb-iconbtn, .bs-ib, .nw-ib, .cp-adv-close, .cp-iconbtn, .lib-more, .lib-edit, .pane-close, .tv-ov, .cp-stepbtn, .pl-play, .cp-segtab, .mode-btn, .tool-btn:not(.tb-labeled), .tb-toggle, .tb-chev, .rf-door, .rail-btn):not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), scale var(--m-press-in) var(--m-enter); }
+  :where(.tv-ov, .pane-close):not(:disabled):not([aria-disabled="true"]) { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), opacity var(--m-hover) linear, scale var(--m-press-out) var(--m-exit); }
+  :where(.tv-ov, .pane-close):not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), opacity var(--m-hover) linear, scale var(--m-press-in) var(--m-enter); }
+  .pl-play:not(:disabled):not([aria-disabled="true"]) { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), transform var(--m-hover) var(--m-move), scale var(--m-press-out) var(--m-exit); }
+  .pl-play:not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active { transition: background var(--m-hover), color var(--m-hover), border-color var(--m-hover), transform var(--m-hover) var(--m-move), scale var(--m-press-in) var(--m-enter); }
+  :where(.sm-hbtn, .tv-go, #btn-edit-done, .wm-bar-open, .cp-btn, .cp-btn-outline, .dk-load, .dk-fit, .dk-intbtn, .dk-addb, .tv-btn, .bs-f, .cb-save, .nw-newb, .dk-bare, .dk-card-acts button, .cp-btn-danger, .dk-danger, .tool-btn.tb-labeled):not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active { scale: var(--m-press-scale); }
+  :where(.sm-bare, .sm-x, .cb-iconbtn, .bs-ib, .nw-ib, .cp-adv-close, .cp-iconbtn, .lib-more, .lib-edit, .pane-close, .tv-ov, .cp-stepbtn, .pl-play, .cp-segtab, .mode-btn, .tool-btn:not(.tb-labeled), .tb-toggle, .tb-chev, .rf-door, .rail-btn):not(:disabled):not([aria-disabled="true"]):not(:focus-visible):active { scale: var(--m-press-scale-small); }
 
   /* ===== CANVAS LAYERS ===== */
   #canvas-container {

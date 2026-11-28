@@ -160,11 +160,12 @@ function dockPlacePop(el, row) {
 }
 
 // ─── Calibration ──────────────────────────────────────────────────────────────
-// Arming puts the pane, the Notes window and the Bestiary away and leaving gives them back; a tab picked meanwhile wins (dm-ui skill).
+// Arming puts the pane, the Notes window, the Bestiary and the minimap card away and leaving gives them back; a tab picked meanwhile wins (dm-ui skill).
 let _dockBeforeCal = null;
 
 function dockHoldForCalibration(on) {
   _dockCalibrating = on;
+  document.body.classList.toggle('gridcal', on);
   nwHoldForCalibration(on);
   bswHoldForCalibration(on);
   if (on) {

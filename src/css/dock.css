@@ -296,3 +296,5 @@
     50% { box-shadow: 0 0 0 2px var(--b-icon), 0 0 26px 5px var(--b-icon), var(--tv-halo); }
   }
   body.pane-mode #minimap-panel { display: none !important; }
+  /* Grid calibration puts the card away in both modes, as the Campaign does: the HUD's hint would land under it. */
+  body.gridcal #minimap-panel { display: none !important; }

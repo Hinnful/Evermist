@@ -335,7 +335,8 @@ A floating row over the map, borrowing the app's controls.
 - It opens and closes as a popup (`motion.js`), shown only once placed: the placer measures the box every
   frame, so a pan inside the 130ms entry lands a scale's few px off until the next draw places it.
 
-**Arming calibration puts the dock pane and the Notes window away, and gives them back.** The pane
+**Arming calibration puts the dock pane, the Notes window and the minimap card away, and gives them back.** The card
+hides in both modes (`body.gridcal`, as `body.world` hides it), so the HUD's hint never lands under it. The pane
 shuts, **without touching `selectedPolygonId`**, and leaving restores the pane that was open,
 unless the DM picked another tab meanwhile. The rail never hides, so that is a real click and
 it wins. The Notes window commits its fields on the way out, the same as the deselect path.

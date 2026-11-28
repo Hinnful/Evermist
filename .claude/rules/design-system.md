@@ -390,6 +390,7 @@ timer bar).
 | `bar` | `90ms` | `60ms` | the toolbar | a row over the toolbar (the brush, effects, door and edit rows): there at once, rises 6px out of the toolbar; goes back down |
 | `list` | `180ms` | | | a row glides to its new place on `--m-move` |
 | `hover` | `120ms` | | | a colour or background change under the pointer |
+| `press` | `40ms` | `140ms` | the pointer | a control held under the pointer shrinks on `--m-enter` to `--m-press-scale` (.97), a small one to `--m-press-scale-small` (.92), and eases back on `--m-exit`; never from the keyboard, never while disabled |
 | `still` | | | | what never opens or closes: the rail, bars, the minimap, rows of controls |
 
 | Curve | Value | Use |
@@ -418,6 +419,10 @@ The rules:
   frames, so each limit carries one frame for the reading, and a late surface is opened twice more and judged on the
   middle of the three.
 - **A new surface takes its kind.** A surface no kind fits is a decision for this file.
+- **What presses**: the Primary, Secondary, Tertiary and Destructive buttons and a labelled Tool (`.tool-btn.tb-labeled`)
+  at .97; the Icon button, the Well item, the Tool and the rail button (`.rail-btn`) at .92. Rows, menu rows, fields and
+  the Outside atoms never press. The pressed colour is the States table's, unchanged; the shrink rides the `scale`
+  property, so a control's own `transform` is left alone (`base.css`, "Press").
 
 | Loop | Keyframes | What |
 |---|---|---|
